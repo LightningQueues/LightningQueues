@@ -9,5 +9,6 @@ namespace Rhino.Queues.Model
         public string Queue { get; set; }
         public DateTime SentAt { get; set; }
         public byte[] Data { get; set; }
+        public string SubQueue { get; set; }
     }
 }

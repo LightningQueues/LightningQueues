@@ -110,6 +110,14 @@ namespace Rhino.Queues.Storage
                 cp = JET_CP.Unicode
             }, null, 0, out columnid);
 
+            Api.JetAddColumn(session, tableid, "subqueue", new JET_COLUMNDEF
+            {
+                cbMax = 255,
+                coltyp = JET_coltyp.Text,
+                grbit = ColumndefGrbit.None,
+                cp = JET_CP.Unicode
+            }, null, 0, out columnid);
+
             Api.JetAddColumn(session, tableid, "data", new JET_COLUMNDEF
             {
                 coltyp = JET_coltyp.LongBinary,
@@ -193,6 +201,14 @@ namespace Rhino.Queues.Storage
                 cbMax = 255,
                 coltyp = JET_coltyp.Text,
                 grbit = ColumndefGrbit.ColumnNotNULL,
+                cp = JET_CP.Unicode
+            }, null, 0, out columnid);
+
+            Api.JetAddColumn(session, tableid, "subqueue", new JET_COLUMNDEF
+            {
+                cbMax = 255,
+                coltyp = JET_coltyp.Text,
+                grbit = ColumndefGrbit.None,
                 cp = JET_CP.Unicode
             }, null, 0, out columnid);
 
@@ -290,6 +306,14 @@ namespace Rhino.Queues.Storage
                 cp = JET_CP.Unicode,
                 coltyp = JET_coltyp.Text,
                 grbit = ColumndefGrbit.ColumnNotNULL
+            }, null, 0, out columnid);
+
+            Api.JetAddColumn(session, tableid, "subqueue", new JET_COLUMNDEF
+            {
+                cbMax = 255,
+                cp = JET_CP.Unicode,
+                coltyp = JET_coltyp.Text,
+                grbit = ColumndefGrbit.None
             }, null, 0, out columnid);
 
             Api.JetAddColumn(session, tableid, "bookmark_size", new JET_COLUMNDEF

@@ -13,6 +13,7 @@ namespace Rhino.Queues.Tests.Protocol
         private bool wasSuccessful;
         private readonly Sender sender;
         private readonly ManualResetEvent wait = new ManualResetEvent(false);
+        private bool revertCalled;
 
         public SendingFailure()
         {
@@ -26,11 +27,16 @@ namespace Rhino.Queues.Tests.Protocol
                         Data = new byte[] {1, 2, 4},
                         Id = MessageId.GenerateRandom(),
                         Queue = "ag",
-                        SentAt = new DateTime(2004,4,4)
+                        SentAt = new DateTime(2004, 4, 4)
                     },
                 },
                 Failure = exception => failureReported = true,
-                Success = () => wasSuccessful = true
+                Success = () =>
+                {
+                    wasSuccessful = true;
+                    return null;
+                },
+                Revert = bookmarks => revertCalled = true
             };
             sender.SendCompleted += () => wait.Set();
         }
@@ -122,8 +128,9 @@ namespace Rhino.Queues.Tests.Protocol
             // this is a case where we create compensation
             // for reported failure on the reciever side
 
-            Assert.True(failureReported);
+            Assert.False(failureReported);
             Assert.True(wasSuccessful);
+            Assert.True(revertCalled);
         }
     }
 }

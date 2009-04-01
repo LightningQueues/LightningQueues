@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Net;
 using System.Threading;
 using System.Transactions;
+using log4net;
+using Rhino.Queues.Internal;
 using Rhino.Queues.Model;
 using Rhino.Queues.Protocol;
 using Rhino.Queues.Storage;
@@ -11,7 +14,7 @@ using System.Linq;
 
 namespace Rhino.Queues
 {
-    public class RhinoQueue : IDisposable
+    public class QueueManager : IDisposable
     {
         [ThreadStatic]
         private static TransactionEnlistment enlistment;
@@ -19,6 +22,7 @@ namespace Rhino.Queues
         [ThreadStatic] 
         private static Transaction currentlyEnslistedTransaction;
 
+        private readonly ILog logger = LogManager.GetLogger(typeof (QueueManager));
         private volatile int currentlyInCriticalReceiveStatus;
         private readonly IPEndPoint endpoint;
         private readonly object newMessageArrivedLock = new object();
@@ -28,7 +32,7 @@ namespace Rhino.Queues
         private readonly Thread sendingThread;
         private QueuedMessagesSender queuedMessagesSender;
 
-        public RhinoQueue(IPEndPoint endpoint, string path)
+        public QueueManager(IPEndPoint endpoint, string path)
         {
             this.endpoint = endpoint;
             this.path = path;
@@ -82,13 +86,14 @@ namespace Rhino.Queues
             queuedMessagesSender.Stop();
             sendingThread.Join();
 
-            while(currentlyInCriticalReceiveStatus > 0)
+            reciever.Dispose();
+
+            while (currentlyInCriticalReceiveStatus > 0)
             {
                 Thread.Sleep(TimeSpan.FromSeconds(1));
             }
 
             queueFactory.Dispose();
-            reciever.Dispose();
         }
 
         #endregion
@@ -139,37 +144,35 @@ namespace Rhino.Queues
             return msgs;
         }
 
-        public PersistentMessageToSend[] GetAllMessagesWaitingForSent(string queueName)
-        {
-            PersistentMessageToSend[] msgs = null;
-            queueFactory.Send(actions =>
-            {
-                msgs = actions.GetMessagesToSend().ToArray();
-
-                actions.Commit();
-            });
-            return msgs;
-        }
-
         public Message Receive(string queueName)
         {
-            return Receive(queueName, TimeSpan.FromDays(1));
+            return Receive(queueName, null, TimeSpan.FromDays(1));
         }
 
         public Message Receive(string queueName, TimeSpan timeout)
+        {
+            return Receive(queueName, null, timeout);
+        }
+
+        public Message Receive(string queueName, string subqueue)
+        {
+            return Receive(queueName, subqueue, TimeSpan.FromDays(1));
+        }
+
+        public Message Receive(string queueName, string subqueue, TimeSpan timeout)
         {
             EnsureEnslistment();
 
             var remaining = timeout;
             while (true)
             {
-                var message = GetMessageFromQueue(queueName);
+                var message = GetMessageFromQueue(queueName, subqueue);
                 if (message != null)
                     return message;
 
                 lock (newMessageArrivedLock)
                 {
-                    message = GetMessageFromQueue(queueName);
+                    message = GetMessageFromQueue(queueName, subqueue);
                     if (message != null)
                         return message;
 
@@ -181,13 +184,21 @@ namespace Rhino.Queues
             }
         }
 
-        public void Send(Endpoint destination, string queue, byte[] msgBytes)
+        public void Send(Uri uri, byte[] msgBytes)
         {
+            var parts = uri.AbsolutePath.Substring(1).Split('/');
+            var queue = parts[0];
+            string subQueue = null;
+            if(parts.Length > 1)
+            {
+                subQueue = string.Join("/", parts.Skip(1).ToArray());
+            }
+
             EnsureEnslistment();
 
             queueFactory.Global(actions =>
             {
-                actions.RegisterToSend(destination, queue, msgBytes, enlistment.Id);
+                actions.RegisterToSend(new Endpoint(uri.Host, uri.Port), queue, subQueue, msgBytes, enlistment.Id);
 
                 actions.Commit();
             });
@@ -212,19 +223,20 @@ namespace Rhino.Queues
             currentlyEnslistedTransaction = Transaction.Current;
         }
 
-        private PersistentMessage GetMessageFromQueue(string queueName)
+        private PersistentMessage GetMessageFromQueue(string queueName, string subqueue)
         {
             PersistentMessage message = null;
             queueFactory.Global(actions =>
             {
-                message = actions.GetQueue(queueName).Dequeue();
+                message = actions.GetQueue(queueName).Dequeue(subqueue);
 
                 if (message != null)
                 {
                     actions.RegisterUpdateToReverse(
                         enlistment.Id,
                         message.Bookmark,
-                        MessageStatus.ReadyToDeliver);
+                        MessageStatus.ReadyToDeliver,
+                        subqueue);
                 }
 
                 actions.Commit();
@@ -253,10 +265,10 @@ namespace Rhino.Queues
         private class MessageAcceptance : IMessageAcceptance
         {
             private readonly IList<MessageBookmark> bookmarks;
-            private readonly RhinoQueue parent;
+            private readonly QueueManager parent;
             private readonly QueueFactory queueFactory;
 
-            public MessageAcceptance(RhinoQueue parent, IList<MessageBookmark> bookmarks, QueueFactory queueFactory)
+            public MessageAcceptance(QueueManager parent, IList<MessageBookmark> bookmarks, QueueFactory queueFactory)
             {
                 this.parent = parent;
                 this.bookmarks = bookmarks;
@@ -268,33 +280,48 @@ namespace Rhino.Queues
 
             public void Commit()
             {
-                queueFactory.Global(actions =>
+                try
                 {
-                    foreach (var bookmark in bookmarks)
+                    queueFactory.Global(actions =>
                     {
-                        actions.GetQueue(bookmark.QueueName).SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
-                    }
-                    actions.Commit();
-                });
+                        foreach (var bookmark in bookmarks)
+                        {
+                            actions.GetQueue(bookmark.QueueName)
+                                .SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
+                        }
+                        actions.Commit();
+                    });
 
-                lock (parent.newMessageArrivedLock)
-                {
-                    Monitor.PulseAll(parent.newMessageArrivedLock);
+                    lock (parent.newMessageArrivedLock)
+                    {
+                        Monitor.PulseAll(parent.newMessageArrivedLock);
+                    }
                 }
-                Interlocked.Decrement(ref parent.currentlyInCriticalReceiveStatus);
+                finally
+                {
+                    Interlocked.Decrement(ref parent.currentlyInCriticalReceiveStatus);
+                    
+                }
             }
 
             public void Abort()
             {
-                queueFactory.Global(actions =>
+                try
                 {
-                    foreach (var bookmark in bookmarks)
+                    queueFactory.Global(actions =>
                     {
-                        actions.GetQueue(bookmark.QueueName).SetMessageStatus(bookmark, MessageStatus.Discarded);
-                    }
-                    actions.Commit();
-                });
-                Interlocked.Decrement(ref parent.currentlyInCriticalReceiveStatus);
+                        foreach (var bookmark in bookmarks)
+                        {
+                            actions.GetQueue(bookmark.QueueName)
+                                .Discard(bookmark);
+                        }
+                        actions.Commit();
+                    });
+                }
+                finally
+                {
+                    Interlocked.Decrement(ref parent.currentlyInCriticalReceiveStatus);
+                }
             }
 
             #endregion
@@ -328,6 +355,20 @@ namespace Rhino.Queues
                 });
                 return queues;
             }
+        }
+
+        public void MoveTo(string subQueue, Message message)
+        {
+            queueFactory.Global(actions =>
+            {
+                var queue = actions.GetQueue(message.Queue);
+                var bookmark = queue.MoveTo(subQueue, (PersistentMessage)message);
+                actions.RegisterUpdateToReverse(enlistment.Id,
+                    bookmark, MessageStatus.ReadyToDeliver,
+                    message.SubQueue
+                    );
+                actions.Commit();
+            });
         }
     }
 }

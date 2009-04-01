@@ -4,8 +4,8 @@ namespace Rhino.Queues.Storage
     {
         None = 0,
         InTransit = 1,
-        Discarded = 2,
-        Processing = 3,
-        ReadyToDeliver = 4,
+        Processing = 2,
+        ReadyToDeliver = 3,
+        SubqueueChanged = 4
     }
 }

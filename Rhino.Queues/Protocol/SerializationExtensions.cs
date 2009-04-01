@@ -23,10 +23,13 @@ namespace Rhino.Queues.Protocol
                             Number = br.ReadInt32()
                         },
                         Queue = br.ReadString(),
+                        SubQueue = br.ReadString(),
                         SentAt = DateTime.FromBinary(br.ReadInt64()),
                     };
                     var byteCount = br.ReadInt32();
                     msgs[i].Data = br.ReadBytes(byteCount);
+                    if(string.IsNullOrEmpty(msgs[i].SubQueue))
+                        msgs[i].SubQueue = null;
                 }
                 return msgs;
             }
@@ -43,6 +46,7 @@ namespace Rhino.Queues.Protocol
                     writer.Write(message.Id.Guid.ToByteArray());
                     writer.Write(message.Id.Number);
                     writer.Write(message.Queue);
+                    writer.Write(message.SubQueue ?? "");
                     writer.Write(message.SentAt.ToBinary());
                     writer.Write(message.Data.Length);
                     writer.Write(message.Data);

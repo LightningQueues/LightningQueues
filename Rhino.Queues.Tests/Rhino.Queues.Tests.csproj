@@ -67,6 +67,7 @@
     <Compile Include="SendingToRhinoQueue.cs" />
     <Compile Include="Storage\CanUseQueue.cs" />
     <Compile Include="ReceivingFromRhinoQueue.cs" />
+    <Compile Include="UsingSubQueues.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Rhino.Queues\Rhino.Queues.csproj">

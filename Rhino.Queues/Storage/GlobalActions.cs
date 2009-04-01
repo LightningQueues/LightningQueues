@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text;
+using log4net;
 using Microsoft.Isam.Esent.Interop;
 using Rhino.Queues.Protocol;
 
@@ -10,6 +11,8 @@ namespace Rhino.Queues.Storage
 {
     public class GlobalActions : AbstractActions
     {
+        private readonly ILog logger = LogManager.GetLogger(typeof (GlobalActions));
+
         public GlobalActions(JET_INSTANCE instance, string database)
             : base(instance, database)
         {
@@ -59,7 +62,7 @@ namespace Rhino.Queues.Storage
             }
         }
 
-        public void RegisterUpdateToReverse(Guid txId, MessageBookmark bookmark, MessageStatus statusToRestore)
+        public void RegisterUpdateToReverse(Guid txId, MessageBookmark bookmark, MessageStatus statusToRestore, string subQueue)
         {
             using (var update = new Update(session, txs, JET_prep.Insert))
             {
@@ -68,14 +71,13 @@ namespace Rhino.Queues.Storage
                 Api.SetColumn(session, txs, txsColumns["bookmark_data"], bookmark.Bookmark.Take(bookmark.Size).ToArray());
                 Api.SetColumn(session, txs, txsColumns["value_to_restore"], (int)statusToRestore);
                 Api.SetColumn(session, txs, txsColumns["queue"], bookmark.QueueName, Encoding.Unicode);
+                Api.SetColumn(session, txs, txsColumns["subqueue"], subQueue, Encoding.Unicode);
 
                 update.Save();
             }
         }
 
-
-
-        public void DeleteReversalsAndMoveCompletedMessagesFrom(Guid transactionId)
+        public void RemoveReversalsMoveCompletedMessagesAndFinishSubQueueMove(Guid transactionId)
         {
             Api.JetSetCurrentIndex(session, txs, "by_tx_id");
             Api.MakeKey(session, txs, transactionId.ToByteArray(), MakeKeyGrbit.NewKey);
@@ -84,25 +86,34 @@ namespace Rhino.Queues.Storage
                 return;
             Api.MakeKey(session, txs, transactionId.ToByteArray(), MakeKeyGrbit.NewKey);
             Api.JetSetIndexRange(session, txs, SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
+            
             do
             {
                 var queue = Api.RetrieveColumnAsString(session, txs, txsColumns["queue"], Encoding.Unicode);
                 var bookmarkData = Api.RetrieveColumn(session, txs, txsColumns["bookmark_data"]);
                 var bookmarkSize = Api.RetrieveColumnAsInt32(session, txs, txsColumns["bookmark_size"]).Value;
 
-                GetQueue(queue).MoveToHistory(new MessageBookmark
+                var actions = GetQueue(queue);
+
+                var bookmark = new MessageBookmark
                 {
                     Bookmark = bookmarkData,
                     QueueName = queue,
                     Size = bookmarkSize
-                });
+                };
+
+                if (actions.GetMessageStatus(bookmark) == MessageStatus.SubqueueChanged)
+                    actions.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
+                else
+                    actions.MoveToHistory(bookmark);
 
                 Api.JetDelete(session, txs);
             } while (Api.TryMoveNext(session, txs));
         }
 
-        public void RegisterToSend(Endpoint destination, string queue, byte[] msgBytes, Guid transactionId)
+        public void RegisterToSend(Endpoint destination, string queue, string subQueue, byte[] msgBytes, Guid transactionId)
         {
+            var bookmark = new MessageBookmark();
             using (var update = new Update(session, outgoing, JET_prep.Insert))
             {
                 Api.SetColumn(session, outgoing, outgoingColumns["tx_id"], transactionId.ToByteArray());
@@ -113,12 +124,22 @@ namespace Rhino.Queues.Storage
                 Api.SetColumn(session, outgoing, outgoingColumns["sent_at"], DateTime.Now.ToOADate());
                 Api.SetColumn(session, outgoing, outgoingColumns["send_status"], (int)OutgoingMessageStatus.NotReady);
                 Api.SetColumn(session, outgoing, outgoingColumns["queue"], queue, Encoding.Unicode);
+                Api.SetColumn(session, outgoing, outgoingColumns["subqueue"], subQueue, Encoding.Unicode);
                 Api.SetColumn(session, outgoing, outgoingColumns["data"], msgBytes);
                 Api.SetColumn(session, outgoing, outgoingColumns["number_of_retries"], 1);
                 Api.SetColumn(session, outgoing, outgoingColumns["size_of_data"], msgBytes.Length);
 
-                update.Save();
+                update.Save(bookmark.Bookmark, bookmark.Size, out bookmark.Size);
             }
+            Api.JetGotoBookmark(session, outgoing, bookmark.Bookmark, bookmark.Size);
+            var msgId = Api.RetrieveColumnAsInt32(session, outgoing, outgoingColumns["msg_id"]).Value;
+            logger.DebugFormat("Created output message '{0}' for 'rhino.queues://{1}:{2}/{3}/{4}' as NotReady",
+                msgId,
+                destination.Host,
+                destination.Port,
+                queue,
+                subQueue
+                );
         }
 
         public void MarkAsReadyToSend(Guid transactionId)
@@ -128,6 +149,9 @@ namespace Rhino.Queues.Storage
             Api.MakeKey(session, outgoing, transactionId.ToByteArray(), MakeKeyGrbit.NewKey);
             if (Api.TrySeek(session, outgoing, SeekGrbit.SeekEQ) == false)
                 return;
+            Api.MakeKey(session, outgoing, transactionId.ToByteArray(), MakeKeyGrbit.NewKey);
+            Api.JetSetIndexRange(session, outgoing,
+                                 SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
             do
             {
                 using (var update = new Update(session, outgoing, JET_prep.Replace))
@@ -136,6 +160,8 @@ namespace Rhino.Queues.Storage
 
                     update.Save();
                 }
+                logger.DebugFormat("Marking output message {0} as Ready", 
+                    Api.RetrieveColumnAsInt32(session, outgoing, outgoingColumns["msg_id"]).Value);
             } while (Api.TryMoveNext(session, outgoing));
         }
 
@@ -146,8 +172,13 @@ namespace Rhino.Queues.Storage
             Api.MakeKey(session, outgoing, transactionId.ToByteArray(), MakeKeyGrbit.NewKey);
             if (Api.TrySeek(session, outgoing, SeekGrbit.SeekEQ) == false)
                 return;
+            Api.MakeKey(session, outgoing, transactionId.ToByteArray(), MakeKeyGrbit.NewKey);
+            Api.JetSetIndexRange(session, outgoing,
+                                 SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
             do
             {
+                logger.DebugFormat("Deleting output message {0}",
+                    Api.RetrieveColumnAsInt32(session, outgoing, outgoingColumns["msg_id"]).Value);
                 Api.JetDelete(session, outgoing);
             } while (Api.TryMoveNext(session, outgoing));
         }
@@ -169,8 +200,6 @@ namespace Rhino.Queues.Storage
                 }
             }
         }
-
-
 
         public void MarkAllProcessedMessagesWithTransactionsNotRegisterForRecoveryAsReadyToDeliver()
         {
@@ -213,15 +242,26 @@ namespace Rhino.Queues.Storage
             {
                 var bytes = Api.RetrieveColumn(session, txs, txsColumns["bookmark_data"]);
                 var size = Api.RetrieveColumnAsInt32(session, txs, txsColumns["bookmark_size"]).Value;
-                var status = (MessageStatus)Api.RetrieveColumnAsInt32(session, txs, txsColumns["value_to_restore"]).Value;
+                var oldStatus = (MessageStatus)Api.RetrieveColumnAsInt32(session, txs, txsColumns["value_to_restore"]).Value;
                 var queue = Api.RetrieveColumnAsString(session, txs, txsColumns["queue"]);
+                var subqueue = Api.RetrieveColumnAsString(session, txs, txsColumns["subqueue"]);
 
-                GetQueue(queue).SetMessageStatus(new MessageBookmark
+                var bookmark = new MessageBookmark
                 {
                     QueueName = queue,
                     Bookmark = bytes,
                     Size = size
-                }, status);
+                };
+                var actions = GetQueue(queue);
+                var newStatus = actions.GetMessageStatus(bookmark);
+                if (newStatus == MessageStatus.SubqueueChanged)
+                {
+                    actions.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver, subqueue);
+                }
+                else
+                {
+                    actions.SetMessageStatus(bookmark, oldStatus);
+                }
 
             } while (Api.TryMoveNext(session, txs));
         }

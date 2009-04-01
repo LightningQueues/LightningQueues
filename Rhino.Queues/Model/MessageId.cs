@@ -15,5 +15,10 @@ namespace Rhino.Queues.Model
                 Number = 42
             };
         }
+
+        public override string ToString()
+        {
+            return string.Format("{0}/{1}", Guid, Number);
+        }
     }
 }

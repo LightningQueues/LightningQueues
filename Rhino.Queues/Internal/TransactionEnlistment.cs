@@ -3,7 +3,7 @@ using System.Transactions;
 using Rhino.Queues.Storage;
 using Transaction=System.Transactions.Transaction;
 
-namespace Rhino.Queues
+namespace Rhino.Queues.Internal
 {
     public class TransactionEnlistment : IEnlistmentNotification
     {
@@ -42,9 +42,9 @@ namespace Rhino.Queues
         {
             queueFactory.Global(actions =>
             {
-                actions.DeleteReversalsAndMoveCompletedMessagesFrom(Id);
-                actions.DeleteRecoveryInformation(Id);
+                actions.RemoveReversalsMoveCompletedMessagesAndFinishSubQueueMove(Id);
                 actions.MarkAsReadyToSend(Id);
+                actions.DeleteRecoveryInformation(Id);
                 actions.Commit();
             });
             enlistment.Done();

@@ -13,22 +13,22 @@ namespace Rhino.Queues.Tests
 {
     public class ReceivingFromRhinoQueue : WithDebugging, IDisposable
     {
-        private readonly RhinoQueue queue;
+        private readonly QueueManager queueManager;
 
         public ReceivingFromRhinoQueue()
         {
             if (Directory.Exists("test.esent"))
                 Directory.Delete("test.esent", true);
 
-            queue = new RhinoQueue(new IPEndPoint(IPAddress.Loopback, 23456), "test.esent");
-            queue.CreateQueues("h");
+            queueManager = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23456), "test.esent");
+            queueManager.CreateQueues("h");
         }
 
         #region IDisposable Members
 
         public void Dispose()
         {
-            queue.Dispose();
+            queueManager.Dispose();
         }
 
         #endregion
@@ -40,7 +40,7 @@ namespace Rhino.Queues.Tests
             {
                 Destination = new Endpoint("localhost", 23456),
                 Failure = exception => Assert.False(true),
-                Success = () => { },
+                Success = () => null,
                 Messages = new[]
                 {
                     new Message
@@ -55,7 +55,7 @@ namespace Rhino.Queues.Tests
 
             using (var tx = new TransactionScope())
             {
-                var message = queue.Receive("h");
+                var message = queueManager.Receive("h", null);
                 Assert.Equal("hello", Encoding.Unicode.GetString(message.Data));
 
                 tx.Complete();
@@ -63,7 +63,7 @@ namespace Rhino.Queues.Tests
 
             using (var tx = new TransactionScope())
             {
-                Assert.Throws<TimeoutException>(() => queue.Receive("h", TimeSpan.Zero));
+                Assert.Throws<TimeoutException>(() => queueManager.Receive("h", null, TimeSpan.Zero));
 
                 tx.Complete();
             }
@@ -77,7 +77,7 @@ namespace Rhino.Queues.Tests
 
                 Destination = new Endpoint("localhost", 23456),
                 Failure = exception => Assert.False(true),
-                Success = () => { },
+                Success = () => null,
                 Messages = new[]
                 {
                     new Message
@@ -92,13 +92,13 @@ namespace Rhino.Queues.Tests
 
             using (new TransactionScope())
             {
-                var message = queue.Receive("h");
+                var message = queueManager.Receive("h", null);
                 Assert.Equal("hello", Encoding.Unicode.GetString(message.Data));
             }
 
             using (new TransactionScope())
             {
-                var message = queue.Receive("h");
+                var message = queueManager.Receive("h", null);
                 Assert.Equal("hello", Encoding.Unicode.GetString(message.Data));
             }
         }
@@ -110,7 +110,7 @@ namespace Rhino.Queues.Tests
             {
                 Destination = new Endpoint("localhost", 23456),
                 Failure = exception => Assert.False(true),
-                Success = () => { },
+                Success = () => null,
                 Messages = new[]
                 {
                     new Message
@@ -125,7 +125,7 @@ namespace Rhino.Queues.Tests
 
             using (var tx = new TransactionScope())
             {
-                var message = queue.Receive("h");
+                var message = queueManager.Receive("h", null);
                 Assert.Equal("hello", Encoding.Unicode.GetString(message.Data));
 
                 tx.Complete();
@@ -133,7 +133,7 @@ namespace Rhino.Queues.Tests
 
             Thread.Sleep(100);
 
-            var messages = queue.GetAllProcessedMessages("h");
+            var messages = queueManager.GetAllProcessedMessages("h");
             Assert.Equal(1, messages.Length);
             Assert.Equal("hello", Encoding.Unicode.GetString(messages[0].Data));
         }
@@ -145,7 +145,7 @@ namespace Rhino.Queues.Tests
             {
                 Destination = new Endpoint("localhost", 23456),
                 Failure = exception => Assert.False(true),
-                Success = () => { },
+                Success = () => null,
                 Messages = new[]
                 {
                     new Message
@@ -161,10 +161,10 @@ namespace Rhino.Queues.Tests
             using(new TransactionScope())
             {
                 // force a wait until we receive the message
-                queue.Receive("h");
+                queueManager.Receive("h", null);
             }
 
-            var messages = queue.GetAllMessages("h");
+            var messages = queueManager.GetAllMessages("h");
             Assert.Equal(1, messages.Length);
             Assert.Equal("hello", Encoding.Unicode.GetString(messages[0].Data));
         }

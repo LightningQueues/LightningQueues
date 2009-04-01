@@ -1,14 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.Net;
+using System.Linq;
 using System.Threading;
 using Rhino.Queues.Exceptions;
 using Rhino.Queues.Model;
 using Rhino.Queues.Protocol;
 using Rhino.Queues.Storage;
-using System.Linq;
 
-namespace Rhino.Queues
+namespace Rhino.Queues.Internal
 {
     public class QueuedMessagesSender
     {
@@ -28,7 +27,7 @@ namespace Rhino.Queues
                 IList<PersistentMessage> messages = null;
 
                 var count = currentlySendingCount;
-                if(count > 5)
+                if (count > 5)
                 {
                     Thread.Sleep(TimeSpan.FromSeconds(1));
                     continue;
@@ -37,7 +36,7 @@ namespace Rhino.Queues
                 Endpoint point = null;
                 queueFactory.Send(actions =>
                 {
-                    messages = actions.GetMessagesToSendAndMarkThemAsInFlight(100, 1024 * 1024, out point);
+                    messages = actions.GetMessagesToSendAndMarkThemAsInFlight(100, 1024*1024, out point);
 
                     actions.Commit();
                 });
@@ -55,9 +54,20 @@ namespace Rhino.Queues
                     Destination = point,
                     Messages = messages.ToArray(),
                     Success = OnSuccess(messages),
-                    Failure = OnFailure(messages)
+                    Failure = OnFailure(messages),
+                    Revert = OnRevert
                 }.Send();
             }
+        }
+
+        private void OnRevert(MessageBookmark[] bookmarksToRevert)
+        {
+            queueFactory.Send(actions =>
+            {
+                actions.RevertBackToSend(bookmarksToRevert);
+
+                actions.Commit();
+            });
         }
 
         private Action<Exception> OnFailure(IEnumerable<PersistentMessage> messages)
@@ -66,7 +76,8 @@ namespace Rhino.Queues
             {
                 foreach (var message in messages)
                 {
-                    actions.MarkOutgoingMessageAsFailedTransmission(message.Bookmark, exception is QueueDoesNotExistsException);
+                    actions.MarkOutgoingMessageAsFailedTransmission(message.Bookmark,
+                                                                    exception is QueueDoesNotExistsException);
                 }
 
                 actions.Commit();
@@ -74,24 +85,30 @@ namespace Rhino.Queues
             });
         }
 
-        private Action OnSuccess(IEnumerable<PersistentMessage> messages)
+        private Func<MessageBookmark[]> OnSuccess(IEnumerable<PersistentMessage> messages)
         {
-            return () => queueFactory.Send(actions =>
+            return () =>
             {
-                foreach (var message in messages)
+                var newBookmarks = new List<MessageBookmark>();
+                queueFactory.Send(actions =>
                 {
-                    actions.MarkOutgoingMessageAsSuccessfullySent(message.Bookmark);
-                }
+                    foreach (var message in messages)
+                    {
+                        var bookmark = actions.MarkOutgoingMessageAsSuccessfullySent(message.Bookmark);
+                        newBookmarks.Add(bookmark);
+                    }
 
-                actions.Commit();
-                Interlocked.Decrement(ref currentlySendingCount);
-            });
+                    actions.Commit();
+                    Interlocked.Decrement(ref currentlySendingCount);
+                });
+                return newBookmarks.ToArray();
+            };
         }
 
         public void Stop()
         {
             continueSending = false;
-            while(currentlySendingCount > 0)
+            while (currentlySendingCount > 0)
                 Thread.Sleep(TimeSpan.FromSeconds(1));
         }
     }

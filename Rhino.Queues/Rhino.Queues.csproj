@@ -64,7 +64,7 @@
     <Compile Include="Model\HistoryMessage.cs" />
     <Compile Include="Model\PersistentMessageToSend.cs" />
     <Compile Include="Protocol\Endpoint.cs" />
-    <Compile Include="QueuedMessagesSender.cs" />
+    <Compile Include="Internal\QueuedMessagesSender.cs" />
     <Compile Include="Model\PersistentMessage.cs" />
     <Compile Include="Model\Message.cs" />
     <Compile Include="Model\MessageId.cs" />
@@ -75,7 +75,7 @@
     <Compile Include="Protocol\Sender.cs" />
     <Compile Include="Protocol\SerializationExtensions.cs" />
     <Compile Include="Protocol\StreamUtil.cs" />
-    <Compile Include="RhinoQueue.cs" />
+    <Compile Include="QueueManager.cs" />
     <Compile Include="Storage\AbstractActions.cs" />
     <Compile Include="Storage\EsentExtension.cs" />
     <Compile Include="Storage\MessageBookmark.cs" />
@@ -87,7 +87,10 @@
     <Compile Include="Storage\QueueSchemaCreator.cs" />
     <Compile Include="Storage\SchemaCreator.cs" />
     <Compile Include="Storage\SenderActions.cs" />
-    <Compile Include="TransactionEnlistment.cs" />
+    <Compile Include="Internal\TransactionEnlistment.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram1.cd" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -6,6 +6,7 @@ using System.Text;
 using log4net;
 using Rhino.Queues.Exceptions;
 using Rhino.Queues.Model;
+using Rhino.Queues.Storage;
 using Wintellect.Threading.AsyncProgModel;
 
 namespace Rhino.Queues.Protocol
@@ -15,15 +16,17 @@ namespace Rhino.Queues.Protocol
         private readonly ILog logger = LogManager.GetLogger(typeof(Sender));
         
         public event Action SendCompleted;
-        public Action Success { get; set; }
+        public Func<MessageBookmark[]> Success { get; set; }
         public Action<Exception> Failure { get; set; }
+        public Action<MessageBookmark[]> Revert { get; set; }
         public Endpoint Destination { get; set; }
         public Message[] Messages { get; set; }
 
         public Sender()
         {
             Failure = e => { };
-            Success = () => { };
+            Success = () => null;
+            Revert = bookmarks => { };
         }
 
         public void Send()
@@ -220,12 +223,24 @@ namespace Rhino.Queues.Protocol
                             Failure(exception);
                             yield break;
                         }
-                        Success();
+
+                        var bookmarks = Success();
 
                         buffer = new byte[ProtocolConstants.RevertBuffer.Length];
                         var readRevertMessage = new AsyncEnumerator(ae.ToString());
-                        readRevertMessage.BeginExecute(
-                            StreamUtil.ReadBytes(buffer, stream, readRevertMessage, "revert"), ae.End());
+                        bool startingToReadFailed = false;
+                        try
+                        {
+                            readRevertMessage.BeginExecute(
+                                StreamUtil.ReadBytes(buffer, stream, readRevertMessage, "revert"), ae.End());
+                        }
+                        catch (Exception)
+                        {
+                            //more or less expected
+                            startingToReadFailed = true;
+                        }
+                        if (startingToReadFailed)
+                            yield break;
                         yield return 1;
                         try
                         {
@@ -233,7 +248,7 @@ namespace Rhino.Queues.Protocol
                             var revert = Encoding.Unicode.GetString(buffer);
                             if (revert == ProtocolConstants.Revert)
                             {
-                                Failure(null);
+                                Revert(bookmarks);
                             }
                         }
                         catch (Exception)

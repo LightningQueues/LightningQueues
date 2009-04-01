@@ -58,7 +58,7 @@ namespace Rhino.Queues.Tests.Storage
 
                 qf.Global(actions =>
                 {
-                    var message = actions.GetQueue("h").Dequeue();
+                    var message = actions.GetQueue("h").Dequeue(null);
 
                     Assert.Equal(new byte[] { 13, 12, 43, 5 }, message.Data);
                     Assert.Equal(5, message.Id.Number);
@@ -119,9 +119,9 @@ namespace Rhino.Queues.Tests.Storage
 
                 qf.Global(actions =>
                 {
-                    var m1 = actions.GetQueue("h").Dequeue();
-                    var m2 = actions.GetQueue("h").Dequeue();
-                    var m3 = actions.GetQueue("h").Dequeue();
+                    var m1 = actions.GetQueue("h").Dequeue(null);
+                    var m2 = actions.GetQueue("h").Dequeue(null);
+                    var m3 = actions.GetQueue("h").Dequeue(null);
 
                     Assert.Equal(new byte[] { 1 }, m1.Data);
                     Assert.Equal(new byte[] { 2 }, m2.Data);
@@ -169,11 +169,11 @@ namespace Rhino.Queues.Tests.Storage
 
                 qf.Global(actions =>
                 {
-                    var m1 = actions.GetQueue("h").Dequeue();
+                    var m1 = actions.GetQueue("h").Dequeue(null);
 
                     qf.Global(queuesActions =>
                     {
-                        var m2 = queuesActions.GetQueue("h").Dequeue();
+                        var m2 = queuesActions.GetQueue("h").Dequeue(null);
                         
                         Assert.Equal(new byte[] { 2 }, m2.Data);
 
@@ -201,7 +201,7 @@ namespace Rhino.Queues.Tests.Storage
 
                 qf.Global(actions =>
                 {
-                    var message = actions.GetQueue("h").Dequeue();
+                    var message = actions.GetQueue("h").Dequeue(null);
                     Assert.Null(message);
                     actions.Commit();
                 });
