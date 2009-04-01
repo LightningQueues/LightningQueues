@@ -1,0 +1,240 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Text;
+using Microsoft.Isam.Esent.Interop;
+using Rhino.Queues.Protocol;
+
+namespace Rhino.Queues.Storage
+{
+    public class GlobalActions : AbstractActions
+    {
+        public GlobalActions(JET_INSTANCE instance, string database)
+            : base(instance, database)
+        {
+        }
+
+        public void CreateQueueIfDoesNotExists(string queueName)
+        {
+            Api.MakeKey(session, queues, queueName, Encoding.Unicode, MakeKeyGrbit.NewKey);
+            if (Api.TrySeek(session, queues, SeekGrbit.SeekEQ))
+                return;
+
+            new QueueSchemaCreator(session, dbid, queueName).Create();
+            using (var updateQueue = new Update(session, queues, JET_prep.Insert))
+            {
+                Api.SetColumn(session, queues, queuesColumns["name"], queueName, Encoding.Unicode);
+                Api.SetColumn(session, queues, queuesColumns["created_at"], DateTime.Now.ToOADate());
+                updateQueue.Save();
+            }
+        }
+
+        public void RegisterRecoveryInformation(Guid transactionId, byte[] information)
+        {
+            using (var update = new Update(session, recovery, JET_prep.Insert))
+            {
+                Api.SetColumn(session, recovery, recoveryColumns["tx_id"], transactionId.ToByteArray());
+                Api.SetColumn(session, recovery, recoveryColumns["recovery_info"], information);
+
+                update.Save();
+            }
+        }
+
+        public void DeleteRecoveryInformation(Guid transactionId)
+        {
+            Api.MakeKey(session, recovery, transactionId.ToByteArray(), MakeKeyGrbit.NewKey);
+
+            if (Api.TrySeek(session, recovery, SeekGrbit.SeekEQ) == false)
+                return;
+            Api.JetDelete(session, recovery);
+        }
+
+        public IEnumerable<byte[]> GetRecoveryInformation()
+        {
+            Api.MoveBeforeFirst(session, recovery);
+            while (Api.TryMoveNext(session, recovery))
+            {
+                yield return Api.RetrieveColumn(session, recovery, recoveryColumns["recovery_info"]);
+            }
+        }
+
+        public void RegisterUpdateToReverse(Guid txId, MessageBookmark bookmark, MessageStatus statusToRestore)
+        {
+            using (var update = new Update(session, txs, JET_prep.Insert))
+            {
+                Api.SetColumn(session, txs, txsColumns["tx_id"], txId.ToByteArray());
+                Api.SetColumn(session, txs, txsColumns["bookmark_size"], bookmark.Size);
+                Api.SetColumn(session, txs, txsColumns["bookmark_data"], bookmark.Bookmark.Take(bookmark.Size).ToArray());
+                Api.SetColumn(session, txs, txsColumns["value_to_restore"], (int)statusToRestore);
+                Api.SetColumn(session, txs, txsColumns["queue"], bookmark.QueueName, Encoding.Unicode);
+
+                update.Save();
+            }
+        }
+
+
+
+        public void DeleteReversalsAndMoveCompletedMessagesFrom(Guid transactionId)
+        {
+            Api.JetSetCurrentIndex(session, txs, "by_tx_id");
+            Api.MakeKey(session, txs, transactionId.ToByteArray(), MakeKeyGrbit.NewKey);
+
+            if (Api.TrySeek(session, txs, SeekGrbit.SeekEQ) == false)
+                return;
+            Api.MakeKey(session, txs, transactionId.ToByteArray(), MakeKeyGrbit.NewKey);
+            Api.JetSetIndexRange(session, txs, SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
+            do
+            {
+                var queue = Api.RetrieveColumnAsString(session, txs, txsColumns["queue"], Encoding.Unicode);
+                var bookmarkData = Api.RetrieveColumn(session, txs, txsColumns["bookmark_data"]);
+                var bookmarkSize = Api.RetrieveColumnAsInt32(session, txs, txsColumns["bookmark_size"]).Value;
+
+                GetQueue(queue).MoveToHistory(new MessageBookmark
+                {
+                    Bookmark = bookmarkData,
+                    QueueName = queue,
+                    Size = bookmarkSize
+                });
+
+                Api.JetDelete(session, txs);
+            } while (Api.TryMoveNext(session, txs));
+        }
+
+        public void RegisterToSend(Endpoint destination, string queue, byte[] msgBytes, Guid transactionId)
+        {
+            using (var update = new Update(session, outgoing, JET_prep.Insert))
+            {
+                Api.SetColumn(session, outgoing, outgoingColumns["tx_id"], transactionId.ToByteArray());
+                Api.SetColumn(session, outgoing, outgoingColumns["address"],
+                              destination.Host, Encoding.Unicode);
+                Api.SetColumn(session, outgoing, outgoingColumns["port"], destination.Port);
+                Api.SetColumn(session, outgoing, outgoingColumns["time_to_send"], DateTime.Now.ToOADate());
+                Api.SetColumn(session, outgoing, outgoingColumns["sent_at"], DateTime.Now.ToOADate());
+                Api.SetColumn(session, outgoing, outgoingColumns["send_status"], (int)OutgoingMessageStatus.NotReady);
+                Api.SetColumn(session, outgoing, outgoingColumns["queue"], queue, Encoding.Unicode);
+                Api.SetColumn(session, outgoing, outgoingColumns["data"], msgBytes);
+                Api.SetColumn(session, outgoing, outgoingColumns["number_of_retries"], 1);
+                Api.SetColumn(session, outgoing, outgoingColumns["size_of_data"], msgBytes.Length);
+
+                update.Save();
+            }
+        }
+
+        public void MarkAsReadyToSend(Guid transactionId)
+        {
+            Api.JetSetCurrentIndex(session, outgoing, "by_tx_id");
+
+            Api.MakeKey(session, outgoing, transactionId.ToByteArray(), MakeKeyGrbit.NewKey);
+            if (Api.TrySeek(session, outgoing, SeekGrbit.SeekEQ) == false)
+                return;
+            do
+            {
+                using (var update = new Update(session, outgoing, JET_prep.Replace))
+                {
+                    Api.SetColumn(session, outgoing, outgoingColumns["send_status"], (int)OutgoingMessageStatus.Ready);
+
+                    update.Save();
+                }
+            } while (Api.TryMoveNext(session, outgoing));
+        }
+
+        public void DeleteMessageToSend(Guid transactionId)
+        {
+            Api.JetSetCurrentIndex(session, outgoing, "by_tx_id");
+
+            Api.MakeKey(session, outgoing, transactionId.ToByteArray(), MakeKeyGrbit.NewKey);
+            if (Api.TrySeek(session, outgoing, SeekGrbit.SeekEQ) == false)
+                return;
+            do
+            {
+                Api.JetDelete(session, outgoing);
+            } while (Api.TryMoveNext(session, outgoing));
+        }
+
+        public void MarkAllOutgoingInFlightMessagesAsReadyToSend()
+        {
+            Api.MoveBeforeFirst(session, outgoing);
+            while (Api.TryMoveNext(session, outgoing))
+            {
+                var status = (OutgoingMessageStatus)Api.RetrieveColumnAsInt32(session, outgoing, outgoingColumns["send_status"]).Value;
+                if (status != OutgoingMessageStatus.InFlight)
+                    continue;
+
+                using (var update = new Update(session, outgoing, JET_prep.Replace))
+                {
+                    Api.SetColumn(session, outgoing, outgoingColumns["send_status"], (int)OutgoingMessageStatus.Ready);
+
+                    update.Save();
+                }
+            }
+        }
+
+
+
+        public void MarkAllProcessedMessagesWithTransactionsNotRegisterForRecoveryAsReadyToDeliver()
+        {
+            var txsWithRecovery = new HashSet<Guid>();
+            Api.MoveBeforeFirst(session, recovery);
+            while (Api.TryMoveNext(session, recovery))
+            {
+                var idAsBytes = Api.RetrieveColumn(session, recovery, recoveryColumns["tx_id"]);
+                txsWithRecovery.Add(new Guid(idAsBytes));
+            }
+
+            var txsWithoutRecovery = new HashSet<Guid>();
+            Api.MoveBeforeFirst(session, txs);
+            while (Api.TryMoveNext(session, txs))
+            {
+                var idAsBytes = Api.RetrieveColumn(session, txs, recoveryColumns["tx_id"]);
+                txsWithoutRecovery.Add(new Guid(idAsBytes));
+            }
+
+            foreach (var txId in txsWithoutRecovery)
+            {
+                if (txsWithRecovery.Contains(txId))
+                    continue;
+                ReverseAllFrom(txId);
+            }
+        }
+
+        public void ReverseAllFrom(Guid transactionId)
+        {
+            Api.JetSetCurrentIndex(session, txs, "by_tx_id");
+            Api.MakeKey(session, txs, transactionId.ToByteArray(), MakeKeyGrbit.NewKey);
+
+            if (Api.TrySeek(session, txs, SeekGrbit.SeekEQ) == false)
+                return;
+
+            Api.MakeKey(session, txs, transactionId.ToByteArray(), MakeKeyGrbit.NewKey);
+            Api.JetSetIndexRange(session, txs, SetIndexRangeGrbit.RangeUpperLimit | SetIndexRangeGrbit.RangeInclusive);
+
+            do
+            {
+                var bytes = Api.RetrieveColumn(session, txs, txsColumns["bookmark_data"]);
+                var size = Api.RetrieveColumnAsInt32(session, txs, txsColumns["bookmark_size"]).Value;
+                var status = (MessageStatus)Api.RetrieveColumnAsInt32(session, txs, txsColumns["value_to_restore"]).Value;
+                var queue = Api.RetrieveColumnAsString(session, txs, txsColumns["queue"]);
+
+                GetQueue(queue).SetMessageStatus(new MessageBookmark
+                {
+                    QueueName = queue,
+                    Bookmark = bytes,
+                    Size = size
+                }, status);
+
+            } while (Api.TryMoveNext(session, txs));
+        }
+
+        public string[] GetAllQueuesNames()
+        {
+            var names = new List<string>();
+            Api.MoveBeforeFirst(session, queues);
+            while (Api.TryMoveNext(session, queues))
+            {
+                names.Add(Api.RetrieveColumnAsString(session, queues, queuesColumns["name"]));
+            }
+            return names.ToArray();
+        }
+    }
+}

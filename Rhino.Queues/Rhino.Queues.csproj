@@ -1,0 +1,100 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{398BF580-41F5-418E-A017-19D19B289A97}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Rhino.Queues</RootNamespace>
+    <AssemblyName>Rhino.Queues</AssemblyName>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>420</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Esent.Interop, Version=1.0.0.0, Culture=neutral, PublicKeyToken=167035e3fb14a205, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\OSS\rhino-tools\SharedLibs\Esent\Esent.Interop.dll</HintPath>
+    </Reference>
+    <Reference Include="log4net, Version=1.2.10.0, Culture=neutral, PublicKeyToken=1b44e1d426115821, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\OSS\rhino-tools\SharedLibs\NHibernate\log4net.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Transactions" />
+    <Reference Include="System.Xml.Linq">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data.DataSetExtensions">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="Wintellect.Threading, Version=4.2.3353.29511, Culture=neutral, PublicKeyToken=167f00fdf109b063, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\SharedLibs\Wintellect.Threading.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Exceptions\QueueDoesNotExistsException.cs" />
+    <Compile Include="Model\HistoryMessage.cs" />
+    <Compile Include="Model\PersistentMessageToSend.cs" />
+    <Compile Include="Protocol\Endpoint.cs" />
+    <Compile Include="QueuedMessagesSender.cs" />
+    <Compile Include="Model\PersistentMessage.cs" />
+    <Compile Include="Model\Message.cs" />
+    <Compile Include="Model\MessageId.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Protocol\ProtocolConstants.cs" />
+    <Compile Include="Protocol\IMessageAcceptance.cs" />
+    <Compile Include="Protocol\Reciever.cs" />
+    <Compile Include="Protocol\Sender.cs" />
+    <Compile Include="Protocol\SerializationExtensions.cs" />
+    <Compile Include="Protocol\StreamUtil.cs" />
+    <Compile Include="RhinoQueue.cs" />
+    <Compile Include="Storage\AbstractActions.cs" />
+    <Compile Include="Storage\EsentExtension.cs" />
+    <Compile Include="Storage\MessageBookmark.cs" />
+    <Compile Include="Storage\MessageStatus.cs" />
+    <Compile Include="Storage\OutgoingMessageStatus.cs" />
+    <Compile Include="Storage\QueueActions.cs" />
+    <Compile Include="Storage\QueueFactory.cs" />
+    <Compile Include="Storage\GlobalActions.cs" />
+    <Compile Include="Storage\QueueSchemaCreator.cs" />
+    <Compile Include="Storage\SchemaCreator.cs" />
+    <Compile Include="Storage\SenderActions.cs" />
+    <Compile Include="TransactionEnlistment.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
