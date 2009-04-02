@@ -26,47 +26,107 @@ namespace Rhino.Queues
         private readonly IPEndPoint endpoint;
         private readonly object newMessageArrivedLock = new object();
         private readonly string path;
-        private readonly QueueFactory queueFactory;
+        private readonly Timer purgeOldDataTimer;
+        private readonly QueueStorage queueStorage;
         private readonly Reciever reciever;
         private readonly Thread sendingThread;
         private readonly QueuedMessagesSender queuedMessagesSender;
-        private readonly ILog logger = LogManager.GetLogger(typeof (QueueManager));
+        private readonly ILog logger = LogManager.GetLogger(typeof(QueueManager));
+
+        public int? NumberOfMessagesToKeepInProcessedQueues { get; set; }
+        public int? NumberOfMessagesToKeepOutgoingQueues { get; set; }
+
+        public TimeSpan? OldestMessageInProcessedQueues { get; set; }
+        public TimeSpan? OldestMessageInOutgoingQueues { get; set; }
 
         public QueueManager(IPEndPoint endpoint, string path)
         {
+            NumberOfMessagesToKeepInProcessedQueues = 100;
+            NumberOfMessagesToKeepOutgoingQueues = 100;
+            OldestMessageInProcessedQueues = TimeSpan.FromDays(3);
+            OldestMessageInOutgoingQueues = TimeSpan.FromDays(3);
+
             this.endpoint = endpoint;
             this.path = path;
-            queueFactory = new QueueFactory(path);
-            queueFactory.Initialize();
+            queueStorage = new QueueStorage(path);
+            queueStorage.Initialize();
 
             reciever = new Reciever(endpoint, AcceptMessages);
             reciever.Start();
 
             HandleRecovery();
 
-            queuedMessagesSender = new QueuedMessagesSender(queueFactory);
+            queuedMessagesSender = new QueuedMessagesSender(queueStorage);
             sendingThread = new Thread(queuedMessagesSender.Send)
             {
                 IsBackground = true
             };
             sendingThread.Start();
+            purgeOldDataTimer = new Timer(PurgeOldData, null, 
+                TimeSpan.FromMinutes(3), 
+                TimeSpan.FromMinutes(3));
+        }
+
+        private void PurgeOldData(object ignored)
+        {
+            logger.DebugFormat("Starting to purge old data");
+            try
+            {
+                queueStorage.Global(actions =>
+                {
+                    foreach (var queue in Queues)
+                    {
+                        var queueActions = actions.GetQueue(queue);
+                        var messages = queueActions.GetAllProcessedMessages();
+                        if (NumberOfMessagesToKeepInProcessedQueues != null)
+                            messages = messages.Skip(NumberOfMessagesToKeepInProcessedQueues.Value);
+                        if (OldestMessageInProcessedQueues != null)
+                            messages = messages.Where(x => (DateTime.Now - x.SentAt) > OldestMessageInProcessedQueues.Value);
+
+                        foreach (var message in messages)
+                        {
+                            logger.DebugFormat("Purging message {0} from queue {0}/{1}", message.Id, message.Queue, message.SubQueue);
+                            queueActions.DeleteHistoric(message.Bookmark);
+                        }
+                    }
+                    var sentMessages = actions.GetSentMessages();
+
+                    if (NumberOfMessagesToKeepOutgoingQueues != null)
+                        sentMessages = sentMessages.Skip(NumberOfMessagesToKeepOutgoingQueues.Value);
+                    if (OldestMessageInOutgoingQueues != null)
+                        sentMessages = sentMessages.Where(x => (DateTime.Now - x.SentAt) > OldestMessageInOutgoingQueues.Value);
+
+                    foreach (var sentMessage in sentMessages)
+                    {
+                        logger.DebugFormat("Purging sent message {0} to {1}/{2}/{3}", sentMessage.Id, sentMessage.Endpoint,
+                                           sentMessage.Queue, sentMessage.SubQueue);
+                        actions.DeleteMessageToSendHistoric(sentMessage.Bookmark);
+                    }
+
+                    actions.Commit();
+                });
+            }
+            catch (Exception exception)
+            {
+                logger.Warn("Failed to purge old data from the system", exception);
+            }
         }
 
         private void HandleRecovery()
         {
-            queueFactory.Global(actions =>
+            queueStorage.Global(actions =>
             {
                 actions.MarkAllOutgoingInFlightMessagesAsReadyToSend();
                 actions.MarkAllProcessedMessagesWithTransactionsNotRegisterForRecoveryAsReadyToDeliver();
                 foreach (var bytes in actions.GetRecoveryInformation())
                 {
-                    TransactionManager.Reenlist(queueFactory.Id, bytes,
-                        new TransactionEnlistment(queueFactory, () => { }));
+                    TransactionManager.Reenlist(queueStorage.Id, bytes,
+                        new TransactionEnlistment(queueStorage, () => { }));
                 }
                 actions.Commit();
             });
 
-            TransactionManager.RecoveryComplete(queueFactory.Id);
+            TransactionManager.RecoveryComplete(queueStorage.Id);
         }
 
         public string Path
@@ -89,6 +149,9 @@ namespace Rhino.Queues
             {
                 Monitor.PulseAll(newMessageArrivedLock);
             }
+
+            purgeOldDataTimer.Dispose();
+
             queuedMessagesSender.Stop();
             sendingThread.Join();
 
@@ -99,14 +162,14 @@ namespace Rhino.Queues
                 Thread.Sleep(TimeSpan.FromSeconds(1));
             }
 
-            queueFactory.Dispose();
+            queueStorage.Dispose();
         }
 
         #endregion
 
         private void AssertNotDisposed()
         {
-            if(wasDisposed)
+            if (wasDisposed)
                 throw new ObjectDisposedException("QueueManager");
         }
 
@@ -119,7 +182,7 @@ namespace Rhino.Queues
         {
             AssertNotDisposed();
             PersistentMessage[] messages = null;
-            queueFactory.Global(actions =>
+            queueStorage.Global(actions =>
             {
                 messages = actions.GetQueue(queueName).GetAllMessages(subqueue).ToArray();
                 actions.Commit();
@@ -127,13 +190,13 @@ namespace Rhino.Queues
             return messages;
         }
 
-        public HistoryMessage[] GetAllProcessedMessages(string queueName, string subqueue)
+        public HistoryMessage[] GetAllProcessedMessages(string queueName)
         {
-            AssertNotDisposed(); 
+            AssertNotDisposed();
             HistoryMessage[] messages = null;
-            queueFactory.Global(actions =>
+            queueStorage.Global(actions =>
             {
-                messages = actions.GetQueue(queueName).GetAllProcessedMessages(subqueue).ToArray();
+                messages = actions.GetQueue(queueName).GetAllProcessedMessages().ToArray();
                 actions.Commit();
             });
             return messages;
@@ -141,9 +204,9 @@ namespace Rhino.Queues
 
         public PersistentMessageToSend[] GetAllSentMessages()
         {
-            AssertNotDisposed(); 
+            AssertNotDisposed();
             PersistentMessageToSend[] msgs = null;
-            queueFactory.Send(actions =>
+            queueStorage.Global(actions =>
             {
                 msgs = actions.GetSentMessages().ToArray();
 
@@ -156,7 +219,7 @@ namespace Rhino.Queues
         {
             AssertNotDisposed();
             PersistentMessageToSend[] msgs = null;
-            queueFactory.Send(actions =>
+            queueStorage.Send(actions =>
             {
                 msgs = actions.GetMessagesToSend().ToArray();
 
@@ -256,7 +319,7 @@ namespace Rhino.Queues
             }
 
             int msgId = 0;
-            queueFactory.Global(actions =>
+            queueStorage.Global(actions =>
             {
                 var port = uri.Port;
                 if (port == -1)
@@ -268,15 +331,15 @@ namespace Rhino.Queues
             });
             return new MessageId
             {
-                Guid = queueFactory.Id,
+                Guid = queueStorage.Id,
                 Number = msgId
             };
         }
 
         private void EnsureEnslistment()
         {
-            AssertNotDisposed(); 
-            
+            AssertNotDisposed();
+
             if (Transaction.Current == null)
                 throw new InvalidOperationException("You must use TransactionScope when using Rhino.Queues");
 
@@ -284,7 +347,7 @@ namespace Rhino.Queues
                 return;
             // need to change the enslitment
 
-            enlistment = new TransactionEnlistment(queueFactory, () =>
+            enlistment = new TransactionEnlistment(queueStorage, () =>
             {
                 lock (newMessageArrivedLock)
                 {
@@ -296,9 +359,9 @@ namespace Rhino.Queues
 
         private PersistentMessage GetMessageFromQueue(string queueName, string subqueue)
         {
-            AssertNotDisposed(); 
+            AssertNotDisposed();
             PersistentMessage message = null;
-            queueFactory.Global(actions =>
+            queueStorage.Global(actions =>
             {
                 message = actions.GetQueue(queueName).Dequeue(subqueue);
 
@@ -320,7 +383,7 @@ namespace Rhino.Queues
         {
             AssertNotDisposed();
             PersistentMessage message = null;
-            queueFactory.Global(actions =>
+            queueStorage.Global(actions =>
             {
                 message = actions.GetQueue(queueName).Peek(subqueue);
 
@@ -337,7 +400,7 @@ namespace Rhino.Queues
         private IMessageAcceptance AcceptMessages(Message[] msgs)
         {
             var bookmarks = new List<MessageBookmark>();
-            queueFactory.Global(actions =>
+            queueStorage.Global(actions =>
             {
                 foreach (var msg in msgs)
                 {
@@ -347,7 +410,7 @@ namespace Rhino.Queues
                 actions.Commit();
             });
 
-            return new MessageAcceptance(this, bookmarks, queueFactory);
+            return new MessageAcceptance(this, bookmarks, queueStorage);
         }
 
         #region Nested type: MessageAcceptance
@@ -356,13 +419,13 @@ namespace Rhino.Queues
         {
             private readonly IList<MessageBookmark> bookmarks;
             private readonly QueueManager parent;
-            private readonly QueueFactory queueFactory;
+            private readonly QueueStorage queueStorage;
 
-            public MessageAcceptance(QueueManager parent, IList<MessageBookmark> bookmarks, QueueFactory queueFactory)
+            public MessageAcceptance(QueueManager parent, IList<MessageBookmark> bookmarks, QueueStorage queueStorage)
             {
                 this.parent = parent;
                 this.bookmarks = bookmarks;
-                this.queueFactory = queueFactory;
+                this.queueStorage = queueStorage;
 #pragma warning disable 420
                 Interlocked.Increment(ref parent.currentlyInCriticalReceiveStatus);
 #pragma warning restore 420
@@ -374,7 +437,7 @@ namespace Rhino.Queues
             {
                 try
                 {
-                    queueFactory.Global(actions =>
+                    queueStorage.Global(actions =>
                     {
                         foreach (var bookmark in bookmarks)
                         {
@@ -402,7 +465,7 @@ namespace Rhino.Queues
             {
                 try
                 {
-                    queueFactory.Global(actions =>
+                    queueStorage.Global(actions =>
                     {
                         foreach (var bookmark in bookmarks)
                         {
@@ -429,7 +492,7 @@ namespace Rhino.Queues
         {
             AssertNotDisposed();
 
-            queueFactory.Global(actions =>
+            queueStorage.Global(actions =>
             {
                 foreach (var queueName in queueNames)
                 {
@@ -446,7 +509,7 @@ namespace Rhino.Queues
             {
                 AssertNotDisposed();
                 string[] queues = null;
-                queueFactory.Global(actions =>
+                queueStorage.Global(actions =>
                 {
                     queues = actions.GetAllQueuesNames();
 
@@ -460,8 +523,8 @@ namespace Rhino.Queues
         {
             AssertNotDisposed();
             EnsureEnslistment();
-            
-            queueFactory.Global(actions =>
+
+            queueStorage.Global(actions =>
             {
                 var queue = actions.GetQueue(message.Queue);
                 var bookmark = queue.MoveTo(subqueue, (PersistentMessage)message);
@@ -477,7 +540,7 @@ namespace Rhino.Queues
         {
             EnsureEnslistment();
 
-            queueFactory.Global(actions =>
+            queueStorage.Global(actions =>
             {
                 var queueActions = actions.GetQueue(queue);
 
@@ -487,7 +550,7 @@ namespace Rhino.Queues
                     Headers = payload.Headers,
                     Id = new MessageId
                     {
-                        Guid = queueFactory.Id,
+                        Guid = queueStorage.Id,
                         Number = -1
                     },
                     Queue = queue,
@@ -499,7 +562,7 @@ namespace Rhino.Queues
 
                 actions.Commit();
             });
-            lock(newMessageArrivedLock)
+            lock (newMessageArrivedLock)
             {
                 Monitor.PulseAll(newMessageArrivedLock);
             }
@@ -508,7 +571,7 @@ namespace Rhino.Queues
         public PersistentMessage PeekById(string queueName, MessageId id)
         {
             PersistentMessage message = null;
-            queueFactory.Global(actions =>
+            queueStorage.Global(actions =>
             {
                 var queue = actions.GetQueue(queueName);
 

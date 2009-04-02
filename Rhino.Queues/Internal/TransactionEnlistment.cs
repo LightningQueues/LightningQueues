@@ -8,16 +8,16 @@ namespace Rhino.Queues.Internal
 {
     public class TransactionEnlistment : IEnlistmentNotification
     {
-        private readonly QueueFactory queueFactory;
+        private readonly QueueStorage queueStorage;
         private readonly Action onCompelete;
-        private ILog logger = LogManager.GetLogger(typeof (TransactionEnlistment));
+        private readonly ILog logger = LogManager.GetLogger(typeof (TransactionEnlistment));
 
-        public TransactionEnlistment(QueueFactory queueFactory, Action onCompelete)
+        public TransactionEnlistment(QueueStorage queueStorage, Action onCompelete)
         {
-            this.queueFactory = queueFactory;
+            this.queueStorage = queueStorage;
             this.onCompelete = onCompelete;
 
-            Transaction.Current.EnlistDurable(queueFactory.Id,
+            Transaction.Current.EnlistDurable(queueStorage.Id,
                                               this,
                                               EnlistmentOptions.None);
             Id = Guid.NewGuid();
@@ -33,7 +33,7 @@ namespace Rhino.Queues.Internal
         {
             logger.DebugFormat("Preparing enlistment with id: {0}", Id); 
             var information = preparingEnlistment.RecoveryInformation();
-            queueFactory.Global(actions =>
+            queueStorage.Global(actions =>
             {
                 actions.RegisterRecoveryInformation(Id, information);
                 actions.Commit();
@@ -45,7 +45,7 @@ namespace Rhino.Queues.Internal
         public void Commit(Enlistment enlistment)
         {
             logger.DebugFormat("Committing enlistment with id: {0}", Id);
-            queueFactory.Global(actions =>
+            queueStorage.Global(actions =>
             {
                 actions.RemoveReversalsMoveCompletedMessagesAndFinishSubQueueMove(Id);
                 actions.MarkAsReadyToSend(Id);
@@ -60,7 +60,7 @@ namespace Rhino.Queues.Internal
         public void Rollback(Enlistment enlistment)
         {
             logger.DebugFormat("Rolling back enlistment with id: {0}", Id);
-            queueFactory.Global(actions =>
+            queueStorage.Global(actions =>
             {
                 actions.ReverseAllFrom(Id);
                 actions.DeleteMessageToSend(Id);

@@ -1,21 +1,23 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Text;
 using log4net;
 using Microsoft.Isam.Esent.Interop;
+using Rhino.Queues.Model;
 using Rhino.Queues.Protocol;
 
 namespace Rhino.Queues.Storage
 {
     public class GlobalActions : AbstractActions
     {
+        private readonly Guid instanceId;
         private readonly ILog logger = LogManager.GetLogger(typeof(GlobalActions));
 
-        public GlobalActions(JET_INSTANCE instance, string database)
+        public GlobalActions(JET_INSTANCE instance, string database, Guid instanceId)
             : base(instance, database)
         {
+            this.instanceId = instanceId;
         }
 
         public void CreateQueueIfDoesNotExists(string queueName)
@@ -289,6 +291,43 @@ namespace Rhino.Queues.Storage
                 names.Add(Api.RetrieveColumnAsString(session, queues, queuesColumns["name"]));
             }
             return names.ToArray();
+        }
+
+        public IEnumerable<PersistentMessageToSend> GetSentMessages()
+        {
+            Api.MoveBeforeFirst(session, outgoingHistory);
+
+            while (Api.TryMoveNext(session, outgoingHistory))
+            {
+                var address = Api.RetrieveColumnAsString(session, outgoingHistory, outgoingHistoryColumns["address"]);
+                var port = Api.RetrieveColumnAsInt32(session, outgoingHistory, outgoingHistoryColumns["port"]).Value;
+
+                var bookmark = new MessageBookmark();
+                Api.JetGetBookmark(session, outgoingHistory, bookmark.Bookmark, bookmark.Size, out bookmark.Size);
+
+                yield return new PersistentMessageToSend
+                {
+                    Id = new MessageId
+                    {
+                        Guid = instanceId,
+                        Number = Api.RetrieveColumnAsInt32(session, outgoingHistory, outgoingHistoryColumns["msg_id"]).Value
+                    },
+                    OutgoingStatus = (OutgoingMessageStatus)Api.RetrieveColumnAsInt32(session, outgoingHistory, outgoingHistoryColumns["send_status"]).Value,
+                    Endpoint = new Endpoint(address, port),
+                    Queue = Api.RetrieveColumnAsString(session, outgoingHistory, outgoingHistoryColumns["queue"], Encoding.Unicode),
+                    SubQueue = Api.RetrieveColumnAsString(session, outgoingHistory, outgoingHistoryColumns["subqueue"], Encoding.Unicode),
+                    SentAt = DateTime.FromOADate(Api.RetrieveColumnAsDouble(session, outgoingHistory, outgoingHistoryColumns["sent_at"]).Value),
+                    Data = Api.RetrieveColumn(session, outgoingHistory, outgoingHistoryColumns["data"]),
+                    Bookmark = bookmark
+                };
+            }
+
+        }
+
+        public void DeleteMessageToSendHistoric(MessageBookmark bookmark)
+        {
+            Api.JetGotoBookmark(session, outgoingHistory, bookmark.Bookmark, bookmark.Size);
+            Api.JetDelete(session, outgoingHistory);
         }
     }
 }

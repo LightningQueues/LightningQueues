@@ -10,7 +10,7 @@ namespace Rhino.Queues
         string QueueName { get; }
 
         PersistentMessage[] GetAllMessages(string subqueue);
-        HistoryMessage[] GetAllProcessedMessages(string subqueue);
+        HistoryMessage[] GetAllProcessedMessages();
         
         Message Peek();
         Message Peek(TimeSpan timeout);

@@ -30,9 +30,9 @@ namespace Rhino.Queues
             return queueManager.GetAllMessages(queueName, subqueue);
         }
 
-        public HistoryMessage[] GetAllProcessedMessages(string subqueue)
+        public HistoryMessage[] GetAllProcessedMessages()
         {
-            return queueManager.GetAllProcessedMessages(queueName, subqueue);
+            return queueManager.GetAllProcessedMessages(queueName);
         }
 
         public Message Peek()

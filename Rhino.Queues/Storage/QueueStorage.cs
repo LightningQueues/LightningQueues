@@ -6,7 +6,7 @@ using System.Diagnostics;
 
 namespace Rhino.Queues.Storage
 {
-    public class QueueFactory : CriticalFinalizerObject, IDisposable
+    public class QueueStorage : CriticalFinalizerObject, IDisposable
     {
         private JET_INSTANCE instance;
         private readonly string database;
@@ -14,7 +14,7 @@ namespace Rhino.Queues.Storage
 
         public Guid Id { get; private set; }
 
-        public QueueFactory(string database)
+        public QueueStorage(string database)
         {
             this.database = database;
             path = database;
@@ -137,12 +137,12 @@ namespace Rhino.Queues.Storage
             }
         }
 
-        ~QueueFactory()
+        ~QueueStorage()
         {
             try
             {
                 Trace.WriteLine(
-                    "Disposing esent resources from finalizer! You should call QueueFactory.Dispose() instead!");
+                    "Disposing esent resources from finalizer! You should call QueueStorage.Dispose() instead!");
                 Api.JetTerm(instance);
             }
             catch (Exception exception)
@@ -159,7 +159,7 @@ namespace Rhino.Queues.Storage
 
         public void Global(Action<GlobalActions> action)
         {
-            using (var qa = new GlobalActions(instance, database))
+            using (var qa = new GlobalActions(instance, database, Id))
             {
                 action(qa);
             }

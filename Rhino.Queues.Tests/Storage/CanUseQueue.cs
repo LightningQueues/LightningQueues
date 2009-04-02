@@ -17,7 +17,7 @@ namespace Rhino.Queues.Tests.Storage
         [Fact]
         public void CanCreateNewQueueFactory()
         {
-            using (var qf = new QueueFactory("test.esent"))
+            using (var qf = new QueueStorage("test.esent"))
             {
                 qf.Initialize();
             }
@@ -26,7 +26,7 @@ namespace Rhino.Queues.Tests.Storage
         [Fact]
         public void CanPutSingleMessageInQueue()
         {
-            using (var qf = new QueueFactory("test.esent"))
+            using (var qf = new QueueStorage("test.esent"))
             {
                 qf.Initialize();
 
@@ -73,7 +73,7 @@ namespace Rhino.Queues.Tests.Storage
         [Fact]
         public void WillGetMessagesBackInOrder()
         {
-            using (var qf = new QueueFactory("test.esent"))
+            using (var qf = new QueueStorage("test.esent"))
             {
                 qf.Initialize();
 
@@ -135,7 +135,7 @@ namespace Rhino.Queues.Tests.Storage
         [Fact]
         public void WillNotGiveMessageToTwoClient()
         {
-            using (var qf = new QueueFactory("test.esent"))
+            using (var qf = new QueueStorage("test.esent"))
             {
                 qf.Initialize();
 
@@ -189,7 +189,7 @@ namespace Rhino.Queues.Tests.Storage
         [Fact]
         public void WillGiveNullWhenNoItemsAreInQueue()
         {
-            using (var qf = new QueueFactory("test.esent"))
+            using (var qf = new QueueStorage("test.esent"))
             {
                 qf.Initialize();
                

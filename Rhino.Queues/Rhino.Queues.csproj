@@ -87,7 +87,7 @@
     <Compile Include="Storage\MessageStatus.cs" />
     <Compile Include="Storage\OutgoingMessageStatus.cs" />
     <Compile Include="Storage\QueueActions.cs" />
-    <Compile Include="Storage\QueueFactory.cs" />
+    <Compile Include="Storage\QueueStorage.cs" />
     <Compile Include="Storage\GlobalActions.cs" />
     <Compile Include="Storage\QueueSchemaCreator.cs" />
     <Compile Include="Storage\SchemaCreator.cs" />

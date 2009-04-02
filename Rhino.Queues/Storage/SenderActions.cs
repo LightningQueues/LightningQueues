@@ -190,37 +190,6 @@ namespace Rhino.Queues.Storage
             }
         }
 
-        public IEnumerable<PersistentMessageToSend> GetSentMessages()
-        {
-            Api.MoveBeforeFirst(session, outgoingHistory);
-
-            while (Api.TryMoveNext(session, outgoingHistory))
-            {
-                var address = Api.RetrieveColumnAsString(session, outgoingHistory, outgoingHistoryColumns["address"]);
-                var port = Api.RetrieveColumnAsInt32(session, outgoingHistory, outgoingHistoryColumns["port"]).Value;
-
-                var bookmark = new MessageBookmark();
-                Api.JetGetBookmark(session, outgoingHistory, bookmark.Bookmark, bookmark.Size, out bookmark.Size);
-
-                yield return new PersistentMessageToSend
-                {
-                    Id = new MessageId
-                    {
-                        Guid = instanceId,
-                        Number = Api.RetrieveColumnAsInt32(session, outgoingHistory, outgoingHistoryColumns["msg_id"]).Value
-                    },
-                    OutgoingStatus = (OutgoingMessageStatus)Api.RetrieveColumnAsInt32(session, outgoingHistory, outgoingHistoryColumns["send_status"]).Value,
-                    Endpoint = new Endpoint(address, port),
-                    Queue = Api.RetrieveColumnAsString(session, outgoingHistory, outgoingHistoryColumns["queue"], Encoding.Unicode),
-                    SubQueue = Api.RetrieveColumnAsString(session, outgoingHistory, outgoingHistoryColumns["subqueue"], Encoding.Unicode),
-                    SentAt = DateTime.FromOADate(Api.RetrieveColumnAsDouble(session, outgoingHistory, outgoingHistoryColumns["sent_at"]).Value),
-                    Data = Api.RetrieveColumn(session, outgoingHistory, outgoingHistoryColumns["data"]),
-                    Bookmark = bookmark
-                };
-            }
-
-        }
-
         public void RevertBackToSend(MessageBookmark[] bookmarks)
         {
             foreach (var bookmark in bookmarks)

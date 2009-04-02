@@ -133,7 +133,7 @@ namespace Rhino.Queues.Tests
 
             Thread.Sleep(500);
 
-            var messages = queueManager.GetAllProcessedMessages("h",null);
+            var messages = queueManager.GetAllProcessedMessages("h");
             Assert.Equal(1, messages.Length);
             Assert.Equal("hello", Encoding.Unicode.GetString(messages[0].Data));
         }

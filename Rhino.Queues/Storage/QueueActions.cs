@@ -238,15 +238,10 @@ namespace Rhino.Queues.Storage
             } while (Api.TryMoveNext(session, msgs));
         }
 
-        public IEnumerable<HistoryMessage> GetAllProcessedMessages(string subQueue)
+        public IEnumerable<HistoryMessage> GetAllProcessedMessages()
         {
-            Api.JetSetCurrentIndex(session, msgsHistory, "by_sub_queue");
-            Api.MakeKey(session, msgsHistory, subQueue, Encoding.Unicode, MakeKeyGrbit.NewKey);
-            if (Api.TrySeek(session, msgsHistory, SeekGrbit.SeekEQ) == false)
-                yield break;
-            Api.MakeKey(session, msgsHistory, subQueue, Encoding.Unicode, MakeKeyGrbit.NewKey);
-            Api.JetSetIndexRange(session, msgsHistory, SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
-            do
+            Api.MoveBeforeFirst(session, msgsHistory);
+            while (Api.TryMoveNext(session, msgsHistory))
             {
                 var bookmark = new MessageBookmark { QueueName = queueName };
                 Api.JetGetBookmark(session, msgsHistory, bookmark.Bookmark, bookmark.Size, out bookmark.Size);
@@ -275,7 +270,7 @@ namespace Rhino.Queues.Storage
                         Guid = new Guid(Api.RetrieveColumn(session, msgsHistory, msgsHistoryColumns["instance_id"]))
                     }
                 };
-            } while (Api.TryMoveNext(session, msgsHistory));
+            }
         }
 
         public MessageBookmark MoveTo(string subQueue, PersistentMessage message)
@@ -387,7 +382,7 @@ namespace Rhino.Queues.Storage
                 var headersAsQueryString = Api.RetrieveColumnAsString(session, msgs, msgsColumns["headers"]);
                 var subqueue = Api.RetrieveColumnAsString(session, msgs, msgsColumns["subqueue"]);
 
-                var status = (MessageStatus) Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["status"]).Value;
+                var status = (MessageStatus)Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["status"]).Value;
 
                 if (status != MessageStatus.ReadyToDeliver)
                     continue;
@@ -414,6 +409,12 @@ namespace Rhino.Queues.Storage
         {
             Api.JetGotoBookmark(session, msgs, bookmark.Bookmark, bookmark.Size);
             Api.JetDelete(session, msgs);
+        }
+
+        public void DeleteHistoric(MessageBookmark bookmark)
+        {
+            Api.JetGotoBookmark(session, msgsHistory, bookmark.Bookmark, bookmark.Size);
+            Api.JetDelete(session, msgsHistory);
         }
     }
 }

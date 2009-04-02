@@ -11,13 +11,13 @@ namespace Rhino.Queues.Internal
 {
     public class QueuedMessagesSender
     {
-        private readonly QueueFactory queueFactory;
+        private readonly QueueStorage queueStorage;
         private volatile bool continueSending = true;
         private volatile int currentlySendingCount;
 
-        public QueuedMessagesSender(QueueFactory queueFactory)
+        public QueuedMessagesSender(QueueStorage queueStorage)
         {
-            this.queueFactory = queueFactory;
+            this.queueStorage = queueStorage;
         }
 
         public void Send()
@@ -34,7 +34,7 @@ namespace Rhino.Queues.Internal
                 }
 
                 Endpoint point = null;
-                queueFactory.Send(actions =>
+                queueStorage.Send(actions =>
                 {
                     messages = actions.GetMessagesToSendAndMarkThemAsInFlight(100, 1024*1024, out point);
 
@@ -64,7 +64,7 @@ namespace Rhino.Queues.Internal
 
         private void OnRevert(MessageBookmark[] bookmarksToRevert)
         {
-            queueFactory.Send(actions =>
+            queueStorage.Send(actions =>
             {
                 actions.RevertBackToSend(bookmarksToRevert);
 
@@ -74,7 +74,7 @@ namespace Rhino.Queues.Internal
 
         private Action<Exception> OnFailure(IEnumerable<PersistentMessage> messages)
         {
-            return exception => queueFactory.Send(actions =>
+            return exception => queueStorage.Send(actions =>
             {
                 foreach (var message in messages)
                 {
@@ -94,7 +94,7 @@ namespace Rhino.Queues.Internal
             return () =>
             {
                 var newBookmarks = new List<MessageBookmark>();
-                queueFactory.Send(actions =>
+                queueStorage.Send(actions =>
                 {
                     foreach (var message in messages)
                     {
