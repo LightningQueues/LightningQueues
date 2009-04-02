@@ -111,7 +111,7 @@ namespace Rhino.Queues.Storage
             } while (Api.TryMoveNext(session, txs));
         }
 
-        public void RegisterToSend(Endpoint destination, string queue, string subQueue, byte[] msgBytes, Guid transactionId)
+        public void RegisterToSend(Endpoint destination, string queue, string subQueue, MessagePayload payload, Guid transactionId)
         {
             var bookmark = new MessageBookmark();
             using (var update = new Update(session, outgoing, JET_prep.Insert))
@@ -125,9 +125,11 @@ namespace Rhino.Queues.Storage
                 Api.SetColumn(session, outgoing, outgoingColumns["send_status"], (int)OutgoingMessageStatus.NotReady);
                 Api.SetColumn(session, outgoing, outgoingColumns["queue"], queue, Encoding.Unicode);
                 Api.SetColumn(session, outgoing, outgoingColumns["subqueue"], subQueue, Encoding.Unicode);
-                Api.SetColumn(session, outgoing, outgoingColumns["data"], msgBytes);
+                Api.SetColumn(session, outgoing, outgoingColumns["headers"], payload.Headers.ToQueryString(),
+                              Encoding.Unicode);
+                Api.SetColumn(session, outgoing, outgoingColumns["data"], payload.Data);
                 Api.SetColumn(session, outgoing, outgoingColumns["number_of_retries"], 1);
-                Api.SetColumn(session, outgoing, outgoingColumns["size_of_data"], msgBytes.Length);
+                Api.SetColumn(session, outgoing, outgoingColumns["size_of_data"], payload.Data.Length);
 
                 update.Save(bookmark.Bookmark, bookmark.Size, out bookmark.Size);
             }

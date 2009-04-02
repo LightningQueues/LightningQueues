@@ -19,10 +19,10 @@ namespace Rhino.Queues
         [ThreadStatic]
         private static TransactionEnlistment enlistment;
 
-        [ThreadStatic] 
+        [ThreadStatic]
         private static Transaction currentlyEnslistedTransaction;
 
-        private readonly ILog logger = LogManager.GetLogger(typeof (QueueManager));
+        private readonly ILog logger = LogManager.GetLogger(typeof(QueueManager));
         private volatile int currentlyInCriticalReceiveStatus;
         private readonly IPEndPoint endpoint;
         private readonly object newMessageArrivedLock = new object();
@@ -60,7 +60,7 @@ namespace Rhino.Queues
                 actions.MarkAllProcessedMessagesWithTransactionsNotRegisterForRecoveryAsReadyToDeliver();
                 foreach (var bytes in actions.GetRecoveryInformation())
                 {
-                    TransactionManager.Reenlist(queueFactory.Id, bytes, 
+                    TransactionManager.Reenlist(queueFactory.Id, bytes,
                         new TransactionEnlistment(queueFactory, () => { }));
                 }
                 actions.Commit();
@@ -184,12 +184,12 @@ namespace Rhino.Queues
             }
         }
 
-        public void Send(Uri uri, byte[] msgBytes)
+        public void Send(Uri uri, MessagePayload payload)
         {
             var parts = uri.AbsolutePath.Substring(1).Split('/');
             var queue = parts[0];
             string subQueue = null;
-            if(parts.Length > 1)
+            if (parts.Length > 1)
             {
                 subQueue = string.Join("/", parts.Skip(1).ToArray());
             }
@@ -198,7 +198,8 @@ namespace Rhino.Queues
 
             queueFactory.Global(actions =>
             {
-                actions.RegisterToSend(new Endpoint(uri.Host, uri.Port), queue, subQueue, msgBytes, enlistment.Id);
+                actions.RegisterToSend(new Endpoint(uri.Host, uri.Port), queue,
+                    subQueue, payload, enlistment.Id);
 
                 actions.Commit();
             });
@@ -300,7 +301,7 @@ namespace Rhino.Queues
                 finally
                 {
                     Interlocked.Decrement(ref parent.currentlyInCriticalReceiveStatus);
-                    
+
                 }
             }
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Web;
 using log4net;
 using Microsoft.Isam.Esent.Interop;
 using Rhino.Queues.Model;
@@ -56,7 +57,7 @@ namespace Rhino.Queues.Storage
 
                 var bookmark = new MessageBookmark();
                 Api.JetGetBookmark(session, outgoing, bookmark.Bookmark, bookmark.Size, out bookmark.Size);
-
+                var headerAsQueryString = Api.RetrieveColumnAsString(session, outgoing, outgoingColumns["headers"],Encoding.Unicode);
                 messages.Add(new PersistentMessage
                 {
                     Id = new MessageId
@@ -64,6 +65,7 @@ namespace Rhino.Queues.Storage
                         Guid = instanceId,
                         Number = msgId
                     },
+                    Headers = HttpUtility.ParseQueryString(headerAsQueryString),
                     Queue = Api.RetrieveColumnAsString(session, outgoing, outgoingColumns["queue"], Encoding.Unicode),
                     SubQueue = Api.RetrieveColumnAsString(session, outgoing, outgoingColumns["subqueue"], Encoding.Unicode),
                     SentAt = DateTime.FromOADate(Api.RetrieveColumnAsDouble(session, outgoing, outgoingColumns["sent_at"]).Value),

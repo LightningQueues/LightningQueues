@@ -46,6 +46,7 @@
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
     <Reference Include="System.Transactions" />
+    <Reference Include="System.Web" />
     <Reference Include="System.Xml.Linq">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
@@ -61,6 +62,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Exceptions\QueueDoesNotExistsException.cs" />
+    <Compile Include="MessagePayload.cs" />
     <Compile Include="Model\HistoryMessage.cs" />
     <Compile Include="Model\PersistentMessageToSend.cs" />
     <Compile Include="Protocol\Endpoint.cs" />
@@ -88,9 +90,6 @@
     <Compile Include="Storage\SchemaCreator.cs" />
     <Compile Include="Storage\SenderActions.cs" />
     <Compile Include="Internal\TransactionEnlistment.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="ClassDiagram1.cd" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

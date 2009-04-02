@@ -33,7 +33,10 @@ namespace Rhino.Queues.Tests
             {
                 sender.Send(
                     new Uri("rhino.queues://localhost:23457/h/a"), 
-                    Encoding.Unicode.GetBytes("subzero"));
+                    new MessagePayload
+                    {
+                        Data = Encoding.Unicode.GetBytes("subzero")
+                    });
 
                 tx.Complete();
             }
@@ -55,7 +58,10 @@ namespace Rhino.Queues.Tests
             {
                 sender.Send(
                     new Uri("rhino.queues://localhost:23457/h"),
-                    Encoding.Unicode.GetBytes("subzero"));
+                    new MessagePayload
+                    {
+                        Data = Encoding.Unicode.GetBytes("subzero")
+                    });
 
                 tx.Complete();
             }
@@ -86,7 +92,10 @@ namespace Rhino.Queues.Tests
             {
                 sender.Send(
                     new Uri("rhino.queues://localhost:23457/h"),
-                    Encoding.Unicode.GetBytes("subzero"));
+                    new MessagePayload
+                    {
+                        Data = Encoding.Unicode.GetBytes("subzero")
+                    });
 
                 tx.Complete();
             }
@@ -117,7 +126,10 @@ namespace Rhino.Queues.Tests
             {
                 sender.Send(
                     new Uri("rhino.queues://localhost:23457/h"),
-                    Encoding.Unicode.GetBytes("subzero"));
+                    new MessagePayload
+                    {
+                        Data = Encoding.Unicode.GetBytes("subzero")
+                    });
 
                 tx.Complete();
             }
@@ -141,7 +153,10 @@ namespace Rhino.Queues.Tests
             {
                 sender.Send(
                     new Uri("rhino.queues://localhost:23457/h"),
-                    Encoding.Unicode.GetBytes("subzero"));
+                    new MessagePayload
+                    {
+                        Data = Encoding.Unicode.GetBytes("subzero")
+                    });
 
                 tx.Complete();
             }

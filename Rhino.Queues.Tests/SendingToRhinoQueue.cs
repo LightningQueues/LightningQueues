@@ -32,7 +32,10 @@ namespace Rhino.Queues.Tests
             {
                 sender.Send(
                     new Uri("rhino.queues://localhost:23457/h"),
-                     new byte[] { 1, 2, 4, 5 });
+                     new MessagePayload
+                     {
+                         Data = new byte[] { 1, 2, 4, 5 }
+                     });
 
                 tx.Complete();
             }
@@ -48,13 +51,47 @@ namespace Rhino.Queues.Tests
         }
 
         [Fact]
+        public void CanSendHeaders()
+        {
+            using (var tx = new TransactionScope())
+            {
+                sender.Send(
+                    new Uri("rhino.queues://localhost:23457/h"),
+                     new MessagePayload
+                     {
+                         Data = new byte[] { 1, 2, 4, 5 },
+                         Headers =
+                             {
+                                 {"id","6"},
+                                 {"date","2009-01-10"}
+                             }
+                     });
+
+                tx.Complete();
+            }
+
+            using (var tx = new TransactionScope())
+            {
+                var message = receiver.Receive("h", null);
+
+                Assert.Equal("6", message.Headers["id"]);
+                Assert.Equal("2009-01-10", message.Headers["date"]);
+
+                tx.Complete();
+            }
+        }
+
+        [Fact]
         public void CanLookAtSentMessages()
         {
             using (var tx = new TransactionScope())
             {
                 sender.Send(
                     new Uri("rhino.queues://localhost:23457/h"),
-                    new byte[] { 1, 2, 4, 5 });
+                    new MessagePayload
+                    {
+                        Data = new byte[] { 1, 2, 4, 5 }
+                    });
 
                 tx.Complete();
             }
@@ -77,7 +114,10 @@ namespace Rhino.Queues.Tests
             {
                 sender.Send(
                     new Uri("rhino.queues://localhost:23457/h"),
-                    new byte[] { 1, 2, 4, 5 });
+                    new MessagePayload
+                    {
+                        Data = new byte[] { 1, 2, 4, 5 }
+                    });
 
                 tx.Complete();
             }
@@ -94,7 +134,10 @@ namespace Rhino.Queues.Tests
             {
                 sender.Send(
                     new Uri("rhino.queues://localhost:23457/h"),
-                    new byte[] { 1, 2, 4, 5 });
+                    new MessagePayload
+                    {
+                        Data = new byte[] { 1, 2, 4, 5 }
+                    });
             }
 
             using (var tx = new TransactionScope())
@@ -112,13 +155,22 @@ namespace Rhino.Queues.Tests
             {
                 sender.Send(
                     new Uri("rhino.queues://localhost:23457/h"),
-                    new byte[] { 1, 2, 4, 5 });
+                    new MessagePayload
+                    {
+                        Data = new byte[] { 1, 2, 4, 5 }
+                    });
                 sender.Send(
                     new Uri("rhino.queues://localhost:23457/h"),
-                    new byte[] { 4, 5, 6, 7 });
+                    new MessagePayload
+                    {
+                        Data = new byte[] { 4, 5, 6, 7 }
+                    });
                 sender.Send(
                     new Uri("rhino.queues://localhost:23457/h"),
-                    new byte[] { 6, 7, 8, 9 });
+                    new MessagePayload
+                    {
+                        Data = new byte[] { 6, 7, 8, 9 }
+                    });
 
                 tx.Complete();
             }
@@ -145,13 +197,22 @@ namespace Rhino.Queues.Tests
             {
                 sender.Send(
                     new Uri("rhino.queues://localhost:23457/h"),
-                    new byte[] { 1, 2, 4, 5 });
+                    new MessagePayload
+                    {
+                        Data = new byte[] { 1, 2, 4, 5 }
+                    });
                 sender.Send(
                     new Uri("rhino.queues://localhost:23457/a"),
-                    new byte[] { 4, 5, 6, 7 });
+                    new MessagePayload
+                    {
+                        Data = new byte[] { 4, 5, 6, 7 }
+                    });
                 sender.Send(
                     new Uri("rhino.queues://localhost:23457/h"),
-                    new byte[] { 6, 7, 8, 9 });
+                    new MessagePayload
+                    {
+                        Data = new byte[] { 6, 7, 8, 9 }
+                    });
 
                 tx.Complete();
             }

@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Web;
 using log4net;
 using Microsoft.Isam.Esent.Interop;
 using Rhino.Queues.Model;
+using Rhino.Queues.Protocol;
 
 namespace Rhino.Queues.Storage
 {
@@ -39,6 +41,7 @@ namespace Rhino.Queues.Storage
                 Api.SetColumn(session, msgs, msgsColumns["instance_id"], message.Id.Guid.ToByteArray());
                 Api.SetColumn(session, msgs, msgsColumns["msg_number"], message.Id.Number);
                 Api.SetColumn(session, msgs, msgsColumns["subqueue"], message.SubQueue, Encoding.Unicode);
+                Api.SetColumn(session, msgs, msgsColumns["headers"], message.Headers.ToQueryString(), Encoding.Unicode);
                 Api.SetColumn(session, msgs, msgsColumns["status"], (int)MessageStatus.InTransit);
 
                 updateMsgs.Save(bm.Bookmark, bm.Size, out bm.Size);
@@ -100,14 +103,19 @@ namespace Rhino.Queues.Storage
                 logger.DebugFormat("Dequeuing message {2} from '{0}/{1}'",
                                    queueName, subqueue, id);
                 
+                var headersAsQueryString = Api.RetrieveColumnAsString(session, msgs, msgsColumns["headers"]);
+                 
                 return new PersistentMessage
                 {
                     Bookmark = bookmark,
+                    Headers = HttpUtility.ParseQueryString(headersAsQueryString),
                     Queue = queueName,
-                    SentAt =
-                        DateTime.FromOADate(Api.RetrieveColumnAsDouble(session, msgs, msgsColumns["timestamp"]).Value),
+                    SentAt = DateTime.FromOADate(Api.RetrieveColumnAsDouble(session, msgs, msgsColumns["timestamp"]).Value),
                     Data = Api.RetrieveColumn(session, msgs, msgsColumns["data"]),
-                    Id = id
+                    Id = id,
+                    SubQueue = subqueue,
+                    LocalId = Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["local_id"]).Value,
+                    Status = (MessageStatus)Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["status"]).Value
                 };
             } while (Api.TryMoveNext(session, msgs));
 
@@ -190,9 +198,11 @@ namespace Rhino.Queues.Storage
              {
                  var bookmark = new MessageBookmark { QueueName = queueName };
                  Api.JetGetBookmark(session, msgs, bookmark.Bookmark, bookmark.Size, out bookmark.Size);
+                 var headersAsQueryString = Api.RetrieveColumnAsString(session, msgs, msgsColumns["headers"]);
                  yield return new PersistentMessage 
                  {
                      Bookmark = bookmark,
+                     Headers = HttpUtility.ParseQueryString(headersAsQueryString),
                      Queue = queueName,
                      LocalId = Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["local_id"]).Value,
                      Status = (MessageStatus)Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["status"]).Value,
@@ -215,9 +225,11 @@ namespace Rhino.Queues.Storage
             {
                 var bookmark = new MessageBookmark { QueueName = queueName };
                 Api.JetGetBookmark(session, msgsHistory, bookmark.Bookmark, bookmark.Size, out bookmark.Size);
+                var headersAsQueryString = Api.RetrieveColumnAsString(session, msgsHistory, msgsHistoryColumns["headers"]);
                 yield return new HistoryMessage
                 {
                     Bookmark = bookmark,
+                    Headers = HttpUtility.ParseQueryString(headersAsQueryString),
                     Queue = queueName,
                     MovedToHistoryAt = DateTime.FromOADate(Api.RetrieveColumnAsDouble(session, msgsHistory, msgsHistoryColumns["moved_to_history_at"]).Value),
                     LocalId = Api.RetrieveColumnAsInt32(session, msgsHistory, msgsHistoryColumns["local_id"]).Value,
