@@ -363,7 +363,9 @@ namespace Rhino.Queues
                 this.parent = parent;
                 this.bookmarks = bookmarks;
                 this.queueFactory = queueFactory;
+#pragma warning disable 420
                 Interlocked.Increment(ref parent.currentlyInCriticalReceiveStatus);
+#pragma warning restore 420
             }
 
             #region IMessageAcceptance Members
@@ -389,7 +391,9 @@ namespace Rhino.Queues
                 }
                 finally
                 {
+#pragma warning disable 420
                     Interlocked.Decrement(ref parent.currentlyInCriticalReceiveStatus);
+#pragma warning restore 420
 
                 }
             }
@@ -410,7 +414,9 @@ namespace Rhino.Queues
                 }
                 finally
                 {
+#pragma warning disable 420
                     Interlocked.Decrement(ref parent.currentlyInCriticalReceiveStatus);
+#pragma warning restore 420
                 }
             }
 

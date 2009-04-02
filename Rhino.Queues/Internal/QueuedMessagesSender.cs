@@ -47,7 +47,9 @@ namespace Rhino.Queues.Internal
                     continue;
                 }
 
+#pragma warning disable 420
                 Interlocked.Increment(ref currentlySendingCount);
+#pragma warning restore 420
 
                 new Sender
                 {
@@ -81,7 +83,9 @@ namespace Rhino.Queues.Internal
                 }
 
                 actions.Commit();
+#pragma warning disable 420
                 Interlocked.Decrement(ref currentlySendingCount);
+#pragma warning restore 420
             });
         }
 
@@ -99,7 +103,9 @@ namespace Rhino.Queues.Internal
                     }
 
                     actions.Commit();
+#pragma warning disable 420
                     Interlocked.Decrement(ref currentlySendingCount);
+#pragma warning restore 420
                 });
                 return newBookmarks.ToArray();
             };

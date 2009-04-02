@@ -1,0 +1,46 @@
+<?xml version="1.0" ?>
+
+<project
+	name="Rhino.Queues.Tests"
+	default="test"
+	xmlns="http://nant.sf.net/release/0.85/nant.xsd"
+>
+  <property overwrite="false" name="assembly.is-cls-compliant" value="false" />
+  <property name="root.dir" value="../.." />
+	
+  <include buildfile="${root.dir}/common-project.xml" />
+
+  <target name="init" depends="common.init">
+
+    <assemblyfileset id="project.references" basedir="${build.dir}">
+      <include name="xunit.dll"/>
+      <include name="log4net.dll"/>
+      <include name="Rhino.Mocks.dll" />
+      <include name="Rhino.Queues.dll" />
+      <include name="System.dll" />
+      <include name="System.Configuration.dll" />
+      <include name="System.Core.dll" />
+      <include name="System.Transactions.dll" />
+      
+    </assemblyfileset>
+
+    <resourcefileset id="project.resources" prefix="Rhino.ServiceBus.Test" dynamicprefix="true" basedir="${src.dir}">
+      <!-- include resources here-->
+    </resourcefileset>
+
+    <!-- copy the config files -->
+    <copy todir="${build.dir}">
+      <fileset basedir="${src.dir}">
+        <include name="**/*.boo"/>
+        <include name="**/*.xml"/>
+        <include name="**/*.config"/>
+        <exclude name="app.config"/>
+      </fileset>
+    </copy>
+  </target>
+
+  <target name="generate-assemblyinfo" depends="init common.generate-assemblyinfo" />
+
+  <target name="test" depends="init generate-assemblyinfo common.compile-tests common.run-tests" description="Runs the tests" />
+
+</project>
