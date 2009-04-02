@@ -62,6 +62,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Exceptions\QueueDoesNotExistsException.cs" />
+    <Compile Include="IQueue.cs" />
     <Compile Include="MessagePayload.cs" />
     <Compile Include="Model\HistoryMessage.cs" />
     <Compile Include="Model\PersistentMessageToSend.cs" />
@@ -77,6 +78,7 @@
     <Compile Include="Protocol\Sender.cs" />
     <Compile Include="Protocol\SerializationExtensions.cs" />
     <Compile Include="Protocol\StreamUtil.cs" />
+    <Compile Include="Queue.cs" />
     <Compile Include="QueueManager.cs" />
     <Compile Include="Storage\AbstractActions.cs" />
     <Compile Include="Storage\EsentExtension.cs" />

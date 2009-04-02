@@ -155,7 +155,7 @@ namespace Rhino.Queues.Protocol
                         try
                         {
                             readConfirmationEnumerator.BeginExecute(
-                                StreamUtil.ReadBytes(recieveBuffer, stream, readConfirmationEnumerator, "recieve confirmation"), ae.End());
+                                StreamUtil.ReadBytes(recieveBuffer, stream, readConfirmationEnumerator, "recieve confirmation", false), ae.End());
                         }
                         catch (Exception exception)
                         {
@@ -232,7 +232,7 @@ namespace Rhino.Queues.Protocol
                         try
                         {
                             readRevertMessage.BeginExecute(
-                                StreamUtil.ReadBytes(buffer, stream, readRevertMessage, "revert"), ae.End());
+                                StreamUtil.ReadBytes(buffer, stream, readRevertMessage, "revert", true), ae.End());
                         }
                         catch (Exception)
                         {

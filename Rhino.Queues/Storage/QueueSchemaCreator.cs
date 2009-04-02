@@ -85,6 +85,10 @@ namespace Rhino.Queues.Storage
                 coltyp = JET_coltyp.Text,
                 grbit = ColumndefGrbit.None
             }, null, 0, out columnid);
+
+            const string indexDef = "+subqueue\0\0";
+            Api.JetCreateIndex(session, tableid, "by_sub_queue", CreateIndexGrbit.None, indexDef, indexDef.Length,
+                               100);
         }
 
         private void CreateMessagesTable()
@@ -153,6 +157,10 @@ namespace Rhino.Queues.Storage
 
             indexDef = "+subqueue\0\0";
             Api.JetCreateIndex(session, tableid, "by_sub_queue", CreateIndexGrbit.None, indexDef, indexDef.Length,
+                               100);
+
+            indexDef = "+instance_id\0+msg_number\0\0";
+            Api.JetCreateIndex(session, tableid, "by_id", CreateIndexGrbit.None, indexDef, indexDef.Length,
                                100);
         }
         

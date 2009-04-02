@@ -11,7 +11,7 @@ namespace Rhino.Queues.Storage
 {
     public class GlobalActions : AbstractActions
     {
-        private readonly ILog logger = LogManager.GetLogger(typeof (GlobalActions));
+        private readonly ILog logger = LogManager.GetLogger(typeof(GlobalActions));
 
         public GlobalActions(JET_INSTANCE instance, string database)
             : base(instance, database)
@@ -86,7 +86,7 @@ namespace Rhino.Queues.Storage
                 return;
             Api.MakeKey(session, txs, transactionId.ToByteArray(), MakeKeyGrbit.NewKey);
             Api.JetSetIndexRange(session, txs, SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
-            
+
             do
             {
                 var queue = Api.RetrieveColumnAsString(session, txs, txsColumns["queue"], Encoding.Unicode);
@@ -102,16 +102,24 @@ namespace Rhino.Queues.Storage
                     Size = bookmarkSize
                 };
 
-                if (actions.GetMessageStatus(bookmark) == MessageStatus.SubqueueChanged)
-                    actions.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
-                else
-                    actions.MoveToHistory(bookmark);
+                switch (actions.GetMessageStatus(bookmark))
+                {
+                    case MessageStatus.SubqueueChanged:
+                    case MessageStatus.EnqueueWait:
+                        actions.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
+                        actions.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
+                        break;
+                    default:
+                        actions.MoveToHistory(bookmark);
+                        break;
+                }
+                    
 
                 Api.JetDelete(session, txs);
             } while (Api.TryMoveNext(session, txs));
         }
 
-        public void RegisterToSend(Endpoint destination, string queue, string subQueue, MessagePayload payload, Guid transactionId)
+        public int RegisterToSend(Endpoint destination, string queue, string subQueue, MessagePayload payload, Guid transactionId)
         {
             var bookmark = new MessageBookmark();
             using (var update = new Update(session, outgoing, JET_prep.Insert))
@@ -142,6 +150,7 @@ namespace Rhino.Queues.Storage
                 queue,
                 subQueue
                 );
+            return msgId;
         }
 
         public void MarkAsReadyToSend(Guid transactionId)
@@ -162,7 +171,7 @@ namespace Rhino.Queues.Storage
 
                     update.Save();
                 }
-                logger.DebugFormat("Marking output message {0} as Ready", 
+                logger.DebugFormat("Marking output message {0} as Ready",
                     Api.RetrieveColumnAsInt32(session, outgoing, outgoingColumns["msg_id"]).Value);
             } while (Api.TryMoveNext(session, outgoing));
         }
@@ -256,15 +265,18 @@ namespace Rhino.Queues.Storage
                 };
                 var actions = GetQueue(queue);
                 var newStatus = actions.GetMessageStatus(bookmark);
-                if (newStatus == MessageStatus.SubqueueChanged)
+                switch (newStatus)
                 {
-                    actions.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver, subqueue);
+                    case MessageStatus.SubqueueChanged:
+                        actions.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver, subqueue);
+                        break;
+                    case MessageStatus.EnqueueWait:
+                        actions.Delete(bookmark);
+                        break;
+                    default:
+                        actions.SetMessageStatus(bookmark, oldStatus);
+                        break;
                 }
-                else
-                {
-                    actions.SetMessageStatus(bookmark, oldStatus);
-                }
-
             } while (Api.TryMoveNext(session, txs));
         }
 

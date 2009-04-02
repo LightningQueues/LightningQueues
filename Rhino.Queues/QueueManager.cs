@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Net;
 using System.Threading;
 using System.Transactions;
@@ -22,7 +21,7 @@ namespace Rhino.Queues
         [ThreadStatic]
         private static Transaction currentlyEnslistedTransaction;
 
-        private readonly ILog logger = LogManager.GetLogger(typeof(QueueManager));
+        private volatile bool wasDisposed;
         private volatile int currentlyInCriticalReceiveStatus;
         private readonly IPEndPoint endpoint;
         private readonly object newMessageArrivedLock = new object();
@@ -30,7 +29,8 @@ namespace Rhino.Queues
         private readonly QueueFactory queueFactory;
         private readonly Reciever reciever;
         private readonly Thread sendingThread;
-        private QueuedMessagesSender queuedMessagesSender;
+        private readonly QueuedMessagesSender queuedMessagesSender;
+        private readonly ILog logger = LogManager.GetLogger(typeof (QueueManager));
 
         public QueueManager(IPEndPoint endpoint, string path)
         {
@@ -83,6 +83,12 @@ namespace Rhino.Queues
 
         public void Dispose()
         {
+            wasDisposed = true;
+
+            lock (newMessageArrivedLock)
+            {
+                Monitor.PulseAll(newMessageArrivedLock);
+            }
             queuedMessagesSender.Stop();
             sendingThread.Join();
 
@@ -98,23 +104,36 @@ namespace Rhino.Queues
 
         #endregion
 
-        public PersistentMessage[] GetAllMessages(string queueName)
+        private void AssertNotDisposed()
         {
+            if(wasDisposed)
+                throw new ObjectDisposedException("QueueManager");
+        }
+
+        public IQueue GetQueue(string queue)
+        {
+            return new Queue(this, queue);
+        }
+
+        public PersistentMessage[] GetAllMessages(string queueName, string subqueue)
+        {
+            AssertNotDisposed();
             PersistentMessage[] messages = null;
             queueFactory.Global(actions =>
             {
-                messages = actions.GetQueue(queueName).GetAllMessages().ToArray();
+                messages = actions.GetQueue(queueName).GetAllMessages(subqueue).ToArray();
                 actions.Commit();
             });
             return messages;
         }
 
-        public HistoryMessage[] GetAllProcessedMessages(string queueName)
+        public HistoryMessage[] GetAllProcessedMessages(string queueName, string subqueue)
         {
+            AssertNotDisposed(); 
             HistoryMessage[] messages = null;
             queueFactory.Global(actions =>
             {
-                messages = actions.GetQueue(queueName).GetAllProcessedMessages().ToArray();
+                messages = actions.GetQueue(queueName).GetAllProcessedMessages(subqueue).ToArray();
                 actions.Commit();
             });
             return messages;
@@ -122,6 +141,7 @@ namespace Rhino.Queues
 
         public PersistentMessageToSend[] GetAllSentMessages()
         {
+            AssertNotDisposed(); 
             PersistentMessageToSend[] msgs = null;
             queueFactory.Send(actions =>
             {
@@ -134,6 +154,7 @@ namespace Rhino.Queues
 
         public PersistentMessageToSend[] GetMessagesCurrentlySending()
         {
+            AssertNotDisposed();
             PersistentMessageToSend[] msgs = null;
             queueFactory.Send(actions =>
             {
@@ -142,6 +163,44 @@ namespace Rhino.Queues
                 actions.Commit();
             });
             return msgs;
+        }
+
+        public Message Peek(string queueName)
+        {
+            return Peek(queueName, null, TimeSpan.FromDays(1));
+        }
+
+        public Message Peek(string queueName, TimeSpan timeout)
+        {
+            return Peek(queueName, null, timeout);
+        }
+
+        public Message Peek(string queueName, string subqueue)
+        {
+            return Peek(queueName, subqueue, TimeSpan.FromDays(1));
+        }
+
+        public Message Peek(string queueName, string subqueue, TimeSpan timeout)
+        {
+            var remaining = timeout;
+            while (true)
+            {
+                var message = PeekMessageFromQueue(queueName, subqueue);
+                if (message != null)
+                    return message;
+
+                lock (newMessageArrivedLock)
+                {
+                    message = PeekMessageFromQueue(queueName, subqueue);
+                    if (message != null)
+                        return message;
+
+                    var sp = Stopwatch.StartNew();
+                    if (Monitor.Wait(newMessageArrivedLock, remaining) == false)
+                        throw new TimeoutException("No message arrived in the specified timeframe " + timeout);
+                    remaining = remaining - sp.Elapsed;
+                }
+            }
         }
 
         public Message Receive(string queueName)
@@ -184,29 +243,40 @@ namespace Rhino.Queues
             }
         }
 
-        public void Send(Uri uri, MessagePayload payload)
+        public MessageId Send(Uri uri, MessagePayload payload)
         {
-            var parts = uri.AbsolutePath.Substring(1).Split('/');
-            var queue = parts[0];
-            string subQueue = null;
-            if (parts.Length > 1)
-            {
-                subQueue = string.Join("/", parts.Skip(1).ToArray());
-            }
-
             EnsureEnslistment();
 
+            var parts = uri.AbsolutePath.Substring(1).Split('/');
+            var queue = parts[0];
+            string subqueue = null;
+            if (parts.Length > 1)
+            {
+                subqueue = string.Join("/", parts.Skip(1).ToArray());
+            }
+
+            int msgId = 0;
             queueFactory.Global(actions =>
             {
-                actions.RegisterToSend(new Endpoint(uri.Host, uri.Port), queue,
-                    subQueue, payload, enlistment.Id);
+                var port = uri.Port;
+                if (port == -1)
+                    port = 2200;
+                msgId = actions.RegisterToSend(new Endpoint(uri.Host, port), queue,
+                                               subqueue, payload, enlistment.Id);
 
                 actions.Commit();
             });
+            return new MessageId
+            {
+                Guid = queueFactory.Id,
+                Number = msgId
+            };
         }
 
         private void EnsureEnslistment()
         {
+            AssertNotDisposed(); 
+            
             if (Transaction.Current == null)
                 throw new InvalidOperationException("You must use TransactionScope when using Rhino.Queues");
 
@@ -226,6 +296,7 @@ namespace Rhino.Queues
 
         private PersistentMessage GetMessageFromQueue(string queueName, string subqueue)
         {
+            AssertNotDisposed(); 
             PersistentMessage message = null;
             queueFactory.Global(actions =>
             {
@@ -242,6 +313,24 @@ namespace Rhino.Queues
 
                 actions.Commit();
             });
+            return message;
+        }
+
+        private PersistentMessage PeekMessageFromQueue(string queueName, string subqueue)
+        {
+            AssertNotDisposed();
+            PersistentMessage message = null;
+            queueFactory.Global(actions =>
+            {
+                message = actions.GetQueue(queueName).Peek(subqueue);
+
+                actions.Commit();
+            });
+            if (message != null)
+            {
+                logger.DebugFormat("Peeked message with id '{0}' from '{1}/{2}'",
+                                   message.Id, queueName, subqueue);
+            }
             return message;
         }
 
@@ -332,6 +421,8 @@ namespace Rhino.Queues
 
         public void CreateQueues(params string[] queueNames)
         {
+            AssertNotDisposed();
+
             queueFactory.Global(actions =>
             {
                 foreach (var queueName in queueNames)
@@ -347,6 +438,7 @@ namespace Rhino.Queues
         {
             get
             {
+                AssertNotDisposed();
                 string[] queues = null;
                 queueFactory.Global(actions =>
                 {
@@ -358,18 +450,67 @@ namespace Rhino.Queues
             }
         }
 
-        public void MoveTo(string subQueue, Message message)
+        public void MoveTo(string subqueue, Message message)
         {
+            AssertNotDisposed();
+            EnsureEnslistment();
+            
             queueFactory.Global(actions =>
             {
                 var queue = actions.GetQueue(message.Queue);
-                var bookmark = queue.MoveTo(subQueue, (PersistentMessage)message);
+                var bookmark = queue.MoveTo(subqueue, (PersistentMessage)message);
                 actions.RegisterUpdateToReverse(enlistment.Id,
                     bookmark, MessageStatus.ReadyToDeliver,
                     message.SubQueue
                     );
                 actions.Commit();
             });
+        }
+
+        public void EnqueueDirectlyTo(string queue, string subqueue, MessagePayload payload)
+        {
+            EnsureEnslistment();
+
+            queueFactory.Global(actions =>
+            {
+                var queueActions = actions.GetQueue(queue);
+
+                var bookmark = queueActions.Enqueue(new PersistentMessage
+                {
+                    Data = payload.Data,
+                    Headers = payload.Headers,
+                    Id = new MessageId
+                    {
+                        Guid = queueFactory.Id,
+                        Number = -1
+                    },
+                    Queue = queue,
+                    SentAt = DateTime.Now,
+                    SubQueue = subqueue,
+                    Status = MessageStatus.EnqueueWait
+                });
+                actions.RegisterUpdateToReverse(enlistment.Id, bookmark, MessageStatus.EnqueueWait, subqueue);
+
+                actions.Commit();
+            });
+            lock(newMessageArrivedLock)
+            {
+                Monitor.PulseAll(newMessageArrivedLock);
+            }
+        }
+
+        public PersistentMessage PeekById(string queueName, MessageId id)
+        {
+            PersistentMessage message = null;
+            queueFactory.Global(actions =>
+            {
+                var queue = actions.GetQueue(queueName);
+
+                message = queue.PeekById(id);
+
+                actions.Commit();
+            });
+            return message;
         }
     }
 }

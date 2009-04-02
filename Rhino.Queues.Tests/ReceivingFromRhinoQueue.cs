@@ -133,7 +133,7 @@ namespace Rhino.Queues.Tests
 
             Thread.Sleep(500);
 
-            var messages = queueManager.GetAllProcessedMessages("h");
+            var messages = queueManager.GetAllProcessedMessages("h",null);
             Assert.Equal(1, messages.Length);
             Assert.Equal("hello", Encoding.Unicode.GetString(messages[0].Data));
         }
@@ -164,7 +164,7 @@ namespace Rhino.Queues.Tests
                 queueManager.Receive("h", null);
             }
 
-            var messages = queueManager.GetAllMessages("h");
+            var messages = queueManager.GetAllMessages("h", null);
             Assert.Equal(1, messages.Length);
             Assert.Equal("hello", Encoding.Unicode.GetString(messages[0].Data));
         }

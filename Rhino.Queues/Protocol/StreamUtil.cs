@@ -9,7 +9,8 @@ namespace Rhino.Queues.Protocol
 {
     public class StreamUtil
     {
-        public static IEnumerator<int> ReadBytes(byte[] buffer, Stream stream, AsyncEnumerator ae, string type)
+        public static IEnumerator<int> ReadBytes(
+            byte[] buffer, Stream stream, AsyncEnumerator ae, string type, bool expectedToHaveNoData)
         {
             var totalBytesRead = 0;
 
@@ -22,7 +23,12 @@ namespace Rhino.Queues.Protocol
                 int bytesRead = stream.EndRead(ae.DequeueAsyncResult());
 
                 if(bytesRead == 0)
+                {
+                    if (expectedToHaveNoData)
+                        yield break;
+
                     throw new InvalidOperationException("Could not read value for " + type);
+                }
 
                 totalBytesRead += bytesRead;
             }

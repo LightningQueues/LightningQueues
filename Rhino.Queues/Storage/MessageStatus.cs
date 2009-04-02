@@ -6,6 +6,7 @@ namespace Rhino.Queues.Storage
         InTransit = 1,
         Processing = 2,
         ReadyToDeliver = 3,
-        SubqueueChanged = 4
+        SubqueueChanged = 4,
+        EnqueueWait = 5,
     }
 }

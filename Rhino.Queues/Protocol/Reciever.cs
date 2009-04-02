@@ -85,7 +85,7 @@ namespace Rhino.Queues.Protocol
                     try
                     {
                         lenEnumerator.BeginExecute(
-                            StreamUtil.ReadBytes(lenOfDataToReadBuffer, stream, lenEnumerator, "length data"), ae.End());
+                            StreamUtil.ReadBytes(lenOfDataToReadBuffer, stream, lenEnumerator, "length data",false), ae.End());
                     }
                     catch (Exception exception)
                     {
@@ -119,7 +119,7 @@ namespace Rhino.Queues.Protocol
                     try
                     {
                         readBufferEnumerator.BeginExecute(
-                            StreamUtil.ReadBytes(buffer, stream, readBufferEnumerator, "message data"), ae.End());
+                            StreamUtil.ReadBytes(buffer, stream, readBufferEnumerator, "message data", false), ae.End());
                     }
                     catch (Exception exception)
                     {
@@ -249,7 +249,7 @@ namespace Rhino.Queues.Protocol
                     try
                     {
                         readAcknoweldgement.BeginExecute(
-                            StreamUtil.ReadBytes(acknowledgementBuffer, stream, readAcknoweldgement, "acknowledgement"),
+                            StreamUtil.ReadBytes(acknowledgementBuffer, stream, readAcknoweldgement, "acknowledgement", false),
                             ae.End());
                     }
                     catch (Exception exception)
