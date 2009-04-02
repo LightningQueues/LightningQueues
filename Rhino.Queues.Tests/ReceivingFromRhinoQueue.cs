@@ -131,7 +131,7 @@ namespace Rhino.Queues.Tests
                 tx.Complete();
             }
 
-            Thread.Sleep(100);
+            Thread.Sleep(500);
 
             var messages = queueManager.GetAllProcessedMessages("h");
             Assert.Equal(1, messages.Length);
