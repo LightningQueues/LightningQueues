@@ -123,7 +123,7 @@ namespace Rhino.Queues.Storage
                 cbMax = 8192,
                 cp = JET_CP.Unicode,
                 coltyp = JET_coltyp.LongText,
-                grbit = ColumndefGrbit.ColumnNotNULL
+                grbit = ColumndefGrbit.None
             }, null, 0, out columnid);
 
             Api.JetAddColumn(session, tableid, "data", new JET_COLUMNDEF
@@ -225,7 +225,7 @@ namespace Rhino.Queues.Storage
                 cbMax = 8192,
                 cp = JET_CP.Unicode,
                 coltyp = JET_coltyp.LongText,
-                grbit = ColumndefGrbit.ColumnNotNULL
+                grbit = ColumndefGrbit.None
             }, null, 0, out columnid);
 
             Api.JetAddColumn(session, tableid, "data", new JET_COLUMNDEF
