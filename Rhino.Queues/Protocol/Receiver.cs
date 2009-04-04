@@ -10,16 +10,16 @@ using Wintellect.Threading.AsyncProgModel;
 
 namespace Rhino.Queues.Protocol
 {
-    public class Reciever : IDisposable
+    public class Receiver : IDisposable
     {
         private readonly IPEndPoint endpointToListenTo;
         private readonly Func<Message[], IMessageAcceptance> acceptMessages;
         private readonly TcpListener listener;
-        private readonly ILog logger = LogManager.GetLogger(typeof(Reciever));
+        private readonly ILog logger = LogManager.GetLogger(typeof(Receiver));
 
         public event Action CompletedRecievingMessages;
 
-        public Reciever(IPEndPoint endpointToListenTo, Func<Message[], IMessageAcceptance> acceptMessages)
+        public Receiver(IPEndPoint endpointToListenTo, Func<Message[], IMessageAcceptance> acceptMessages)
         {
             this.endpointToListenTo = endpointToListenTo;
             this.acceptMessages = acceptMessages;
@@ -47,7 +47,7 @@ namespace Rhino.Queues.Protocol
 
             logger.DebugFormat("Accepting connection from {0}", client.Client.RemoteEndPoint);
             var enumerator = new AsyncEnumerator(
-                "Reciever from " + client.Client.RemoteEndPoint
+                "Receiver from " + client.Client.RemoteEndPoint
                 );
             enumerator.BeginExecute(ProcessRequest(client, enumerator), ar =>
             {

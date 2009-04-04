@@ -28,7 +28,7 @@ namespace Rhino.Queues
         private readonly string path;
         private readonly Timer purgeOldDataTimer;
         private readonly QueueStorage queueStorage;
-        private readonly Reciever reciever;
+        private readonly Receiver receiver;
         private readonly Thread sendingThread;
         private readonly QueuedMessagesSender queuedMessagesSender;
         private readonly ILog logger = LogManager.GetLogger(typeof(QueueManager));
@@ -51,8 +51,8 @@ namespace Rhino.Queues
             queueStorage = new QueueStorage(path);
             queueStorage.Initialize();
 
-            reciever = new Reciever(endpoint, AcceptMessages);
-            reciever.Start();
+            receiver = new Receiver(endpoint, AcceptMessages);
+            receiver.Start();
 
             HandleRecovery();
 
@@ -155,7 +155,7 @@ namespace Rhino.Queues
             queuedMessagesSender.Stop();
             sendingThread.Join();
 
-            reciever.Dispose();
+            receiver.Dispose();
 
             while (currentlyInCriticalReceiveStatus > 0)
             {

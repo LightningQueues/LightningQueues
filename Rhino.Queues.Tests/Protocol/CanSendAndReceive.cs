@@ -8,7 +8,7 @@ using Xunit;
 
 namespace Rhino.Queues.Tests.Protocol
 {
-    public class CanSendAndRecieve : WithDebugging
+    public class CanSendAndReceive : WithDebugging
     {
         [Fact]
         public void OneMessage()
@@ -17,7 +17,7 @@ namespace Rhino.Queues.Tests.Protocol
 
             Message[] recievedMsgs = null;
             var endPoint = new Endpoint("localhost", 23456);
-            using (var reciever = new Reciever(new IPEndPoint(IPAddress.Loopback, 23456), messages =>
+            using (var reciever = new Receiver(new IPEndPoint(IPAddress.Loopback, 23456), messages =>
             {
                 recievedMsgs = messages;
                 return MockRepository.GenerateStub<IMessageAcceptance>();
@@ -59,7 +59,7 @@ namespace Rhino.Queues.Tests.Protocol
             var wait = new ManualResetEvent(false);
 
             Message[] recievedMsgs = null;
-            using (var reciever = new Reciever(new IPEndPoint(IPAddress.Loopback, 23456), messages =>
+            using (var reciever = new Receiver(new IPEndPoint(IPAddress.Loopback, 23456), messages =>
             {
                 recievedMsgs = messages;
                 return MockRepository.GenerateStub<IMessageAcceptance>();
@@ -119,7 +119,7 @@ namespace Rhino.Queues.Tests.Protocol
             var wait = new ManualResetEvent(false);
 
             Message[] recievedMsgs = null;
-            using (var reciever = new Reciever(new IPEndPoint(IPAddress.Loopback, 23456), messages =>
+            using (var reciever = new Receiver(new IPEndPoint(IPAddress.Loopback, 23456), messages =>
             {
                 recievedMsgs = messages;
                 return MockRepository.GenerateStub<IMessageAcceptance>();

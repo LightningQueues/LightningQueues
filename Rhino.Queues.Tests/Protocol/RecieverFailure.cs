@@ -25,14 +25,14 @@ namespace Rhino.Queues.Tests.Protocol
 
         public RecieverFailure()
         {
-            logger = ((Logger)(LogManager.GetLogger(typeof(Reciever)).Logger));
+            logger = ((Logger)(LogManager.GetLogger(typeof(Receiver)).Logger));
             logger.AddAppender(appender);
         }
 
         [Fact]
         public void CanHandleClientConnectAndDisconnect()
         {
-            using (var reciever = new Reciever(endpointToListenTo, messages => null))
+            using (var reciever = new Receiver(endpointToListenTo, messages => null))
             {
                 reciever.CompletedRecievingMessages += () => wait.Set();
                 reciever.Start();
@@ -56,7 +56,7 @@ namespace Rhino.Queues.Tests.Protocol
         [Fact]
         public void CanHandleClientSendingThreeBytesAndDisconnecting()
         {
-            using (var reciever = new Reciever(endpointToListenTo, messages => null))
+            using (var reciever = new Receiver(endpointToListenTo, messages => null))
             {
                 reciever.CompletedRecievingMessages += () => wait.Set();
                 reciever.Start();
@@ -81,7 +81,7 @@ namespace Rhino.Queues.Tests.Protocol
         [Fact]
         public void CanHandleClientSendingNegativeNumberForLength()
         {
-            using (var reciever = new Reciever(endpointToListenTo, messages => null))
+            using (var reciever = new Receiver(endpointToListenTo, messages => null))
             {
                 reciever.CompletedRecievingMessages += () => wait.Set();
                 reciever.Start();
@@ -106,7 +106,7 @@ namespace Rhino.Queues.Tests.Protocol
         [Fact]
         public void CanHandleClientSendingBadLengthOfData()
         {
-            using (var reciever = new Reciever(endpointToListenTo, messages => null))
+            using (var reciever = new Receiver(endpointToListenTo, messages => null))
             {
                 reciever.CompletedRecievingMessages += () => wait.Set();
                 reciever.Start();
@@ -133,7 +133,7 @@ namespace Rhino.Queues.Tests.Protocol
         [Fact]
         public void CanHandleClientSendingUnseriliazableData()
         {
-            using (var reciever = new Reciever(endpointToListenTo, messages => null))
+            using (var reciever = new Receiver(endpointToListenTo, messages => null))
             {
                 reciever.CompletedRecievingMessages += () => wait.Set();
                 reciever.Start();
@@ -160,7 +160,7 @@ namespace Rhino.Queues.Tests.Protocol
         [Fact]
         public void WillLetSenderKnowThatMessagesWereNotProcessed()
         {
-            using (var reciever = new Reciever(endpointToListenTo, messages =>
+            using (var reciever = new Receiver(endpointToListenTo, messages =>
             {
                 throw new InvalidOperationException(); 
             }))
@@ -189,7 +189,7 @@ namespace Rhino.Queues.Tests.Protocol
         [Fact]
         public void WillLetSenderKnowThatMessagesWereSentToInvalidQueue()
         {
-            using (var reciever = new Reciever(endpointToListenTo, messages =>
+            using (var reciever = new Receiver(endpointToListenTo, messages =>
             {
                 throw new QueueDoesNotExistsException();
             }))
@@ -219,7 +219,7 @@ namespace Rhino.Queues.Tests.Protocol
         public void WillSendConfirmationForClient()
         {
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
-            using (var reciever = new Reciever(endpointToListenTo, messages => acceptance))
+            using (var reciever = new Receiver(endpointToListenTo, messages => acceptance))
             {
                 reciever.CompletedRecievingMessages += () => wait.Set();
                 reciever.Start();
@@ -246,7 +246,7 @@ namespace Rhino.Queues.Tests.Protocol
         public void WillCallAbortAcceptanceIfSenderDoesNotConfirm()
         {
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
-            using (var reciever = new Reciever(endpointToListenTo, messages => acceptance))
+            using (var reciever = new Receiver(endpointToListenTo, messages => acceptance))
             {
                 reciever.CompletedRecievingMessages += () => wait.Set();
                 reciever.Start();
@@ -275,7 +275,7 @@ namespace Rhino.Queues.Tests.Protocol
         public void WillCallAbortAcceptanceIfSenderSendNonConfirmation()
         {
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
-            using (var reciever = new Reciever(endpointToListenTo, messages => acceptance))
+            using (var reciever = new Receiver(endpointToListenTo, messages => acceptance))
             {
                 reciever.CompletedRecievingMessages += () => wait.Set();
                 reciever.Start();
@@ -307,7 +307,7 @@ namespace Rhino.Queues.Tests.Protocol
         public void WillCallCommitAcceptanceIfSenderSendConfirmation()
         {
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
-            using (var reciever = new Reciever(endpointToListenTo, messages => acceptance))
+            using (var reciever = new Receiver(endpointToListenTo, messages => acceptance))
             {
                 reciever.CompletedRecievingMessages += () => wait.Set();
                 reciever.Start();
@@ -340,7 +340,7 @@ namespace Rhino.Queues.Tests.Protocol
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
             acceptance.Stub(x => x.Commit()).Throw(new InvalidOperationException());
 
-            using (var reciever = new Reciever(endpointToListenTo, messages => acceptance))
+            using (var reciever = new Receiver(endpointToListenTo, messages => acceptance))
             {
                 reciever.CompletedRecievingMessages += () => wait.Set();
                 reciever.Start();

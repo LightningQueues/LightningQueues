@@ -59,7 +59,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Protocol\CanSendAndRecieve.cs" />
+    <Compile Include="Protocol\CanSendAndReceive.cs" />
     <Compile Include="Protocol\RecieverFailure.cs" />
     <Compile Include="Protocol\SendingFailure.cs" />
     <Compile Include="Protocol\FakeReciever.cs" />
