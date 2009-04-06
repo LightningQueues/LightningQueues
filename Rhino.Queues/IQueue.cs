@@ -26,5 +26,6 @@ namespace Rhino.Queues
         void EnqueueDirectlyTo(string subqueue, MessagePayload payload);
 
         Message PeekById(MessageId id);
+    	string[] GetSubqeueues();
     }
 }

@@ -7,7 +7,7 @@ namespace Rhino.Queues.Storage
     public class SchemaCreator
     {
         private readonly Session session;
-        public const string SchemaVersion = "1.5";
+        public const string SchemaVersion = "1.6";
 
         public SchemaCreator(Session session)
         {
@@ -24,6 +24,7 @@ namespace Rhino.Queues.Storage
                 {
                     CreateDetailsTable(dbid);
                     CreateQueuesTable(dbid);
+					CreateSubQueuesTable(dbid);
                     CreateTransactionTable(dbid);
                     CreateRecoveryTable(dbid);
                     CreateOutgoingTable(dbid);
@@ -38,7 +39,39 @@ namespace Rhino.Queues.Storage
             }
         }
 
-        private void CreateOutgoingHistoryTable(JET_DBID dbid)
+    	private void CreateSubQueuesTable(JET_DBID dbid)
+    	{
+			JET_TABLEID tableid;
+			Api.JetCreateTable(session, dbid, "subqueues", 16, 100, out tableid);
+			JET_COLUMNID columnid;
+
+			Api.JetAddColumn(session, tableid, "queue", new JET_COLUMNDEF
+			{
+                cbMax = 255,
+				coltyp = JET_coltyp.Text,
+                cp = JET_CP.Unicode,
+				grbit = ColumndefGrbit.ColumnNotNULL
+			}, null, 0, out columnid);
+
+
+			Api.JetAddColumn(session, tableid, "subqueue", new JET_COLUMNDEF
+			{
+				cbMax = 255,
+				coltyp = JET_coltyp.Text,
+				cp = JET_CP.Unicode,
+				grbit = ColumndefGrbit.ColumnNotNULL
+			}, null, 0, out columnid);
+
+			var indexDef = "+queue\0subqueue\0\0";
+			Api.JetCreateIndex(session, tableid, "pk", CreateIndexGrbit.IndexPrimary, indexDef, indexDef.Length,
+							   100);
+
+			indexDef = "+queue\0\0";
+			Api.JetCreateIndex(session, tableid, "by_queue", CreateIndexGrbit.IndexDisallowNull, indexDef, indexDef.Length,
+							   100);
+    	}
+
+    	private void CreateOutgoingHistoryTable(JET_DBID dbid)
         {
             JET_TABLEID tableid;
             Api.JetCreateTable(session, dbid, "outgoing_history", 16, 100, out tableid);

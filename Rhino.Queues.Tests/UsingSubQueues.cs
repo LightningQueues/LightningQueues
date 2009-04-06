@@ -3,7 +3,6 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Transactions;
-using Rhino.Queues.Protocol;
 using Rhino.Queues.Tests.Protocol;
 using Xunit;
 
@@ -178,6 +177,59 @@ namespace Rhino.Queues.Tests
                 tx.Complete();
             }
         }
+
+		[Fact]
+		public void Can_scan_messages_in_main_queue_without_seeing_messages_from_subqueue()
+		{
+			using (var tx = new TransactionScope())
+			{
+				receiver.EnqueueDirectlyTo("h",null, new MessagePayload
+				{
+					Data = Encoding.Unicode.GetBytes("1234")
+				});
+				receiver.EnqueueDirectlyTo("h", "c", new MessagePayload
+				{
+					Data = Encoding.Unicode.GetBytes("4321")
+				});
+				tx.Complete();
+			}
+
+			var messages = receiver.GetAllMessages("h", null);
+			Assert.Equal(1, messages.Length);
+			Assert.Equal("1234", Encoding.Unicode.GetString(messages[0].Data));
+
+			messages = receiver.GetAllMessages("h", "c");
+			Assert.Equal(1, messages.Length);
+			Assert.Equal("4321", Encoding.Unicode.GetString(messages[0].Data));
+		}
+
+		[Fact]
+		public void Can_get_list_of_subqueues()
+		{
+			using (var tx = new TransactionScope())
+			{
+				receiver.EnqueueDirectlyTo("h", "b", new MessagePayload
+				{
+					Data = Encoding.Unicode.GetBytes("1234")
+				});
+				receiver.EnqueueDirectlyTo("h", "c", new MessagePayload
+				{
+					Data = Encoding.Unicode.GetBytes("4321")
+				});
+				receiver.EnqueueDirectlyTo("h", "c", new MessagePayload
+				{
+					Data = Encoding.Unicode.GetBytes("4321")
+				});
+				receiver.EnqueueDirectlyTo("h", "u", new MessagePayload
+				{
+					Data = Encoding.Unicode.GetBytes("4321")
+				});
+				tx.Complete();
+			}
+
+			var q = receiver.GetQueue("h");
+			Assert.Equal(new[]{"b","c","u"}, q.GetSubqeueues());
+		}
 
         public void Dispose()
         {

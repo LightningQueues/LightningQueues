@@ -581,5 +581,19 @@ namespace Rhino.Queues
             });
             return message;
         }
+
+    	public string[] GetSubqueues(string queueName)
+    	{
+    		string[] result = null;
+			queueStorage.Global(actions =>
+			{
+				var queue = actions.GetQueue(queueName);
+
+				result = queue.Subqueues;
+
+				actions.Commit();
+			});
+    		return result;
+    	}
     }
 }

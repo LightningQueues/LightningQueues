@@ -89,5 +89,10 @@ namespace Rhino.Queues
         {
             return queueManager.PeekById(queueName, id);
         }
+
+    	public string[] GetSubqeueues()
+    	{
+    		return queueManager.GetSubqueues(queueName);
+    	}
     }
 }

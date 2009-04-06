@@ -9,29 +9,43 @@ using Rhino.Queues.Protocol;
 
 namespace Rhino.Queues.Storage
 {
-    public class QueueActions : IDisposable
+	using System.Linq;
+
+	public class QueueActions : IDisposable
     {
         private readonly ILog logger = LogManager.GetLogger(typeof(QueueActions));
         private readonly Session session;
         private readonly string queueName;
-        private readonly Action<int> changeNumberOfMessages;
+    	private string[] subqueues;
+		private readonly AbstractActions actions;
+		private readonly Action<int> changeNumberOfMessages;
         private readonly Table msgs;
         private readonly Table msgsHistory;
         private readonly Dictionary<string, JET_COLUMNID> msgsColumns;
         private readonly Dictionary<string, JET_COLUMNID> msgsHistoryColumns;
 
-        public QueueActions(Session session, JET_DBID dbid, string queueName, Action<int> changeNumberOfMessages)
+        public QueueActions(Session session, JET_DBID dbid, string queueName, string[] subqueues, AbstractActions actions,  Action<int> changeNumberOfMessages)
         {
             this.session = session;
             this.queueName = queueName;
-            this.changeNumberOfMessages = changeNumberOfMessages;
+        	this.subqueues = subqueues;
+        	this.actions = actions;
+        	this.changeNumberOfMessages = changeNumberOfMessages;
             msgs = new Table(session, dbid, queueName, OpenTableGrbit.None);
             msgsColumns = Api.GetColumnDictionary(session, msgs);
             msgsHistory = new Table(session, dbid, queueName + "_history", OpenTableGrbit.None);
             msgsHistoryColumns = Api.GetColumnDictionary(session, msgsHistory);
         }
 
-        public MessageBookmark Enqueue(Message message)
+		public string[] Subqueues
+		{
+			get
+			{
+				return subqueues;
+			}
+		}
+
+    	public MessageBookmark Enqueue(Message message)
         {
             var bm = new MessageBookmark { QueueName = queueName };
             using (var updateMsgs = new Update(session, msgs, JET_prep.Insert))
@@ -51,6 +65,12 @@ namespace Rhino.Queues.Storage
 
                 updateMsgs.Save(bm.Bookmark, bm.Size, out bm.Size);
             }
+			if (string.IsNullOrEmpty(message.SubQueue)==false && 
+				Subqueues.Contains(message.SubQueue) == false)
+			{
+				actions.AddSubqueueTo(queueName, message.SubQueue);
+				subqueues = subqueues.Union(new[] {message.SubQueue}).ToArray();
+			}
             if (message.Id.Number == -1)
             {
                 Api.JetGotoBookmark(session, msgs, bm.Bookmark, bm.Size);

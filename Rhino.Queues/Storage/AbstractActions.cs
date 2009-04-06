@@ -10,9 +10,11 @@ namespace Rhino.Queues.Storage
     {
         protected JET_DBID dbid;
         protected Table queues;
+		protected Table subqueues;
         protected Table recovery;
         protected Dictionary<string, JET_COLUMNID> recoveryColumns;
         protected Dictionary<string, JET_COLUMNID> outgoingColumns;
+		protected Dictionary<string, JET_COLUMNID> subqueuesColumns;
         protected Dictionary<string, JET_COLUMNID> outgoingHistoryColumns;
         protected Session session;
         protected Transaction transaction;
@@ -31,12 +33,14 @@ namespace Rhino.Queues.Storage
             Api.JetOpenDatabase(session, database, null, out dbid, OpenDatabaseGrbit.None);
 
             queues = new Table(session, dbid, "queues", OpenTableGrbit.None);
+			subqueues = new Table(session, dbid, "subqueues", OpenTableGrbit.None);
             txs = new Table(session, dbid, "transactions", OpenTableGrbit.None);
             recovery = new Table(session, dbid, "recovery", OpenTableGrbit.None);
             outgoing = new Table(session, dbid, "outgoing", OpenTableGrbit.None);
             outgoingHistory = new Table(session, dbid, "outgoing_history", OpenTableGrbit.None);
 
             queuesColumns = Api.GetColumnDictionary(session, queues);
+        	subqueuesColumns = Api.GetColumnDictionary(session, subqueues);
             txsColumns = Api.GetColumnDictionary(session, txs);
             recoveryColumns = Api.GetColumnDictionary(session, recovery);
             outgoingColumns = Api.GetColumnDictionary(session, outgoing);
@@ -55,10 +59,53 @@ namespace Rhino.Queues.Storage
             if (Api.TrySeek(session, queues, SeekGrbit.SeekEQ) == false)
                 throw new QueueDoesNotExistsException(queueName);
 
+
             queuesByName[queueName] = actions =
-                new QueueActions(session, dbid, queueName, i => AddToNumberOfMessagesIn(queueName, i));
+				new QueueActions(session, dbid, queueName, GetSubqueues(queueName), this,
+					i => AddToNumberOfMessagesIn(queueName, i));
             return actions;
         }
+
+		private string[] GetSubqueues(string queueName)
+		{
+			var list = new List<string>();
+
+			Api.JetSetCurrentIndex(session, subqueues, "by_queue");
+			Api.MakeKey(session, subqueues, queueName, Encoding.Unicode, MakeKeyGrbit.NewKey);
+
+			if (Api.TrySeek(session, subqueues, SeekGrbit.SeekEQ) == false)
+				return list.ToArray();
+
+			Api.MakeKey(session, subqueues, queueName, Encoding.Unicode, MakeKeyGrbit.NewKey);
+			Api.JetSetIndexRange(session, subqueues, SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
+
+			do
+			{
+				list.Add(Api.RetrieveColumnAsString(session, subqueues, subqueuesColumns["subqueue"]));
+			} while (Api.TryMoveNext(session, subqueues));
+			
+			
+			return list.ToArray();
+		}
+
+		public void AddSubqueueTo(string queueName, string subQueue)
+		{
+			try
+			{
+				using(var update = new Update(session, subqueues, JET_prep.Insert))
+				{
+					Api.SetColumn(session, subqueues, subqueuesColumns["queue"], queueName, Encoding.Unicode);
+					Api.SetColumn(session, subqueues, subqueuesColumns["subqueue"], subQueue, Encoding.Unicode);
+
+					update.Save();
+				}
+			}
+			catch (EsentErrorException e)
+			{
+				if (e.Error != JET_err.KeyDuplicate)
+					throw;
+			}
+		}
 
         private void AddToNumberOfMessagesIn(string queueName, int count)
         {
@@ -83,6 +130,8 @@ namespace Rhino.Queues.Storage
 
             if (queues != null)
                 queues.Dispose();
+			if (subqueues != null)
+				subqueues.Dispose();
             if (txs != null)
                 txs.Dispose();
             if (recovery != null)
