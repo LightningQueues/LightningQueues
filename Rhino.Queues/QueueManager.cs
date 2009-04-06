@@ -39,6 +39,8 @@ namespace Rhino.Queues
         public TimeSpan? OldestMessageInProcessedQueues { get; set; }
         public TimeSpan? OldestMessageInOutgoingQueues { get; set; }
 
+    	public event Action<Endpoint> FailedToSendMessagesTo;
+
         public QueueManager(IPEndPoint endpoint, string path)
         {
             NumberOfMessagesToKeepInProcessedQueues = 100;
@@ -56,7 +58,7 @@ namespace Rhino.Queues
 
             HandleRecovery();
 
-            queuedMessagesSender = new QueuedMessagesSender(queueStorage);
+        	queuedMessagesSender = new QueuedMessagesSender(queueStorage, this);
             sendingThread = new Thread(queuedMessagesSender.Send)
             {
                 IsBackground = true
@@ -606,5 +608,12 @@ namespace Rhino.Queues
 			});
 			return numberOfMsgs;
 		}
+
+    	internal void FailedToSendTo(Endpoint endpointThatWeFailedToSendTo)
+    	{
+    		var action = FailedToSendMessagesTo;
+			if(action!=null)
+				action(endpointThatWeFailedToSendTo);
+    	}
     }
 }

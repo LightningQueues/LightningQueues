@@ -208,8 +208,11 @@ namespace Rhino.Queues.Storage
                             Api.RetrieveColumn(session, outgoingHistory, outgoingHistoryColumns[column])
                             );
                     }
-                    Api.SetColumn(session, outgoing, outgoingColumns["send_status"],
-                        (int)OutgoingMessageStatus.Ready);
+					Api.SetColumn(session, outgoing, outgoingColumns["send_status"],
+						(int)OutgoingMessageStatus.Ready);
+					Api.SetColumn(session, outgoing, outgoingColumns["number_of_retries"],
+						Api.RetrieveColumnAsInt32(session, outgoingHistory, outgoingHistoryColumns["number_of_retries"]).Value + 1
+						   );
 
                     logger.DebugFormat("Reverting output message {0} back to Ready mode", msgId);
 

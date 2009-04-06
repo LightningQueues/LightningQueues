@@ -12,15 +12,17 @@ namespace Rhino.Queues.Internal
     public class QueuedMessagesSender
     {
         private readonly QueueStorage queueStorage;
-        private volatile bool continueSending = true;
+    	private readonly QueueManager queueManager;
+    	private volatile bool continueSending = true;
         private volatile int currentlySendingCount;
 
-        public QueuedMessagesSender(QueueStorage queueStorage)
+        public QueuedMessagesSender(QueueStorage queueStorage, QueueManager queueManager)
         {
-            this.queueStorage = queueStorage;
+        	this.queueStorage = queueStorage;
+        	this.queueManager = queueManager;
         }
 
-        public void Send()
+    	public void Send()
         {
             while (continueSending)
             {
@@ -55,24 +57,28 @@ namespace Rhino.Queues.Internal
                 {
                     Destination = point,
                     Messages = messages.ToArray(),
-                    Success = OnSuccess(messages),
-                    Failure = OnFailure(messages),
-                    Revert = OnRevert
+					Success = OnSuccess(messages),
+					Failure = OnFailure(point, messages),
+					Revert = OnRevert(point)
                 }.Send();
             }
         }
 
-        private void OnRevert(MessageBookmark[] bookmarksToRevert)
+        private Action<MessageBookmark[]> OnRevert(Endpoint endpoint	)
         {
-            queueStorage.Send(actions =>
-            {
-                actions.RevertBackToSend(bookmarksToRevert);
+        	return bookmarksToRevert =>
+			{
+				queueStorage.Send(actions =>
+				{
+					actions.RevertBackToSend(bookmarksToRevert);
 
-                actions.Commit();
-            });
+					actions.Commit();
+				});
+				queueManager.FailedToSendTo(endpoint);
+			};
         }
 
-        private Action<Exception> OnFailure(IEnumerable<PersistentMessage> messages)
+        private Action<Exception> OnFailure(Endpoint endpoint, IEnumerable<PersistentMessage> messages)
         {
             return exception => queueStorage.Send(actions =>
             {
@@ -86,6 +92,7 @@ namespace Rhino.Queues.Internal
 #pragma warning disable 420
                 Interlocked.Decrement(ref currentlySendingCount);
 #pragma warning restore 420
+				queueManager.FailedToSendTo(endpoint);
             });
         }
 
