@@ -329,5 +329,21 @@ namespace Rhino.Queues.Storage
             Api.JetGotoBookmark(session, outgoingHistory, bookmark.Bookmark, bookmark.Size);
             Api.JetDelete(session, outgoingHistory);
         }
+
+    	public int GetNumberOfMessages(string queueName)
+    	{
+			Api.JetSetCurrentIndex(session, queues, "pk");
+			Api.MakeKey(session, queues, queueName, Encoding.Unicode, MakeKeyGrbit.NewKey);
+
+			if (Api.TrySeek(session, queues, SeekGrbit.SeekEQ) == false)
+				return -1;
+
+    		var bytes = new byte[4];
+    		var zero = BitConverter.GetBytes(0);
+    		int actual;
+    		Api.JetEscrowUpdate(session, queues, queuesColumns["number_of_messages"],
+    		                    zero, zero.Length, bytes, bytes.Length, out actual, EscrowUpdateGrbit.None);
+    		return BitConverter.ToInt32(bytes, 0);
+    	}
     }
 }

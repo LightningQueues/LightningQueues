@@ -8,182 +8,184 @@ using Xunit;
 
 namespace Rhino.Queues.Tests
 {
-    public class UsingSubQueues : WithDebugging, IDisposable
-    {
-        private readonly QueueManager sender, receiver;
+	using Microsoft.Isam.Esent.Interop;
 
-        public UsingSubQueues()
-        {
-            if (Directory.Exists("test.esent"))
-                Directory.Delete("test.esent", true);
+	public class UsingSubQueues : WithDebugging, IDisposable
+	{
+		private readonly QueueManager sender, receiver;
 
-            if (Directory.Exists("test2.esent"))
-                Directory.Delete("test2.esent", true);
+		public UsingSubQueues()
+		{
+			if (Directory.Exists("test.esent"))
+				Directory.Delete("test.esent", true);
 
-            sender = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23456), "test.esent");
-            receiver = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23457), "test2.esent");
-            receiver.CreateQueues("h", "a");
-        }
+			if (Directory.Exists("test2.esent"))
+				Directory.Delete("test2.esent", true);
 
-        [Fact]
-        public void Can_send_and_receive_subqueue()
-        {
-            using(var tx = new  TransactionScope())
-            {
-                sender.Send(
-                    new Uri("rhino.queues://localhost:23457/h/a"), 
-                    new MessagePayload
-                    {
-                        Data = Encoding.Unicode.GetBytes("subzero")
-                    });
+			sender = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23456), "test.esent");
+			receiver = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23457), "test2.esent");
+			receiver.CreateQueues("h", "a");
+		}
 
-                tx.Complete();
-            }
+		[Fact]
+		public void Can_send_and_receive_subqueue()
+		{
+			using (var tx = new TransactionScope())
+			{
+				sender.Send(
+					new Uri("rhino.queues://localhost:23457/h/a"),
+					new MessagePayload
+					{
+						Data = Encoding.Unicode.GetBytes("subzero")
+					});
 
-            using(var tx = new TransactionScope())
-            {
-                var message = receiver.Receive("h", "a");
+				tx.Complete();
+			}
 
-                Assert.Equal("subzero", Encoding.Unicode.GetString(message.Data));
+			using (var tx = new TransactionScope())
+			{
+				var message = receiver.Receive("h", "a");
 
-                tx.Complete();
-            }
-        }
+				Assert.Equal("subzero", Encoding.Unicode.GetString(message.Data));
 
-        [Fact]
-        public void Can_move_msg_to_subqueue()
-        {
-            using (var tx = new TransactionScope())
-            {
-                sender.Send(
-                    new Uri("rhino.queues://localhost:23457/h"),
-                    new MessagePayload
-                    {
-                        Data = Encoding.Unicode.GetBytes("subzero")
-                    });
+				tx.Complete();
+			}
+		}
 
-                tx.Complete();
-            }
+		[Fact]
+		public void Can_move_msg_to_subqueue()
+		{
+			using (var tx = new TransactionScope())
+			{
+				sender.Send(
+					new Uri("rhino.queues://localhost:23457/h"),
+					new MessagePayload
+					{
+						Data = Encoding.Unicode.GetBytes("subzero")
+					});
 
-            using (var tx = new TransactionScope())
-            {
-                var message = receiver.Receive("h");
+				tx.Complete();
+			}
 
-                receiver.MoveTo("b", message);
+			using (var tx = new TransactionScope())
+			{
+				var message = receiver.Receive("h");
 
-                tx.Complete();
-            }
+				receiver.MoveTo("b", message);
 
-            using (var tx = new TransactionScope())
-            {
-                var message = receiver.Receive("h", "b");
+				tx.Complete();
+			}
 
-                Assert.Equal("subzero", Encoding.Unicode.GetString(message.Data));
+			using (var tx = new TransactionScope())
+			{
+				var message = receiver.Receive("h", "b");
 
-                tx.Complete();
-            }
-        }
+				Assert.Equal("subzero", Encoding.Unicode.GetString(message.Data));
 
-        [Fact]
-        public void Moving_to_subqueue_move_from_main_queue()
-        {
-            using (var tx = new TransactionScope())
-            {
-                sender.Send(
-                    new Uri("rhino.queues://localhost:23457/h"),
-                    new MessagePayload
-                    {
-                        Data = Encoding.Unicode.GetBytes("subzero")
-                    });
+				tx.Complete();
+			}
+		}
 
-                tx.Complete();
-            }
+		[Fact]
+		public void Moving_to_subqueue_move_from_main_queue()
+		{
+			using (var tx = new TransactionScope())
+			{
+				sender.Send(
+					new Uri("rhino.queues://localhost:23457/h"),
+					new MessagePayload
+					{
+						Data = Encoding.Unicode.GetBytes("subzero")
+					});
 
-            using (var tx = new TransactionScope())
-            {
-                var message = receiver.Receive("h");
+				tx.Complete();
+			}
 
-                receiver.MoveTo("b", message);
+			using (var tx = new TransactionScope())
+			{
+				var message = receiver.Receive("h");
 
-                tx.Complete();
-            }
+				receiver.MoveTo("b", message);
 
-            using (var tx = new TransactionScope())
-            {
-                Assert.NotNull(receiver.Receive("h", "b"));
+				tx.Complete();
+			}
 
-                Assert.Throws<TimeoutException>(() => receiver.Receive("h", TimeSpan.FromSeconds(1)));
+			using (var tx = new TransactionScope())
+			{
+				Assert.NotNull(receiver.Receive("h", "b"));
 
-                tx.Complete();
-            }
-        }
+				Assert.Throws<TimeoutException>(() => receiver.Receive("h", TimeSpan.FromSeconds(1)));
 
-        [Fact]
-        public void Moving_to_subqueue_will_not_be_completed_until_tx_is_completed()
-        {
-            using (var tx = new TransactionScope())
-            {
-                sender.Send(
-                    new Uri("rhino.queues://localhost:23457/h"),
-                    new MessagePayload
-                    {
-                        Data = Encoding.Unicode.GetBytes("subzero")
-                    });
+				tx.Complete();
+			}
+		}
 
-                tx.Complete();
-            }
+		[Fact]
+		public void Moving_to_subqueue_will_not_be_completed_until_tx_is_completed()
+		{
+			using (var tx = new TransactionScope())
+			{
+				sender.Send(
+					new Uri("rhino.queues://localhost:23457/h"),
+					new MessagePayload
+					{
+						Data = Encoding.Unicode.GetBytes("subzero")
+					});
 
-            using (var tx = new TransactionScope())
-            {
-                var message = receiver.Receive("h");
+				tx.Complete();
+			}
 
-                receiver.MoveTo("b", message);
+			using (var tx = new TransactionScope())
+			{
+				var message = receiver.Receive("h");
 
-                Assert.Throws<TimeoutException>(() => receiver.Receive("h","b", TimeSpan.FromSeconds(1)));
+				receiver.MoveTo("b", message);
 
-                tx.Complete();
-            }
-        }
+				Assert.Throws<TimeoutException>(() => receiver.Receive("h", "b", TimeSpan.FromSeconds(1)));
 
-        [Fact]
-        public void Moving_to_subqueue_will_be_reverted_by_transaction_rollback()
-        {
-            using (var tx = new TransactionScope())
-            {
-                sender.Send(
-                    new Uri("rhino.queues://localhost:23457/h"),
-                    new MessagePayload
-                    {
-                        Data = Encoding.Unicode.GetBytes("subzero")
-                    });
+				tx.Complete();
+			}
+		}
 
-                tx.Complete();
-            }
+		[Fact]
+		public void Moving_to_subqueue_will_be_reverted_by_transaction_rollback()
+		{
+			using (var tx = new TransactionScope())
+			{
+				sender.Send(
+					new Uri("rhino.queues://localhost:23457/h"),
+					new MessagePayload
+					{
+						Data = Encoding.Unicode.GetBytes("subzero")
+					});
 
-            using (new TransactionScope())
-            {
-                var message = receiver.Receive("h");
+				tx.Complete();
+			}
 
-                receiver.MoveTo("b", message);
+			using (new TransactionScope())
+			{
+				var message = receiver.Receive("h");
 
-            }
+				receiver.MoveTo("b", message);
 
-            using (var tx = new TransactionScope())
-            {
-                var message = receiver.Receive("h");
+			}
 
-                Assert.NotNull(message);
+			using (var tx = new TransactionScope())
+			{
+				var message = receiver.Receive("h");
 
-                tx.Complete();
-            }
-        }
+				Assert.NotNull(message);
+
+				tx.Complete();
+			}
+		}
 
 		[Fact]
 		public void Can_scan_messages_in_main_queue_without_seeing_messages_from_subqueue()
 		{
 			using (var tx = new TransactionScope())
 			{
-				receiver.EnqueueDirectlyTo("h",null, new MessagePayload
+				receiver.EnqueueDirectlyTo("h", null, new MessagePayload
 				{
 					Data = Encoding.Unicode.GetBytes("1234")
 				});
@@ -228,13 +230,41 @@ namespace Rhino.Queues.Tests
 			}
 
 			var q = receiver.GetQueue("h");
-			Assert.Equal(new[]{"b","c","u"}, q.GetSubqeueues());
+			Assert.Equal(new[] { "b", "c", "u" }, q.GetSubqeueues());
 		}
 
-        public void Dispose()
-        {
-            sender.Dispose();
-            receiver.Dispose();
-        }
-    }
+		[Fact]
+		public void Can_get_number_of_messages()
+		{
+			using (var tx = new TransactionScope())
+			{
+				receiver.EnqueueDirectlyTo("h", "b", new MessagePayload
+				{
+					Data = Encoding.Unicode.GetBytes("1234")
+				});
+				receiver.EnqueueDirectlyTo("h", "c", new MessagePayload
+				{
+					Data = Encoding.Unicode.GetBytes("4321")
+				});
+				receiver.EnqueueDirectlyTo("h", "c", new MessagePayload
+				{
+					Data = Encoding.Unicode.GetBytes("4321")
+				});
+				receiver.EnqueueDirectlyTo("h", "u", new MessagePayload
+				{
+					Data = Encoding.Unicode.GetBytes("4321")
+				});
+				tx.Complete();
+			}
+
+			Assert.Equal(4, receiver.GetNumberOfMessages("h"));
+			Assert.Equal(4, receiver.GetNumberOfMessages("h"));
+		}
+
+		public void Dispose()
+		{
+			sender.Dispose();
+			receiver.Dispose();
+		}
+	}
 }

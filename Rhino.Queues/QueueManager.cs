@@ -595,5 +595,16 @@ namespace Rhino.Queues
 			});
     		return result;
     	}
+
+		public int GetNumberOfMessages(string queueName)
+		{
+			int numberOfMsgs = 0;
+			queueStorage.Global(actions =>
+			{
+				numberOfMsgs = actions.GetNumberOfMessages(queueName);
+				actions.Commit();
+			});
+			return numberOfMsgs;
+		}
     }
 }
