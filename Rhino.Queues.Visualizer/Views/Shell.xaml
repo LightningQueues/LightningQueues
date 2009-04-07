@@ -1,0 +1,7 @@
+﻿<Window x:Class="Rhino.Queues.Visualizer.Views.Shell"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:Controls="clr-namespace:Rhino.Queues.Visualizer.Controls"
+    Title="RQ Visualizer" Height="1024" Width="1280">
+	<Controls:ViewZone Presenter="{Binding CurrentPresenter}"/>
+</Window>

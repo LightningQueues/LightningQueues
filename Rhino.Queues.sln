@@ -5,6 +5,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rhino.Queues", "Rhino.Queue
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rhino.Queues.Tests", "Rhino.Queues.Tests\Rhino.Queues.Tests.csproj", "{98D394CA-9FEF-49AD-8DAB-FE039152E001}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rhino.Queues.Visualizer", "Rhino.Queues.Visualizer\Rhino.Queues.Visualizer.csproj", "{344CDEE2-1D21-4ADA-8D49-AE2C1EB8D05B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -19,6 +21,10 @@ Global
 		{98D394CA-9FEF-49AD-8DAB-FE039152E001}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{98D394CA-9FEF-49AD-8DAB-FE039152E001}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{98D394CA-9FEF-49AD-8DAB-FE039152E001}.Release|Any CPU.Build.0 = Release|Any CPU
+		{344CDEE2-1D21-4ADA-8D49-AE2C1EB8D05B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{344CDEE2-1D21-4ADA-8D49-AE2C1EB8D05B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{344CDEE2-1D21-4ADA-8D49-AE2C1EB8D05B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{344CDEE2-1D21-4ADA-8D49-AE2C1EB8D05B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -8,8 +8,6 @@ using Xunit;
 
 namespace Rhino.Queues.Tests
 {
-	using Microsoft.Isam.Esent.Interop;
-
 	public class UsingSubQueues : WithDebugging, IDisposable
 	{
 		private readonly QueueManager sender, receiver;
