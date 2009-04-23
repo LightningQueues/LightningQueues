@@ -116,19 +116,21 @@ namespace Rhino.Queues
 
         private void HandleRecovery()
         {
+        	var recoveryRequired = false;
             queueStorage.Global(actions =>
             {
                 actions.MarkAllOutgoingInFlightMessagesAsReadyToSend();
                 actions.MarkAllProcessedMessagesWithTransactionsNotRegisterForRecoveryAsReadyToDeliver();
                 foreach (var bytes in actions.GetRecoveryInformation())
                 {
+                	recoveryRequired = true;
                     TransactionManager.Reenlist(queueStorage.Id, bytes,
                         new TransactionEnlistment(queueStorage, () => { }));
                 }
                 actions.Commit();
             });
-
-            TransactionManager.RecoveryComplete(queueStorage.Id);
+			if (recoveryRequired)
+				TransactionManager.RecoveryComplete(queueStorage.Id);
         }
 
         public string Path
