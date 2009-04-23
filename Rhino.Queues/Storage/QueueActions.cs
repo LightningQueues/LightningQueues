@@ -57,8 +57,8 @@ namespace Rhino.Queues.Storage
 
                 Api.SetColumn(session, msgs, msgsColumns["timestamp"], message.SentAt.ToOADate());
                 Api.SetColumn(session, msgs, msgsColumns["data"], message.Data);
-                Api.SetColumn(session, msgs, msgsColumns["instance_id"], message.Id.Guid.ToByteArray());
-                Api.SetColumn(session, msgs, msgsColumns["msg_number"], message.Id.Number);
+                Api.SetColumn(session, msgs, msgsColumns["instance_id"], message.Id.SourceInstanceId.ToByteArray());
+                Api.SetColumn(session, msgs, msgsColumns["msg_id"], message.Id.MessageIdentifier.ToByteArray());
                 Api.SetColumn(session, msgs, msgsColumns["subqueue"], message.SubQueue, Encoding.Unicode);
                 Api.SetColumn(session, msgs, msgsColumns["headers"], message.Headers.ToQueryString(), Encoding.Unicode);
                 Api.SetColumn(session, msgs, msgsColumns["status"], (int)messageStatus);
@@ -71,16 +71,7 @@ namespace Rhino.Queues.Storage
 				actions.AddSubqueueTo(queueName, message.SubQueue);
 				subqueues = subqueues.Union(new[] {message.SubQueue}).ToArray();
 			}
-            if (message.Id.Number == -1)
-            {
-                Api.JetGotoBookmark(session, msgs, bm.Bookmark, bm.Size);
-                var value = Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["local_id"]).Value;
-                using (var updateMsgs = new Update(session, msgs, JET_prep.Replace))
-                {
-                    Api.SetColumn(session, msgs, msgsColumns["msg_number"], value);
-                    updateMsgs.Save();
-                }
-            }
+            
             logger.DebugFormat("Enqueuing msg to '{0}' with subqueue: '{1}'. Id: {2}", queueName,
                 message.SubQueue,
                 message.Id);
@@ -103,8 +94,8 @@ namespace Rhino.Queues.Storage
             {
                 var id = new MessageId
                 {
-                    Number = Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["msg_number"]).Value,
-                    Guid = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["instance_id"]))
+					MessageIdentifier = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["msg_id"])),
+                    SourceInstanceId = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["instance_id"]))
                 };
 
                 var status = (MessageStatus)Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["status"]).Value;
@@ -149,7 +140,6 @@ namespace Rhino.Queues.Storage
                     Data = Api.RetrieveColumn(session, msgs, msgsColumns["data"]),
                     Id = id,
                     SubQueue = subqueue,
-                    LocalId = Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["local_id"]).Value,
                     Status = (MessageStatus)Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["status"]).Value
                 };
             } while (Api.TryMoveNext(session, msgs));
@@ -162,8 +152,8 @@ namespace Rhino.Queues.Storage
             Api.JetGotoBookmark(session, msgs, bookmark.Bookmark, bookmark.Size);
             var id = new MessageId
             {
-                Number = Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["msg_number"]).Value,
-                Guid = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["instance_id"]))
+				MessageIdentifier = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["msg_id"])),
+                SourceInstanceId = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["instance_id"]))
             };
             using (var update = new Update(session, msgs, JET_prep.Replace))
             {
@@ -181,8 +171,8 @@ namespace Rhino.Queues.Storage
 
             var id = new MessageId
             {
-                Number = Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["msg_number"]).Value,
-                Guid = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["instance_id"]))
+				MessageIdentifier = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["msg_id"])),
+                SourceInstanceId = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["instance_id"]))
             };
 
             using (var update = new Update(session, msgs, JET_prep.Replace))
@@ -208,8 +198,8 @@ namespace Rhino.Queues.Storage
             Api.JetGotoBookmark(session, msgs, bookmark.Bookmark, bookmark.Size);
             var id = new MessageId
             {
-                Number = Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["msg_number"]).Value,
-                Guid = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["instance_id"]))
+				MessageIdentifier = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["msg_id"])),
+                SourceInstanceId = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["instance_id"]))
             };
             using (var update = new Update(session, msgsHistory, JET_prep.Insert))
             {
@@ -244,15 +234,14 @@ namespace Rhino.Queues.Storage
                     Bookmark = bookmark,
                     Headers = HttpUtility.ParseQueryString(headersAsQueryString),
                     Queue = queueName,
-                    LocalId = Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["local_id"]).Value,
                     Status = (MessageStatus)Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["status"]).Value,
                     SentAt =
                         DateTime.FromOADate(Api.RetrieveColumnAsDouble(session, msgs, msgsColumns["timestamp"]).Value),
                     Data = Api.RetrieveColumn(session, msgs, msgsColumns["data"]),
                     Id = new MessageId
                     {
-                        Number = Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["msg_number"]).Value,
-                        Guid = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["instance_id"]))
+						MessageIdentifier = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["msg_id"])),
+                        SourceInstanceId = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["instance_id"]))
                     }
                 };
             } while (Api.TryMoveNext(session, msgs));
@@ -276,7 +265,6 @@ namespace Rhino.Queues.Storage
                         DateTime.FromOADate(
                         Api.RetrieveColumnAsDouble(session, msgsHistory, msgsHistoryColumns["moved_to_history_at"]).
                             Value),
-                    LocalId = Api.RetrieveColumnAsInt32(session, msgsHistory, msgsHistoryColumns["local_id"]).Value,
                     Status =
                         (MessageStatus)
                         Api.RetrieveColumnAsInt32(session, msgsHistory, msgsHistoryColumns["status"]).Value,
@@ -286,8 +274,8 @@ namespace Rhino.Queues.Storage
                     Data = Api.RetrieveColumn(session, msgsHistory, msgsHistoryColumns["data"]),
                     Id = new MessageId
                     {
-                        Number = Api.RetrieveColumnAsInt32(session, msgsHistory, msgsHistoryColumns["msg_number"]).Value,
-                        Guid = new Guid(Api.RetrieveColumn(session, msgsHistory, msgsHistoryColumns["instance_id"]))
+						MessageIdentifier = new Guid(Api.RetrieveColumn(session, msgsHistory, msgsHistoryColumns["msg_id"])),
+                        SourceInstanceId = new Guid(Api.RetrieveColumn(session, msgsHistory, msgsHistoryColumns["instance_id"]))
                     }
                 };
             }
@@ -298,8 +286,8 @@ namespace Rhino.Queues.Storage
             Api.JetGotoBookmark(session, msgs, message.Bookmark.Bookmark, message.Bookmark.Size);
             var id = new MessageId
             {
-                Number = Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["msg_number"]).Value,
-                Guid = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["instance_id"]))
+				MessageIdentifier = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["msg_id"])),
+                SourceInstanceId = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["instance_id"]))
             };
             using (var update = new Update(session, msgs, JET_prep.Replace))
             {
@@ -342,8 +330,8 @@ namespace Rhino.Queues.Storage
             {
                 var id = new MessageId
                 {
-                    Number = Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["msg_number"]).Value,
-                    Guid = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["instance_id"]))
+					MessageIdentifier = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["msg_id"])),
+                    SourceInstanceId = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["instance_id"]))
                 };
 
                 var status = (MessageStatus)Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["status"]).Value;
@@ -373,7 +361,6 @@ namespace Rhino.Queues.Storage
                     Data = Api.RetrieveColumn(session, msgs, msgsColumns["data"]),
                     Id = id,
                     SubQueue = subqueue,
-                    LocalId = Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["local_id"]).Value,
                     Status = (MessageStatus)Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["status"]).Value
                 };
             } while (Api.TryMoveNext(session, msgs));
@@ -384,14 +371,14 @@ namespace Rhino.Queues.Storage
         public PersistentMessage PeekById(MessageId id)
         {
             Api.JetSetCurrentIndex(session, msgs, "by_id");
-            Api.MakeKey(session, msgs, id.Guid.ToByteArray(), MakeKeyGrbit.NewKey);
-            Api.MakeKey(session, msgs, id.Number, MakeKeyGrbit.None);
+            Api.MakeKey(session, msgs, id.SourceInstanceId.ToByteArray(), MakeKeyGrbit.NewKey);
+            Api.MakeKey(session, msgs, id.MessageIdentifier, MakeKeyGrbit.None);
 
             if (Api.TrySeek(session, msgs, SeekGrbit.SeekEQ) == false)
                 return null;
 
-            Api.MakeKey(session, msgs, id.Guid.ToByteArray(), MakeKeyGrbit.NewKey);
-            Api.MakeKey(session, msgs, id.Number, MakeKeyGrbit.None);
+            Api.MakeKey(session, msgs, id.SourceInstanceId.ToByteArray(), MakeKeyGrbit.NewKey);
+            Api.MakeKey(session, msgs, id.MessageIdentifier, MakeKeyGrbit.None);
             Api.JetSetIndexRange(session, msgs, SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
 
             do
@@ -417,7 +404,6 @@ namespace Rhino.Queues.Storage
                     Data = Api.RetrieveColumn(session, msgs, msgsColumns["data"]),
                     Id = id,
                     SubQueue = subqueue,
-                    LocalId = Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["local_id"]).Value,
                     Status = status
                 };
             } while (Api.TryMoveNext(session, msgs));

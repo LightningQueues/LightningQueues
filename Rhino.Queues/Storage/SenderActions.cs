@@ -32,7 +32,7 @@ namespace Rhino.Queues.Storage
             while (Api.TryMoveNext(session, outgoing))
             {
 
-                var msgId = Api.RetrieveColumnAsInt32(session, outgoing, outgoingColumns["msg_id"]).Value;
+				var msgId = new Guid(Api.RetrieveColumn(session, outgoing, outgoingColumns["msg_id"]));
                 var value = (OutgoingMessageStatus)Api.RetrieveColumnAsInt32(session, outgoing, outgoingColumns["send_status"]).Value;
                 var timeAsDate = Api.RetrieveColumnAsDouble(session, outgoing, outgoingColumns["time_to_send"]).Value;
                 var time = DateTime.FromOADate(timeAsDate);
@@ -62,8 +62,8 @@ namespace Rhino.Queues.Storage
                 {
                     Id = new MessageId
                     {
-                        Guid = instanceId,
-                        Number = msgId
+                        SourceInstanceId = instanceId,
+                        MessageIdentifier = msgId
                     },
                     Headers = HttpUtility.ParseQueryString(headerAsQueryString),
                     Queue = Api.RetrieveColumnAsString(session, outgoing, outgoingColumns["queue"], Encoding.Unicode),
@@ -145,11 +145,10 @@ namespace Rhino.Queues.Storage
             {
                 foreach (var column in outgoingColumns.Keys)
                 {
-                    Api.SetColumn(session, outgoingHistory, outgoingHistoryColumns[column],
-                        Api.RetrieveColumn(session, outgoing, outgoingColumns[column])
-                        );
+                	var bytes = Api.RetrieveColumn(session, outgoing, outgoingColumns[column]);
+                	Api.SetColumn(session, outgoingHistory, outgoingHistoryColumns[column],bytes);
                 }
-                Api.SetColumn(session, outgoingHistory, outgoingHistoryColumns["send_status"],
+            	Api.SetColumn(session, outgoingHistory, outgoingHistoryColumns["send_status"],
                               (int)OutgoingMessageStatus.Sent);
 
                 update.Save(newBookmark.Bookmark, newBookmark.Size, out newBookmark.Size);
@@ -159,6 +158,12 @@ namespace Rhino.Queues.Storage
             logger.DebugFormat("Successfully sent output message {0}", msgId);
             return newBookmark;
         }
+
+    	public bool HasMessagesToSend()
+		{
+			Api.MoveBeforeFirst(session, outgoing);
+			return Api.TryMoveNext(session, outgoing);
+		}
 
         public IEnumerable<PersistentMessageToSend> GetMessagesToSend()
         {
@@ -176,8 +181,8 @@ namespace Rhino.Queues.Storage
                 {
                     Id = new MessageId
                     {
-                        Guid = instanceId,
-                        Number = Api.RetrieveColumnAsInt32(session, outgoing, outgoingColumns["msg_id"]).Value
+                        SourceInstanceId = instanceId,
+						MessageIdentifier = new Guid(Api.RetrieveColumn(session, outgoing, outgoingColumns["msg_id"]))
                     },
                     OutgoingStatus = (OutgoingMessageStatus)Api.RetrieveColumnAsInt32(session, outgoing, outgoingColumns["send_status"]).Value,
                     Endpoint = new Endpoint(address, port),
@@ -201,9 +206,6 @@ namespace Rhino.Queues.Storage
                 {
                     foreach (var column in outgoingColumns.Keys)
                     {
-                        if (column == "msg_id")
-                            continue;
-
                         Api.SetColumn(session, outgoing, outgoingColumns[column],
                             Api.RetrieveColumn(session, outgoingHistory, outgoingHistoryColumns[column])
                             );

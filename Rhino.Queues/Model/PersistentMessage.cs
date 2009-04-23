@@ -6,6 +6,5 @@ namespace Rhino.Queues.Model
     {
         public MessageBookmark Bookmark { get; set; }
         public MessageStatus Status { get; set; }
-        public int LocalId { get; set; }
     }
 }

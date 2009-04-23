@@ -7,7 +7,7 @@ namespace Rhino.Queues.Storage
     public class SchemaCreator
     {
         private readonly Session session;
-        public const string SchemaVersion = "1.6";
+        public const string SchemaVersion = "1.7";
 
         public SchemaCreator(Session session)
         {
@@ -79,7 +79,8 @@ namespace Rhino.Queues.Storage
 
             Api.JetAddColumn(session, tableid, "msg_id", new JET_COLUMNDEF
             {
-                coltyp = JET_coltyp.Long,
+				coltyp = JET_coltyp.Binary,
+				cbMax = 16,
                 grbit = ColumndefGrbit.ColumnNotNULL | ColumndefGrbit.ColumnFixed
             }, null, 0, out columnid);
 
@@ -181,8 +182,10 @@ namespace Rhino.Queues.Storage
 
             Api.JetAddColumn(session, tableid, "msg_id", new JET_COLUMNDEF
             {
-                coltyp = JET_coltyp.Long,
-                grbit = ColumndefGrbit.ColumnNotNULL | ColumndefGrbit.ColumnAutoincrement | ColumndefGrbit.ColumnFixed
+                coltyp = JET_coltyp.Binary,
+                cbMax = 16,
+                grbit = ColumndefGrbit.ColumnNotNULL | 
+						ColumndefGrbit.ColumnFixed
             }, null, 0, out columnid);
 
 

@@ -38,14 +38,15 @@ namespace Rhino.Queues.Tests.Storage
 
                 MessageBookmark bookmark = null;
                 var guid = Guid.NewGuid();
-                qf.Global(actions =>
+				var identifier = Guid.NewGuid();
+				qf.Global(actions =>
                 {
-                    bookmark = actions.GetQueue("h").Enqueue(new Message
+                	bookmark = actions.GetQueue("h").Enqueue(new Message
                     {
                         Queue = "h",
                         Data = new byte[] { 13, 12, 43, 5 },
                         SentAt = new DateTime(2004, 5, 5),
-                        Id = new MessageId { Guid = guid, Number = 5 }
+                        Id = new MessageId { SourceInstanceId = guid, MessageIdentifier = identifier }
                     });
                     actions.Commit();
                 });
@@ -61,8 +62,8 @@ namespace Rhino.Queues.Tests.Storage
                     var message = actions.GetQueue("h").Dequeue(null);
 
                     Assert.Equal(new byte[] { 13, 12, 43, 5 }, message.Data);
-                    Assert.Equal(5, message.Id.Number);
-                    Assert.Equal(guid, message.Id.Guid);
+					Assert.Equal(identifier, message.Id.MessageIdentifier);
+                    Assert.Equal(guid, message.Id.SourceInstanceId);
                     Assert.Equal("h", message.Queue);
                     Assert.Equal(new DateTime(2004, 5, 5), message.SentAt);
                     actions.Commit();

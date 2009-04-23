@@ -26,8 +26,8 @@ namespace Rhino.Queues.Protocol
                     {
                         Id = new MessageId
                         {
-                            Guid = new Guid(br.ReadBytes(16)),
-                            Number = br.ReadInt32()
+                            SourceInstanceId = new Guid(br.ReadBytes(16)),
+							MessageIdentifier = new Guid(br.ReadBytes(16))
                         },
                         Queue = br.ReadString(),
                         SubQueue = br.ReadString(),
@@ -59,8 +59,8 @@ namespace Rhino.Queues.Protocol
                 writer.Write(messages.Length);
                 foreach (var message in messages)
                 {
-                    writer.Write(message.Id.Guid.ToByteArray());
-                    writer.Write(message.Id.Number);
+                    writer.Write(message.Id.SourceInstanceId.ToByteArray());
+                    writer.Write(message.Id.MessageIdentifier.ToByteArray());
                     writer.Write(message.Queue);
                     writer.Write(message.SubQueue ?? "");
                     writer.Write(message.SentAt.ToBinary());

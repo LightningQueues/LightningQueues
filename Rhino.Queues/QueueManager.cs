@@ -13,582 +13,613 @@ using System.Linq;
 
 namespace Rhino.Queues
 {
-    public class QueueManager : IDisposable
-    {
-        [ThreadStatic]
-        private static TransactionEnlistment enlistment;
+	using Exceptions;
+	using Utils;
 
-        [ThreadStatic]
-        private static Transaction currentlyEnslistedTransaction;
+	public class QueueManager : IDisposable
+	{
+		[ThreadStatic]
+		private static TransactionEnlistment Enlistment;
 
-        private volatile bool wasDisposed;
-        private volatile int currentlyInCriticalReceiveStatus;
-        private readonly IPEndPoint endpoint;
-        private readonly object newMessageArrivedLock = new object();
-        private readonly string path;
-        private readonly Timer purgeOldDataTimer;
-        private readonly QueueStorage queueStorage;
-        private readonly Receiver receiver;
-        private readonly Thread sendingThread;
-        private readonly QueuedMessagesSender queuedMessagesSender;
-        private readonly ILog logger = LogManager.GetLogger(typeof(QueueManager));
+		[ThreadStatic]
+		private static Transaction CurrentlyEnslistedTransaction;
 
-        public int? NumberOfMessagesToKeepInProcessedQueues { get; set; }
-        public int? NumberOfMessagesToKeepOutgoingQueues { get; set; }
+		private volatile bool wasDisposed;
+		private volatile int currentlyInCriticalReceiveStatus;
+		private readonly IPEndPoint endpoint;
+		private readonly object newMessageArrivedLock = new object();
+		private readonly string path;
+		private readonly Timer purgeOldDataTimer;
+		private readonly QueueStorage queueStorage;
+		private readonly Receiver receiver;
+		private readonly Thread sendingThread;
+		private readonly QueuedMessagesSender queuedMessagesSender;
+		private readonly ILog logger = LogManager.GetLogger(typeof(QueueManager));
+		private volatile bool waitingForAllMessagesToBeSent;
 
-        public TimeSpan? OldestMessageInProcessedQueues { get; set; }
-        public TimeSpan? OldestMessageInOutgoingQueues { get; set; }
+		public int? NumberOfMessagesToKeepInProcessedQueues { get; set; }
+		public int? NumberOfMessagesToKeepOutgoingQueues { get; set; }
 
-    	public event Action<Endpoint> FailedToSendMessagesTo;
+		public TimeSpan? OldestMessageInProcessedQueues { get; set; }
+		public TimeSpan? OldestMessageInOutgoingQueues { get; set; }
 
-        public QueueManager(IPEndPoint endpoint, string path)
-        {
-            NumberOfMessagesToKeepInProcessedQueues = 100;
-            NumberOfMessagesToKeepOutgoingQueues = 100;
-            OldestMessageInProcessedQueues = TimeSpan.FromDays(3);
-            OldestMessageInOutgoingQueues = TimeSpan.FromDays(3);
+		public event Action<Endpoint> FailedToSendMessagesTo;
 
-            this.endpoint = endpoint;
-            this.path = path;
-            queueStorage = new QueueStorage(path);
-            queueStorage.Initialize();
+		public QueueManager(IPEndPoint endpoint, string path)
+		{
+			NumberOfMessagesToKeepInProcessedQueues = 100;
+			NumberOfMessagesToKeepOutgoingQueues = 100;
+			OldestMessageInProcessedQueues = TimeSpan.FromDays(3);
+			OldestMessageInOutgoingQueues = TimeSpan.FromDays(3);
 
-            receiver = new Receiver(endpoint, AcceptMessages);
-            receiver.Start();
+			this.endpoint = endpoint;
+			this.path = path;
+			queueStorage = new QueueStorage(path);
+			queueStorage.Initialize();
 
-            HandleRecovery();
+			receiver = new Receiver(endpoint, AcceptMessages);
+			receiver.Start();
 
-        	queuedMessagesSender = new QueuedMessagesSender(queueStorage, this);
-            sendingThread = new Thread(queuedMessagesSender.Send)
-            {
-                IsBackground = true
-            };
-            sendingThread.Start();
-            purgeOldDataTimer = new Timer(PurgeOldData, null, 
-                TimeSpan.FromMinutes(3), 
-                TimeSpan.FromMinutes(3));
-        }
+			HandleRecovery();
 
-        private void PurgeOldData(object ignored)
-        {
-            logger.DebugFormat("Starting to purge old data");
-            try
-            {
-                queueStorage.Global(actions =>
-                {
-                    foreach (var queue in Queues)
-                    {
-                        var queueActions = actions.GetQueue(queue);
-                        var messages = queueActions.GetAllProcessedMessages();
-                        if (NumberOfMessagesToKeepInProcessedQueues != null)
-                            messages = messages.Skip(NumberOfMessagesToKeepInProcessedQueues.Value);
-                        if (OldestMessageInProcessedQueues != null)
-                            messages = messages.Where(x => (DateTime.Now - x.SentAt) > OldestMessageInProcessedQueues.Value);
+			queuedMessagesSender = new QueuedMessagesSender(queueStorage, this);
+			sendingThread = new Thread(queuedMessagesSender.Send)
+			{
+				IsBackground = true,
+				Name = "Rhino Queue Sender Thread for " + path
+			};
+			sendingThread.Start();
+			purgeOldDataTimer = new Timer(PurgeOldData, null,
+				TimeSpan.FromMinutes(3),
+				TimeSpan.FromMinutes(3));
+		}
 
-                        foreach (var message in messages)
-                        {
-                            logger.DebugFormat("Purging message {0} from queue {0}/{1}", message.Id, message.Queue, message.SubQueue);
-                            queueActions.DeleteHistoric(message.Bookmark);
-                        }
-                    }
-                    var sentMessages = actions.GetSentMessages();
+		private void PurgeOldData(object ignored)
+		{
+			logger.DebugFormat("Starting to purge old data");
+			try
+			{
+				queueStorage.Global(actions =>
+				{
+					foreach (var queue in Queues)
+					{
+						var queueActions = actions.GetQueue(queue);
+						var messages = queueActions.GetAllProcessedMessages();
+						if (NumberOfMessagesToKeepInProcessedQueues != null)
+							messages = messages.Skip(NumberOfMessagesToKeepInProcessedQueues.Value);
+						if (OldestMessageInProcessedQueues != null)
+							messages = messages.Where(x => (DateTime.Now - x.SentAt) > OldestMessageInProcessedQueues.Value);
 
-                    if (NumberOfMessagesToKeepOutgoingQueues != null)
-                        sentMessages = sentMessages.Skip(NumberOfMessagesToKeepOutgoingQueues.Value);
-                    if (OldestMessageInOutgoingQueues != null)
-                        sentMessages = sentMessages.Where(x => (DateTime.Now - x.SentAt) > OldestMessageInOutgoingQueues.Value);
+						foreach (var message in messages)
+						{
+							logger.DebugFormat("Purging message {0} from queue {0}/{1}", message.Id, message.Queue, message.SubQueue);
+							queueActions.DeleteHistoric(message.Bookmark);
+						}
+					}
+					var sentMessages = actions.GetSentMessages();
 
-                    foreach (var sentMessage in sentMessages)
-                    {
-                        logger.DebugFormat("Purging sent message {0} to {1}/{2}/{3}", sentMessage.Id, sentMessage.Endpoint,
-                                           sentMessage.Queue, sentMessage.SubQueue);
-                        actions.DeleteMessageToSendHistoric(sentMessage.Bookmark);
-                    }
+					if (NumberOfMessagesToKeepOutgoingQueues != null)
+						sentMessages = sentMessages.Skip(NumberOfMessagesToKeepOutgoingQueues.Value);
+					if (OldestMessageInOutgoingQueues != null)
+						sentMessages = sentMessages.Where(x => (DateTime.Now - x.SentAt) > OldestMessageInOutgoingQueues.Value);
 
-                    actions.Commit();
-                });
-            }
-            catch (Exception exception)
-            {
-                logger.Warn("Failed to purge old data from the system", exception);
-            }
-        }
+					foreach (var sentMessage in sentMessages)
+					{
+						logger.DebugFormat("Purging sent message {0} to {1}/{2}/{3}", sentMessage.Id, sentMessage.Endpoint,
+										   sentMessage.Queue, sentMessage.SubQueue);
+						actions.DeleteMessageToSendHistoric(sentMessage.Bookmark);
+					}
 
-        private void HandleRecovery()
-        {
-        	var recoveryRequired = false;
-            queueStorage.Global(actions =>
-            {
-                actions.MarkAllOutgoingInFlightMessagesAsReadyToSend();
-                actions.MarkAllProcessedMessagesWithTransactionsNotRegisterForRecoveryAsReadyToDeliver();
-                foreach (var bytes in actions.GetRecoveryInformation())
-                {
-                	recoveryRequired = true;
-                    TransactionManager.Reenlist(queueStorage.Id, bytes,
-                        new TransactionEnlistment(queueStorage, () => { }));
-                }
-                actions.Commit();
-            });
+					actions.Commit();
+				});
+			}
+			catch (Exception exception)
+			{
+				logger.Warn("Failed to purge old data from the system", exception);
+			}
+		}
+
+		private void HandleRecovery()
+		{
+			var recoveryRequired = false;
+			queueStorage.Global(actions =>
+			{
+				actions.MarkAllOutgoingInFlightMessagesAsReadyToSend();
+				actions.MarkAllProcessedMessagesWithTransactionsNotRegisterForRecoveryAsReadyToDeliver();
+				foreach (var bytes in actions.GetRecoveryInformation())
+				{
+					recoveryRequired = true;
+					TransactionManager.Reenlist(queueStorage.Id, bytes,
+						new TransactionEnlistment(queueStorage, () => { }));
+				}
+				actions.Commit();
+			});
 			if (recoveryRequired)
 				TransactionManager.RecoveryComplete(queueStorage.Id);
-        }
+		}
 
-        public string Path
-        {
-            get { return path; }
-        }
+		public string Path
+		{
+			get { return path; }
+		}
 
-        public IPEndPoint Endpoint
-        {
-            get { return endpoint; }
-        }
+		public IPEndPoint Endpoint
+		{
+			get { return endpoint; }
+		}
 
-        #region IDisposable Members
+		#region IDisposable Members
 
-        public void Dispose()
-        {
-            wasDisposed = true;
+		public void Dispose()
+		{
+			wasDisposed = true;
 
-            lock (newMessageArrivedLock)
-            {
-                Monitor.PulseAll(newMessageArrivedLock);
-            }
+			lock (newMessageArrivedLock)
+			{
+				Monitor.PulseAll(newMessageArrivedLock);
+			}
 
-            purgeOldDataTimer.Dispose();
+			purgeOldDataTimer.Dispose();
 
-            queuedMessagesSender.Stop();
-            sendingThread.Join();
+			queuedMessagesSender.Stop();
+			sendingThread.Join();
 
-            receiver.Dispose();
+			receiver.Dispose();
 
-            while (currentlyInCriticalReceiveStatus > 0)
-            {
-                Thread.Sleep(TimeSpan.FromSeconds(1));
-            }
+			while (currentlyInCriticalReceiveStatus > 0)
+			{
+				Thread.Sleep(TimeSpan.FromSeconds(1));
+			}
 
-            queueStorage.Dispose();
-        }
+			queueStorage.Dispose();
+		}
 
-        #endregion
+		#endregion
 
-        private void AssertNotDisposed()
-        {
-            if (wasDisposed)
-                throw new ObjectDisposedException("QueueManager");
-        }
+		private void AssertNotDisposed()
+		{
+			if (wasDisposed)
+				throw new ObjectDisposedException("QueueManager");
+		}
 
-        public IQueue GetQueue(string queue)
-        {
-            return new Queue(this, queue);
-        }
+		public void WaitForAllMessagesToBeSent()
+		{
+			waitingForAllMessagesToBeSent = true;
+			try
+			{
+				var hasMessagesToSend = true;
+				do
+				{
+					queueStorage.Send(actions =>
+					{
+						hasMessagesToSend = actions.HasMessagesToSend();
+						actions.Commit();
+					});
+					if (hasMessagesToSend)
+						Thread.Sleep(100);
+				} while (hasMessagesToSend);
+			}
+			finally
+			{
+				waitingForAllMessagesToBeSent = false;
+			}
+		}
 
-        public PersistentMessage[] GetAllMessages(string queueName, string subqueue)
-        {
-            AssertNotDisposed();
-            PersistentMessage[] messages = null;
-            queueStorage.Global(actions =>
-            {
-                messages = actions.GetQueue(queueName).GetAllMessages(subqueue).ToArray();
-                actions.Commit();
-            });
-            return messages;
-        }
+		public IQueue GetQueue(string queue)
+		{
+			return new Queue(this, queue);
+		}
 
-        public HistoryMessage[] GetAllProcessedMessages(string queueName)
-        {
-            AssertNotDisposed();
-            HistoryMessage[] messages = null;
-            queueStorage.Global(actions =>
-            {
-                messages = actions.GetQueue(queueName).GetAllProcessedMessages().ToArray();
-                actions.Commit();
-            });
-            return messages;
-        }
+		public PersistentMessage[] GetAllMessages(string queueName, string subqueue)
+		{
+			AssertNotDisposed();
+			PersistentMessage[] messages = null;
+			queueStorage.Global(actions =>
+			{
+				messages = actions.GetQueue(queueName).GetAllMessages(subqueue).ToArray();
+				actions.Commit();
+			});
+			return messages;
+		}
 
-        public PersistentMessageToSend[] GetAllSentMessages()
-        {
-            AssertNotDisposed();
-            PersistentMessageToSend[] msgs = null;
-            queueStorage.Global(actions =>
-            {
-                msgs = actions.GetSentMessages().ToArray();
+		public HistoryMessage[] GetAllProcessedMessages(string queueName)
+		{
+			AssertNotDisposed();
+			HistoryMessage[] messages = null;
+			queueStorage.Global(actions =>
+			{
+				messages = actions.GetQueue(queueName).GetAllProcessedMessages().ToArray();
+				actions.Commit();
+			});
+			return messages;
+		}
 
-                actions.Commit();
-            });
-            return msgs;
-        }
+		public PersistentMessageToSend[] GetAllSentMessages()
+		{
+			AssertNotDisposed();
+			PersistentMessageToSend[] msgs = null;
+			queueStorage.Global(actions =>
+			{
+				msgs = actions.GetSentMessages().ToArray();
 
-        public PersistentMessageToSend[] GetMessagesCurrentlySending()
-        {
-            AssertNotDisposed();
-            PersistentMessageToSend[] msgs = null;
-            queueStorage.Send(actions =>
-            {
-                msgs = actions.GetMessagesToSend().ToArray();
+				actions.Commit();
+			});
+			return msgs;
+		}
 
-                actions.Commit();
-            });
-            return msgs;
-        }
+		public PersistentMessageToSend[] GetMessagesCurrentlySending()
+		{
+			AssertNotDisposed();
+			PersistentMessageToSend[] msgs = null;
+			queueStorage.Send(actions =>
+			{
+				msgs = actions.GetMessagesToSend().ToArray();
 
-        public Message Peek(string queueName)
-        {
-            return Peek(queueName, null, TimeSpan.FromDays(1));
-        }
+				actions.Commit();
+			});
+			return msgs;
+		}
 
-        public Message Peek(string queueName, TimeSpan timeout)
-        {
-            return Peek(queueName, null, timeout);
-        }
+		public Message Peek(string queueName)
+		{
+			return Peek(queueName, null, TimeSpan.FromDays(1));
+		}
 
-        public Message Peek(string queueName, string subqueue)
-        {
-            return Peek(queueName, subqueue, TimeSpan.FromDays(1));
-        }
+		public Message Peek(string queueName, TimeSpan timeout)
+		{
+			return Peek(queueName, null, timeout);
+		}
 
-        public Message Peek(string queueName, string subqueue, TimeSpan timeout)
-        {
-            var remaining = timeout;
-            while (true)
-            {
-                var message = PeekMessageFromQueue(queueName, subqueue);
-                if (message != null)
-                    return message;
+		public Message Peek(string queueName, string subqueue)
+		{
+			return Peek(queueName, subqueue, TimeSpan.FromDays(1));
+		}
 
-                lock (newMessageArrivedLock)
-                {
-                    message = PeekMessageFromQueue(queueName, subqueue);
-                    if (message != null)
-                        return message;
+		public Message Peek(string queueName, string subqueue, TimeSpan timeout)
+		{
+			var remaining = timeout;
+			while (true)
+			{
+				var message = PeekMessageFromQueue(queueName, subqueue);
+				if (message != null)
+					return message;
 
-                    var sp = Stopwatch.StartNew();
-                    if (Monitor.Wait(newMessageArrivedLock, remaining) == false)
-                        throw new TimeoutException("No message arrived in the specified timeframe " + timeout);
-                    remaining = remaining - sp.Elapsed;
-                }
-            }
-        }
+				lock (newMessageArrivedLock)
+				{
+					message = PeekMessageFromQueue(queueName, subqueue);
+					if (message != null)
+						return message;
 
-        public Message Receive(string queueName)
-        {
-            return Receive(queueName, null, TimeSpan.FromDays(1));
-        }
+					var sp = Stopwatch.StartNew();
+					if (Monitor.Wait(newMessageArrivedLock, remaining) == false)
+						throw new TimeoutException("No message arrived in the specified timeframe " + timeout);
+					remaining = remaining - sp.Elapsed;
+				}
+			}
+		}
 
-        public Message Receive(string queueName, TimeSpan timeout)
-        {
-            return Receive(queueName, null, timeout);
-        }
+		public Message Receive(string queueName)
+		{
+			return Receive(queueName, null, TimeSpan.FromDays(1));
+		}
 
-        public Message Receive(string queueName, string subqueue)
-        {
-            return Receive(queueName, subqueue, TimeSpan.FromDays(1));
-        }
+		public Message Receive(string queueName, TimeSpan timeout)
+		{
+			return Receive(queueName, null, timeout);
+		}
 
-        public Message Receive(string queueName, string subqueue, TimeSpan timeout)
-        {
-            EnsureEnslistment();
+		public Message Receive(string queueName, string subqueue)
+		{
+			return Receive(queueName, subqueue, TimeSpan.FromDays(1));
+		}
 
-            var remaining = timeout;
-            while (true)
-            {
-                var message = GetMessageFromQueue(queueName, subqueue);
-                if (message != null)
-                    return message;
+		public Message Receive(string queueName, string subqueue, TimeSpan timeout)
+		{
+			EnsureEnslistment();
 
-                lock (newMessageArrivedLock)
-                {
-                    message = GetMessageFromQueue(queueName, subqueue);
-                    if (message != null)
-                        return message;
+			var remaining = timeout;
+			while (true)
+			{
+				var message = GetMessageFromQueue(queueName, subqueue);
+				if (message != null)
+					return message;
 
-                    var sp = Stopwatch.StartNew();
-                    if (Monitor.Wait(newMessageArrivedLock, remaining) == false)
-                        throw new TimeoutException("No message arrived in the specified timeframe " + timeout);
-                    remaining = remaining - sp.Elapsed;
-                }
-            }
-        }
+				lock (newMessageArrivedLock)
+				{
+					message = GetMessageFromQueue(queueName, subqueue);
+					if (message != null)
+						return message;
 
-        public MessageId Send(Uri uri, MessagePayload payload)
-        {
-            EnsureEnslistment();
+					var sp = Stopwatch.StartNew();
+					if (Monitor.Wait(newMessageArrivedLock, remaining) == false)
+						throw new TimeoutException("No message arrived in the specified timeframe " + timeout);
+					remaining = remaining - sp.Elapsed;
+				}
+			}
+		}
 
-            var parts = uri.AbsolutePath.Substring(1).Split('/');
-            var queue = parts[0];
-            string subqueue = null;
-            if (parts.Length > 1)
-            {
-                subqueue = string.Join("/", parts.Skip(1).ToArray());
-            }
+		public MessageId Send(Uri uri, MessagePayload payload)
+		{
+			if (waitingForAllMessagesToBeSent)
+				throw new CannotSendWhileWaitingForAllMessagesToBeSentException("Currently waiting for all messages to be sent, so we cannot send. You probably have a race condition in your application.");
 
-            int msgId = 0;
-            queueStorage.Global(actions =>
-            {
-                var port = uri.Port;
-                if (port == -1)
-                    port = 2200;
-                msgId = actions.RegisterToSend(new Endpoint(uri.Host, port), queue,
-                                               subqueue, payload, enlistment.Id);
+			EnsureEnslistment();
 
-                actions.Commit();
-            });
-            return new MessageId
-            {
-                Guid = queueStorage.Id,
-                Number = msgId
-            };
-        }
+			var parts = uri.AbsolutePath.Substring(1).Split('/');
+			var queue = parts[0];
+			string subqueue = null;
+			if (parts.Length > 1)
+			{
+				subqueue = string.Join("/", parts.Skip(1).ToArray());
+			}
 
-        private void EnsureEnslistment()
-        {
-            AssertNotDisposed();
+			Guid msgId = Guid.Empty;
+			queueStorage.Global(actions =>
+			{
+				var port = uri.Port;
+				if (port == -1)
+					port = 2200;
+				msgId = actions.RegisterToSend(new Endpoint(uri.Host, port), queue,
+											   subqueue, payload, Enlistment.Id);
 
-            if (Transaction.Current == null)
-                throw new InvalidOperationException("You must use TransactionScope when using Rhino.Queues");
+				actions.Commit();
+			});
+			return new MessageId
+			{
+				SourceInstanceId = queueStorage.Id,
+				MessageIdentifier = msgId
+			};
+		}
 
-            if (currentlyEnslistedTransaction == Transaction.Current)
-                return;
-            // need to change the enslitment
+		private void EnsureEnslistment()
+		{
+			AssertNotDisposed();
 
-            enlistment = new TransactionEnlistment(queueStorage, () =>
-            {
-                lock (newMessageArrivedLock)
-                {
-                    Monitor.PulseAll(newMessageArrivedLock);
-                }
-            });
-            currentlyEnslistedTransaction = Transaction.Current;
-        }
+			if (Transaction.Current == null)
+				throw new InvalidOperationException("You must use TransactionScope when using Rhino.Queues");
 
-        private PersistentMessage GetMessageFromQueue(string queueName, string subqueue)
-        {
-            AssertNotDisposed();
-            PersistentMessage message = null;
-            queueStorage.Global(actions =>
-            {
-                message = actions.GetQueue(queueName).Dequeue(subqueue);
+			if (CurrentlyEnslistedTransaction == Transaction.Current)
+				return;
+			// need to change the enslitment
 
-                if (message != null)
-                {
-                    actions.RegisterUpdateToReverse(
-                        enlistment.Id,
-                        message.Bookmark,
-                        MessageStatus.ReadyToDeliver,
-                        subqueue);
-                }
+			Enlistment = new TransactionEnlistment(queueStorage, () =>
+			{
+				lock (newMessageArrivedLock)
+				{
+					Monitor.PulseAll(newMessageArrivedLock);
+				}
+			});
+			CurrentlyEnslistedTransaction = Transaction.Current;
+		}
 
-                actions.Commit();
-            });
-            return message;
-        }
+		private PersistentMessage GetMessageFromQueue(string queueName, string subqueue)
+		{
+			AssertNotDisposed();
+			PersistentMessage message = null;
+			queueStorage.Global(actions =>
+			{
+				message = actions.GetQueue(queueName).Dequeue(subqueue);
 
-        private PersistentMessage PeekMessageFromQueue(string queueName, string subqueue)
-        {
-            AssertNotDisposed();
-            PersistentMessage message = null;
-            queueStorage.Global(actions =>
-            {
-                message = actions.GetQueue(queueName).Peek(subqueue);
+				if (message != null)
+				{
+					actions.RegisterUpdateToReverse(
+						Enlistment.Id,
+						message.Bookmark,
+						MessageStatus.ReadyToDeliver,
+						subqueue);
+				}
 
-                actions.Commit();
-            });
-            if (message != null)
-            {
-                logger.DebugFormat("Peeked message with id '{0}' from '{1}/{2}'",
-                                   message.Id, queueName, subqueue);
-            }
-            return message;
-        }
+				actions.Commit();
+			});
+			return message;
+		}
 
-        private IMessageAcceptance AcceptMessages(Message[] msgs)
-        {
-            var bookmarks = new List<MessageBookmark>();
-            queueStorage.Global(actions =>
-            {
-                foreach (var msg in msgs)
-                {
-                    var bookmark = actions.GetQueue(msg.Queue).Enqueue(msg);
-                    bookmarks.Add(bookmark);
-                }
-                actions.Commit();
-            });
+		private PersistentMessage PeekMessageFromQueue(string queueName, string subqueue)
+		{
+			AssertNotDisposed();
+			PersistentMessage message = null;
+			queueStorage.Global(actions =>
+			{
+				message = actions.GetQueue(queueName).Peek(subqueue);
 
-            return new MessageAcceptance(this, bookmarks, queueStorage);
-        }
+				actions.Commit();
+			});
+			if (message != null)
+			{
+				logger.DebugFormat("Peeked message with id '{0}' from '{1}/{2}'",
+								   message.Id, queueName, subqueue);
+			}
+			return message;
+		}
 
-        #region Nested type: MessageAcceptance
+		private IMessageAcceptance AcceptMessages(Message[] msgs)
+		{
+			var bookmarks = new List<MessageBookmark>();
+			queueStorage.Global(actions =>
+			{
+				foreach (var msg in msgs)
+				{
+					var bookmark = actions.GetQueue(msg.Queue).Enqueue(msg);
+					bookmarks.Add(bookmark);
+				}
+				actions.Commit();
+			});
 
-        private class MessageAcceptance : IMessageAcceptance
-        {
-            private readonly IList<MessageBookmark> bookmarks;
-            private readonly QueueManager parent;
-            private readonly QueueStorage queueStorage;
+			return new MessageAcceptance(this, bookmarks, queueStorage);
+		}
 
-            public MessageAcceptance(QueueManager parent, IList<MessageBookmark> bookmarks, QueueStorage queueStorage)
-            {
-                this.parent = parent;
-                this.bookmarks = bookmarks;
-                this.queueStorage = queueStorage;
+		#region Nested type: MessageAcceptance
+
+		private class MessageAcceptance : IMessageAcceptance
+		{
+			private readonly IList<MessageBookmark> bookmarks;
+			private readonly QueueManager parent;
+			private readonly QueueStorage queueStorage;
+
+			public MessageAcceptance(QueueManager parent, IList<MessageBookmark> bookmarks, QueueStorage queueStorage)
+			{
+				this.parent = parent;
+				this.bookmarks = bookmarks;
+				this.queueStorage = queueStorage;
 #pragma warning disable 420
-                Interlocked.Increment(ref parent.currentlyInCriticalReceiveStatus);
+				Interlocked.Increment(ref parent.currentlyInCriticalReceiveStatus);
 #pragma warning restore 420
-            }
+			}
 
-            #region IMessageAcceptance Members
+			#region IMessageAcceptance Members
 
-            public void Commit()
-            {
-                try
-                {
-                    queueStorage.Global(actions =>
-                    {
-                        foreach (var bookmark in bookmarks)
-                        {
-                            actions.GetQueue(bookmark.QueueName)
-                                .SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
-                        }
-                        actions.Commit();
-                    });
+			public void Commit()
+			{
+				try
+				{
+					queueStorage.Global(actions =>
+					{
+						foreach (var bookmark in bookmarks)
+						{
+							actions.GetQueue(bookmark.QueueName)
+								.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
+						}
+						actions.Commit();
+					});
 
-                    lock (parent.newMessageArrivedLock)
-                    {
-                        Monitor.PulseAll(parent.newMessageArrivedLock);
-                    }
-                }
-                finally
-                {
+					lock (parent.newMessageArrivedLock)
+					{
+						Monitor.PulseAll(parent.newMessageArrivedLock);
+					}
+				}
+				finally
+				{
 #pragma warning disable 420
-                    Interlocked.Decrement(ref parent.currentlyInCriticalReceiveStatus);
+					Interlocked.Decrement(ref parent.currentlyInCriticalReceiveStatus);
 #pragma warning restore 420
 
-                }
-            }
+				}
+			}
 
-            public void Abort()
-            {
-                try
-                {
-                    queueStorage.Global(actions =>
-                    {
-                        foreach (var bookmark in bookmarks)
-                        {
-                            actions.GetQueue(bookmark.QueueName)
-                                .Discard(bookmark);
-                        }
-                        actions.Commit();
-                    });
-                }
-                finally
-                {
+			public void Abort()
+			{
+				try
+				{
+					queueStorage.Global(actions =>
+					{
+						foreach (var bookmark in bookmarks)
+						{
+							actions.GetQueue(bookmark.QueueName)
+								.Discard(bookmark);
+						}
+						actions.Commit();
+					});
+				}
+				finally
+				{
 #pragma warning disable 420
-                    Interlocked.Decrement(ref parent.currentlyInCriticalReceiveStatus);
+					Interlocked.Decrement(ref parent.currentlyInCriticalReceiveStatus);
 #pragma warning restore 420
-                }
-            }
+				}
+			}
 
-            #endregion
-        }
+			#endregion
+		}
 
-        #endregion
+		#endregion
 
-        public void CreateQueues(params string[] queueNames)
-        {
-            AssertNotDisposed();
+		public void CreateQueues(params string[] queueNames)
+		{
+			AssertNotDisposed();
 
-            queueStorage.Global(actions =>
-            {
-                foreach (var queueName in queueNames)
-                {
-                    actions.CreateQueueIfDoesNotExists(queueName);
-                }
+			queueStorage.Global(actions =>
+			{
+				foreach (var queueName in queueNames)
+				{
+					actions.CreateQueueIfDoesNotExists(queueName);
+				}
 
-                actions.Commit();
-            });
-        }
+				actions.Commit();
+			});
+		}
 
-        public string[] Queues
-        {
-            get
-            {
-                AssertNotDisposed();
-                string[] queues = null;
-                queueStorage.Global(actions =>
-                {
-                    queues = actions.GetAllQueuesNames();
+		public string[] Queues
+		{
+			get
+			{
+				AssertNotDisposed();
+				string[] queues = null;
+				queueStorage.Global(actions =>
+				{
+					queues = actions.GetAllQueuesNames();
 
-                    actions.Commit();
-                });
-                return queues;
-            }
-        }
+					actions.Commit();
+				});
+				return queues;
+			}
+		}
 
-        public void MoveTo(string subqueue, Message message)
-        {
-            AssertNotDisposed();
-            EnsureEnslistment();
+		public void MoveTo(string subqueue, Message message)
+		{
+			AssertNotDisposed();
+			EnsureEnslistment();
 
-            queueStorage.Global(actions =>
-            {
-                var queue = actions.GetQueue(message.Queue);
-                var bookmark = queue.MoveTo(subqueue, (PersistentMessage)message);
-                actions.RegisterUpdateToReverse(enlistment.Id,
-                    bookmark, MessageStatus.ReadyToDeliver,
-                    message.SubQueue
-                    );
-                actions.Commit();
-            });
-        }
+			queueStorage.Global(actions =>
+			{
+				var queue = actions.GetQueue(message.Queue);
+				var bookmark = queue.MoveTo(subqueue, (PersistentMessage)message);
+				actions.RegisterUpdateToReverse(Enlistment.Id,
+					bookmark, MessageStatus.ReadyToDeliver,
+					message.SubQueue
+					);
+				actions.Commit();
+			});
+		}
 
-        public void EnqueueDirectlyTo(string queue, string subqueue, MessagePayload payload)
-        {
-            EnsureEnslistment();
+		public void EnqueueDirectlyTo(string queue, string subqueue, MessagePayload payload)
+		{
+			EnsureEnslistment();
 
-            queueStorage.Global(actions =>
-            {
-                var queueActions = actions.GetQueue(queue);
+			queueStorage.Global(actions =>
+			{
+				var queueActions = actions.GetQueue(queue);
 
-                var bookmark = queueActions.Enqueue(new PersistentMessage
-                {
-                    Data = payload.Data,
-                    Headers = payload.Headers,
-                    Id = new MessageId
-                    {
-                        Guid = queueStorage.Id,
-                        Number = -1
-                    },
-                    Queue = queue,
-                    SentAt = DateTime.Now,
-                    SubQueue = subqueue,
-                    Status = MessageStatus.EnqueueWait
-                });
-                actions.RegisterUpdateToReverse(enlistment.Id, bookmark, MessageStatus.EnqueueWait, subqueue);
+				var bookmark = queueActions.Enqueue(new PersistentMessage
+				{
+					Data = payload.Data,
+					Headers = payload.Headers,
+					Id = new MessageId
+					{
+						SourceInstanceId = queueStorage.Id,
+						MessageIdentifier = GuidCombGenerator.Generate()
+					},
+					Queue = queue,
+					SentAt = DateTime.Now,
+					SubQueue = subqueue,
+					Status = MessageStatus.EnqueueWait
+				});
+				actions.RegisterUpdateToReverse(Enlistment.Id, bookmark, MessageStatus.EnqueueWait, subqueue);
 
-                actions.Commit();
-            });
-            lock (newMessageArrivedLock)
-            {
-                Monitor.PulseAll(newMessageArrivedLock);
-            }
-        }
+				actions.Commit();
+			});
+			lock (newMessageArrivedLock)
+			{
+				Monitor.PulseAll(newMessageArrivedLock);
+			}
+		}
 
-        public PersistentMessage PeekById(string queueName, MessageId id)
-        {
-            PersistentMessage message = null;
-            queueStorage.Global(actions =>
-            {
-                var queue = actions.GetQueue(queueName);
+		public PersistentMessage PeekById(string queueName, MessageId id)
+		{
+			PersistentMessage message = null;
+			queueStorage.Global(actions =>
+			{
+				var queue = actions.GetQueue(queueName);
 
-                message = queue.PeekById(id);
+				message = queue.PeekById(id);
 
-                actions.Commit();
-            });
-            return message;
-        }
+				actions.Commit();
+			});
+			return message;
+		}
 
-    	public string[] GetSubqueues(string queueName)
-    	{
-    		string[] result = null;
+		public string[] GetSubqueues(string queueName)
+		{
+			string[] result = null;
 			queueStorage.Global(actions =>
 			{
 				var queue = actions.GetQueue(queueName);
@@ -597,8 +628,8 @@ namespace Rhino.Queues
 
 				actions.Commit();
 			});
-    		return result;
-    	}
+			return result;
+		}
 
 		public int GetNumberOfMessages(string queueName)
 		{
@@ -611,11 +642,11 @@ namespace Rhino.Queues
 			return numberOfMsgs;
 		}
 
-    	internal void FailedToSendTo(Endpoint endpointThatWeFailedToSendTo)
-    	{
-    		var action = FailedToSendMessagesTo;
-			if(action!=null)
+		internal void FailedToSendTo(Endpoint endpointThatWeFailedToSendTo)
+		{
+			var action = FailedToSendMessagesTo;
+			if (action != null)
 				action(endpointThatWeFailedToSendTo);
-    	}
-    }
+		}
+	}
 }

@@ -15,6 +15,7 @@ namespace Rhino.Queues.Internal
     	private readonly QueueManager queueManager;
     	private volatile bool continueSending = true;
         private volatile int currentlySendingCount;
+		private object @lock = new object();
 
         public QueuedMessagesSender(QueueStorage queueStorage, QueueManager queueManager)
         {
@@ -28,10 +29,10 @@ namespace Rhino.Queues.Internal
             {
                 IList<PersistentMessage> messages = null;
 
-                var count = currentlySendingCount;
-                if (count > 5)
+            	if (currentlySendingCount > 5)
                 {
-                    Thread.Sleep(TimeSpan.FromSeconds(1));
+					lock (@lock)
+						Monitor.Wait(@lock, TimeSpan.FromSeconds(1));
                     continue;
                 }
 
@@ -45,7 +46,8 @@ namespace Rhino.Queues.Internal
 
                 if (messages.Count == 0)
                 {
-                    Thread.Sleep(TimeSpan.FromSeconds(1));
+					lock (@lock)
+						Monitor.Wait(@lock, TimeSpan.FromSeconds(1));
                     continue;
                 }
 
@@ -123,6 +125,8 @@ namespace Rhino.Queues.Internal
             continueSending = false;
             while (currentlySendingCount > 0)
                 Thread.Sleep(TimeSpan.FromSeconds(1));
+			lock(@lock)
+				Monitor.Pulse(@lock);
         }
     }
 }

@@ -39,9 +39,10 @@ namespace Rhino.Queues.Storage
                 grbit = ColumndefGrbit.ColumnFixed | ColumndefGrbit.ColumnNotNULL
             }, null, 0, out columnid);
 
-            Api.JetAddColumn(session, tableid, "msg_number", new JET_COLUMNDEF
+            Api.JetAddColumn(session, tableid, "msg_id", new JET_COLUMNDEF
             {
-                coltyp = JET_coltyp.Long,
+                coltyp = JET_coltyp.Binary,
+                cbMax = 16,
                 grbit = ColumndefGrbit.ColumnFixed | ColumndefGrbit.ColumnNotNULL
             }, null, 0, out columnid);
 
@@ -110,9 +111,10 @@ namespace Rhino.Queues.Storage
                 grbit = ColumndefGrbit.ColumnFixed | ColumndefGrbit.ColumnNotNULL
             }, null, 0, out columnid);
 
-            Api.JetAddColumn(session, tableid, "msg_number", new JET_COLUMNDEF
+            Api.JetAddColumn(session, tableid, "msg_id", new JET_COLUMNDEF
             {
-                coltyp = JET_coltyp.Long,
+                coltyp = JET_coltyp.Binary,
+                cbMax = 16,
                 grbit = ColumndefGrbit.ColumnFixed | ColumndefGrbit.ColumnNotNULL
             }, null, 0, out columnid);
 
@@ -159,7 +161,7 @@ namespace Rhino.Queues.Storage
             Api.JetCreateIndex(session, tableid, "by_sub_queue", CreateIndexGrbit.None, indexDef, indexDef.Length,
                                100);
 
-            indexDef = "+instance_id\0+msg_number\0\0";
+            indexDef = "+instance_id\0+msg_id\0\0";
             Api.JetCreateIndex(session, tableid, "by_id", CreateIndexGrbit.None, indexDef, indexDef.Length,
                                100);
         }

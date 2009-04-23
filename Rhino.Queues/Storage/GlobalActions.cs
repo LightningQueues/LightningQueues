@@ -9,7 +9,9 @@ using Rhino.Queues.Protocol;
 
 namespace Rhino.Queues.Storage
 {
-    public class GlobalActions : AbstractActions
+	using Utils;
+
+	public class GlobalActions : AbstractActions
     {
         private readonly Guid instanceId;
         private readonly ILog logger = LogManager.GetLogger(typeof(GlobalActions));
@@ -121,14 +123,15 @@ namespace Rhino.Queues.Storage
             } while (Api.TryMoveNext(session, txs));
         }
 
-        public int RegisterToSend(Endpoint destination, string queue, string subQueue, MessagePayload payload, Guid transactionId)
+        public Guid RegisterToSend(Endpoint destination, string queue, string subQueue, MessagePayload payload, Guid transactionId)
         {
             var bookmark = new MessageBookmark();
-            using (var update = new Update(session, outgoing, JET_prep.Insert))
+			var msgId = GuidCombGenerator.Generate();
+			using (var update = new Update(session, outgoing, JET_prep.Insert))
             {
-                Api.SetColumn(session, outgoing, outgoingColumns["tx_id"], transactionId.ToByteArray());
-                Api.SetColumn(session, outgoing, outgoingColumns["address"],
-                              destination.Host, Encoding.Unicode);
+            	Api.SetColumn(session, outgoing, outgoingColumns["msg_id"], msgId.ToByteArray());
+				Api.SetColumn(session, outgoing, outgoingColumns["tx_id"], transactionId.ToByteArray());
+                Api.SetColumn(session, outgoing, outgoingColumns["address"], destination.Host, Encoding.Unicode);
                 Api.SetColumn(session, outgoing, outgoingColumns["port"], destination.Port);
                 Api.SetColumn(session, outgoing, outgoingColumns["time_to_send"], DateTime.Now.ToOADate());
                 Api.SetColumn(session, outgoing, outgoingColumns["sent_at"], DateTime.Now.ToOADate());
@@ -144,7 +147,6 @@ namespace Rhino.Queues.Storage
                 update.Save(bookmark.Bookmark, bookmark.Size, out bookmark.Size);
             }
             Api.JetGotoBookmark(session, outgoing, bookmark.Bookmark, bookmark.Size);
-            var msgId = Api.RetrieveColumnAsInt32(session, outgoing, outgoingColumns["msg_id"]).Value;
             logger.DebugFormat("Created output message '{0}' for 'rhino.queues://{1}:{2}/{3}/{4}' as NotReady",
                 msgId,
                 destination.Host,
@@ -309,8 +311,8 @@ namespace Rhino.Queues.Storage
                 {
                     Id = new MessageId
                     {
-                        Guid = instanceId,
-                        Number = Api.RetrieveColumnAsInt32(session, outgoingHistory, outgoingHistoryColumns["msg_id"]).Value
+                        SourceInstanceId = instanceId,
+                        MessageIdentifier = new Guid(Api.RetrieveColumn(session, outgoingHistory, outgoingHistoryColumns["msg_id"]))
                     },
                     OutgoingStatus = (OutgoingMessageStatus)Api.RetrieveColumnAsInt32(session, outgoingHistory, outgoingHistoryColumns["send_status"]).Value,
                     Endpoint = new Endpoint(address, port),

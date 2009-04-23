@@ -1,4 +1,4 @@
-namespace Rhino.Queues.Tests
+namespace Rhino.Queues.Tests.FromUsers
 {
 	using System;
 	using System.IO;
@@ -15,14 +15,14 @@ namespace Rhino.Queues.Tests
 	{
 		private readonly QueueManager queueManager;
 
-        public QueueIsAsync()
-        {
-            if (Directory.Exists("test.esent"))
-                Directory.Delete("test.esent", true);
+		public QueueIsAsync()
+		{
+			if (Directory.Exists("test.esent"))
+				Directory.Delete("test.esent", true);
 
-            queueManager = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23456), "test.esent");
-            queueManager.CreateQueues("h");
-        }
+			queueManager = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23456), "test.esent");
+			queueManager.CreateQueues("h");
+		}
 
 		[Fact]
 		public void CanReceiveFromQueue()
@@ -35,15 +35,15 @@ namespace Rhino.Queues.Tests
 					Failure = exception => Assert.False(true),
 					Success = () => null,
 					Messages = new[]
-				{
-					new Message
 					{
-						Id = MessageId.GenerateRandom(),
-						Queue = "h",
-						Data = Encoding.Unicode.GetBytes("hello-" + i),
-						SentAt = DateTime.Now
-					},
-				}
+						new Message
+						{
+							Id = MessageId.GenerateRandom(),
+							Queue = "h",
+							Data = Encoding.Unicode.GetBytes("hello-" + i),
+							SentAt = DateTime.Now
+						},
+					}
 				}.Send();
 			}
 			var longTx = new ManualResetEvent(false);
