@@ -16,16 +16,18 @@ namespace Rhino.Queues.Storage
         protected Dictionary<string, JET_COLUMNID> outgoingColumns;
 		protected Dictionary<string, JET_COLUMNID> subqueuesColumns;
         protected Dictionary<string, JET_COLUMNID> outgoingHistoryColumns;
-        protected Session session;
+		protected Dictionary<string, JET_COLUMNID> recveivedMsgsColumns;
+		protected Session session;
         protected Transaction transaction;
         protected Table txs;
         protected Table outgoing;
         protected Table outgoingHistory;
-        protected Dictionary<string, JET_COLUMNID> txsColumns;
+		protected Table recveivedMsgs;
+		protected Dictionary<string, JET_COLUMNID> txsColumns;
         protected Dictionary<string, JET_COLUMNID> queuesColumns;
         protected readonly Dictionary<string, QueueActions> queuesByName = new Dictionary<string, QueueActions>();
 
-        protected AbstractActions(JET_INSTANCE instance, string database)
+    	protected AbstractActions(JET_INSTANCE instance, string database)
         {
             session = new Session(instance);
 
@@ -38,6 +40,7 @@ namespace Rhino.Queues.Storage
             recovery = new Table(session, dbid, "recovery", OpenTableGrbit.None);
             outgoing = new Table(session, dbid, "outgoing", OpenTableGrbit.None);
             outgoingHistory = new Table(session, dbid, "outgoing_history", OpenTableGrbit.None);
+        	recveivedMsgs = new Table(session, dbid, "recveived_msgs", OpenTableGrbit.None);
 
             queuesColumns = Api.GetColumnDictionary(session, queues);
         	subqueuesColumns = Api.GetColumnDictionary(session, subqueues);
@@ -45,6 +48,7 @@ namespace Rhino.Queues.Storage
             recoveryColumns = Api.GetColumnDictionary(session, recovery);
             outgoingColumns = Api.GetColumnDictionary(session, outgoing);
             outgoingHistoryColumns = Api.GetColumnDictionary(session, outgoingHistory);
+    		recveivedMsgsColumns = Api.GetColumnDictionary(session, recveivedMsgs);
         }
 
         public QueueActions GetQueue(string queueName)
@@ -140,6 +144,8 @@ namespace Rhino.Queues.Storage
                 outgoing.Dispose();
             if (outgoingHistory != null)
                 outgoingHistory.Dispose();
+			if (recveivedMsgs != null)
+				recveivedMsgs.Dispose();
 
             if (Equals(dbid, JET_DBID.Nil) == false)
                 Api.JetCloseDatabase(session, dbid, CloseDatabaseGrbit.None);

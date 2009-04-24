@@ -54,7 +54,7 @@ namespace Rhino.Queues.Storage
                 var persistentMessage = message as PersistentMessage;
                 if (persistentMessage != null)
                     messageStatus = persistentMessage.Status;
-
+				
                 Api.SetColumn(session, msgs, msgsColumns["timestamp"], message.SentAt.ToOADate());
                 Api.SetColumn(session, msgs, msgsColumns["data"], message.Data);
                 Api.SetColumn(session, msgs, msgsColumns["instance_id"], message.Id.SourceInstanceId.ToByteArray());
@@ -82,12 +82,12 @@ namespace Rhino.Queues.Storage
         public PersistentMessage Dequeue(string subqueue)
         {
             Api.JetSetCurrentIndex(session, msgs, "by_sub_queue");
-            Api.MakeKey(session, msgs, subqueue, Encoding.Unicode, MakeKeyGrbit.NewKey);
+			Api.MakeKey(session, msgs, subqueue, Encoding.Unicode, MakeKeyGrbit.NewKey);
 
-            if (Api.TrySeek(session, msgs, SeekGrbit.SeekEQ) == false)
-                return null;
+			if (Api.TrySeek(session, msgs, SeekGrbit.SeekGE) == false)
+				return null;
 
-            Api.MakeKey(session, msgs, subqueue, Encoding.Unicode, MakeKeyGrbit.NewKey);
+            Api.MakeKey(session, msgs, subqueue, Encoding.Unicode, MakeKeyGrbit.NewKey|MakeKeyGrbit.FullColumnEndLimit);
             Api.JetSetIndexRange(session, msgs, SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
 
             do
@@ -220,9 +220,9 @@ namespace Rhino.Queues.Storage
         {
             Api.JetSetCurrentIndex(session, msgs, "by_sub_queue");
             Api.MakeKey(session, msgs, subQueue, Encoding.Unicode, MakeKeyGrbit.NewKey);
-            if (Api.TrySeek(session, msgs, SeekGrbit.SeekEQ) == false)
+            if (Api.TrySeek(session, msgs, SeekGrbit.SeekGE) == false)
                 yield break;
-            Api.MakeKey(session, msgs, subQueue, Encoding.Unicode, MakeKeyGrbit.NewKey);
+            Api.MakeKey(session, msgs, subQueue, Encoding.Unicode, MakeKeyGrbit.NewKey|MakeKeyGrbit.FullColumnEndLimit);
             Api.JetSetIndexRange(session, msgs, SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
             do
             {

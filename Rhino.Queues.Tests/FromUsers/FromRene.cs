@@ -50,6 +50,7 @@ namespace Rhino.Queues.Tests.FromUsers
 				sender.WaitForAllMessagesToBeSent();
 			}
 		}
+
 		public void Receiver(object ignored)
 		{
 			while (keepRunning)
@@ -62,6 +63,10 @@ namespace Rhino.Queues.Tests.FromUsers
 						msg = receiver.Receive("uno", null, new TimeSpan(0, 0, 10));
 					}
 					catch (TimeoutException)
+					{
+						continue;
+					}
+					catch(ObjectDisposedException)
 					{
 						continue;
 					}
@@ -104,6 +109,7 @@ namespace Rhino.Queues.Tests.FromUsers
 
 		public void Dispose()
 		{
+			receiver.Dispose();
 		}
 	}
 }

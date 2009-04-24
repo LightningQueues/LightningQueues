@@ -69,6 +69,47 @@ namespace Rhino.Queues.Tests
             }
         }
 
+		[Fact]
+		public void WhenSendingDuplicateMessageTwiceWillGetItOnlyOnce()
+		{
+			var msg = new Message
+			{
+				Id = MessageId.GenerateRandom(),
+				Queue = "h",
+				Data = Encoding.Unicode.GetBytes("hello"),
+				SentAt = DateTime.Now
+			};
+			for (int i = 0; i < 2; i++)
+			{
+				var wait = new ManualResetEvent(false);
+				var sender = new Sender
+				{
+					Destination = new Endpoint("localhost", 23456),
+					Failure = exception => Assert.False(true),
+					Success = () => null,
+					Messages = new[] { msg, },
+				};
+				sender.SendCompleted += () => wait.Set();
+				sender.Send();
+				wait.WaitOne();
+			}
+
+			using (var tx = new TransactionScope())
+			{
+				var message = queueManager.Receive("h", null);
+				Assert.Equal("hello", Encoding.Unicode.GetString(message.Data));
+
+				tx.Complete();
+			}
+
+			using (var tx = new TransactionScope())
+			{
+				Assert.Throws<TimeoutException>(() => queueManager.Receive("h", null, TimeSpan.Zero));
+
+				tx.Complete();
+			}
+		}
+
         [Fact]
         public void WhenRevertingTransactionMessageGoesBackToQueue()
         {

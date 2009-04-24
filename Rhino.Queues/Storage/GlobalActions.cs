@@ -347,5 +347,53 @@ namespace Rhino.Queues.Storage
     		                    zero, zero.Length, bytes, bytes.Length, out actual, EscrowUpdateGrbit.None);
     		return BitConverter.ToInt32(bytes, 0);
     	}
+
+		public IEnumerable<MessageId> GetAlreadyReceivedMessageIds()
+		{
+			Api.MoveBeforeFirst(session, recveivedMsgs);
+			while(Api.TryMoveNext(session, recveivedMsgs))
+			{
+				yield return new MessageId
+				{
+					SourceInstanceId = new Guid(Api.RetrieveColumn(session, recveivedMsgs, recveivedMsgsColumns["instance_id"])),
+					MessageIdentifier = new Guid(Api.RetrieveColumn(session, recveivedMsgs, recveivedMsgsColumns["msg_id"])),
+				};
+			}
+		}
+
+		public void MarkReceived(MessageId id)
+		{
+			using(var update = new Update(session, recveivedMsgs, JET_prep.Insert))
+			{
+                Api.SetColumn(session, recveivedMsgs, recveivedMsgsColumns["instance_id"], id.SourceInstanceId.ToByteArray());
+				Api.SetColumn(session, recveivedMsgs, recveivedMsgsColumns["msg_id"], id.MessageIdentifier.ToByteArray());
+
+				update.Save();
+			}
+		}
+
+		public IEnumerable<MessageId> DeleteOldestReceivedMessages(int numberOfItemsToKeep)
+		{
+			Api.MoveAfterLast(session, recveivedMsgs);
+			try
+			{
+				Api.JetMove(session, recveivedMsgs, -numberOfItemsToKeep, MoveGrbit.None);
+			}
+			catch (EsentErrorException e)
+			{
+				if (e.Error == JET_err.NoCurrentRecord)
+					yield break;
+				throw;
+			}
+			while(Api.TryMovePrevious(session, recveivedMsgs))
+			{
+				yield return new MessageId
+				{
+					SourceInstanceId = new Guid(Api.RetrieveColumn(session, recveivedMsgs, recveivedMsgsColumns["instance_id"])),
+					MessageIdentifier = new Guid(Api.RetrieveColumn(session, recveivedMsgs, recveivedMsgsColumns["msg_id"])),
+				}; 
+				Api.JetDelete(session, recveivedMsgs);
+			}
+		}
     }
 }

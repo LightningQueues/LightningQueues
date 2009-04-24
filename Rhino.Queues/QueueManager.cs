@@ -26,6 +26,7 @@ namespace Rhino.Queues
 
 		private volatile bool wasDisposed;
 		private volatile int currentlyInCriticalReceiveStatus;
+		private volatile int currentlyInsideTransaction;
 		private readonly IPEndPoint endpoint;
 		private readonly object newMessageArrivedLock = new object();
 		private readonly string path;
@@ -37,6 +38,9 @@ namespace Rhino.Queues
 		private readonly ILog logger = LogManager.GetLogger(typeof(QueueManager));
 		private volatile bool waitingForAllMessagesToBeSent;
 
+		private readonly ThreadSafeSet<MessageId> receivedMsgs = new ThreadSafeSet<MessageId>();
+
+		public int NumberOfReceivedMessagesToKeep { get; set; }
 		public int? NumberOfMessagesToKeepInProcessedQueues { get; set; }
 		public int? NumberOfMessagesToKeepOutgoingQueues { get; set; }
 
@@ -49,6 +53,7 @@ namespace Rhino.Queues
 		{
 			NumberOfMessagesToKeepInProcessedQueues = 100;
 			NumberOfMessagesToKeepOutgoingQueues = 100;
+			NumberOfReceivedMessagesToKeep = 100000;
 			OldestMessageInProcessedQueues = TimeSpan.FromDays(3);
 			OldestMessageInOutgoingQueues = TimeSpan.FromDays(3);
 
@@ -56,6 +61,13 @@ namespace Rhino.Queues
 			this.path = path;
 			queueStorage = new QueueStorage(path);
 			queueStorage.Initialize();
+
+			queueStorage.Global(actions =>
+			{
+				receivedMsgs.Add(actions.GetAlreadyReceivedMessageIds());
+
+				actions.Commit();
+			});
 
 			receiver = new Receiver(endpoint, AcceptMessages);
 			receiver.Start();
@@ -110,6 +122,8 @@ namespace Rhino.Queues
 						actions.DeleteMessageToSendHistoric(sentMessage.Bookmark);
 					}
 
+					receivedMsgs.Remove(actions.DeleteOldestReceivedMessages(NumberOfReceivedMessagesToKeep));
+
 					actions.Commit();
 				});
 			}
@@ -130,7 +144,7 @@ namespace Rhino.Queues
 				{
 					recoveryRequired = true;
 					TransactionManager.Reenlist(queueStorage.Id, bytes,
-						new TransactionEnlistment(queueStorage, () => { }));
+						new TransactionEnlistment(queueStorage, () => { }, () => { }));
 				}
 				actions.Commit();
 			});
@@ -152,6 +166,9 @@ namespace Rhino.Queues
 
 		public void Dispose()
 		{
+			if (wasDisposed)
+				return;
+
 			wasDisposed = true;
 
 			lock (newMessageArrivedLock)
@@ -168,9 +185,15 @@ namespace Rhino.Queues
 
 			while (currentlyInCriticalReceiveStatus > 0)
 			{
+				logger.WarnFormat("Waiting for {0} messages that are currently in critical receive status", currentlyInCriticalReceiveStatus);
 				Thread.Sleep(TimeSpan.FromSeconds(1));
 			}
 
+			while (currentlyInsideTransaction > 0 )
+			{
+				logger.WarnFormat("Waiting for {0} transactions currently running", currentlyInsideTransaction);
+				Thread.Sleep(TimeSpan.FromSeconds(1));
+			}
 			queueStorage.Dispose();
 		}
 
@@ -381,14 +404,19 @@ namespace Rhino.Queues
 			if (CurrentlyEnslistedTransaction == Transaction.Current)
 				return;
 			// need to change the enslitment
-
+#pragma warning disable 420
+			Interlocked.Increment(ref currentlyInsideTransaction);
+#pragma warning restore 420
 			Enlistment = new TransactionEnlistment(queueStorage, () =>
 			{
 				lock (newMessageArrivedLock)
 				{
 					Monitor.PulseAll(newMessageArrivedLock);
 				}
-			});
+#pragma warning disable 420
+				Interlocked.Decrement(ref currentlyInsideTransaction);
+#pragma warning restore 420
+			}, AssertNotDisposed);
 			CurrentlyEnslistedTransaction = Transaction.Current;
 		}
 
@@ -437,15 +465,16 @@ namespace Rhino.Queues
 			var bookmarks = new List<MessageBookmark>();
 			queueStorage.Global(actions =>
 			{
-				foreach (var msg in msgs)
+				foreach (var msg in receivedMsgs.Filter(msgs,message => message.Id))
 				{
-					var bookmark = actions.GetQueue(msg.Queue).Enqueue(msg);
+					var queue = actions.GetQueue(msg.Queue);
+					var bookmark = queue.Enqueue(msg);
 					bookmarks.Add(bookmark);
 				}
 				actions.Commit();
 			});
-
-			return new MessageAcceptance(this, bookmarks, queueStorage);
+			var msgIds = msgs.Select(m=>m.Id).ToArray();
+			return new MessageAcceptance(this, bookmarks, msgIds, queueStorage);
 		}
 
 		#region Nested type: MessageAcceptance
@@ -453,13 +482,18 @@ namespace Rhino.Queues
 		private class MessageAcceptance : IMessageAcceptance
 		{
 			private readonly IList<MessageBookmark> bookmarks;
+			private readonly IEnumerable<MessageId> messageIds;
 			private readonly QueueManager parent;
 			private readonly QueueStorage queueStorage;
 
-			public MessageAcceptance(QueueManager parent, IList<MessageBookmark> bookmarks, QueueStorage queueStorage)
+			public MessageAcceptance(QueueManager parent,
+				IList<MessageBookmark> bookmarks, 
+				IEnumerable<MessageId> messageIds,
+				QueueStorage queueStorage)
 			{
 				this.parent = parent;
 				this.bookmarks = bookmarks;
+				this.messageIds = messageIds;
 				this.queueStorage = queueStorage;
 #pragma warning disable 420
 				Interlocked.Increment(ref parent.currentlyInCriticalReceiveStatus);
@@ -472,6 +506,7 @@ namespace Rhino.Queues
 			{
 				try
 				{
+					parent.AssertNotDisposed();
 					queueStorage.Global(actions =>
 					{
 						foreach (var bookmark in bookmarks)
@@ -479,8 +514,13 @@ namespace Rhino.Queues
 							actions.GetQueue(bookmark.QueueName)
 								.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
 						}
+						foreach (var id in messageIds)
+						{
+							actions.MarkReceived(id);
+						}
 						actions.Commit();
 					});
+					parent.receivedMsgs.Add(messageIds);
 
 					lock (parent.newMessageArrivedLock)
 					{
@@ -500,6 +540,7 @@ namespace Rhino.Queues
 			{
 				try
 				{
+					parent.AssertNotDisposed(); 
 					queueStorage.Global(actions =>
 					{
 						foreach (var bookmark in bookmarks)

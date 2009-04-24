@@ -157,7 +157,7 @@ namespace Rhino.Queues.Storage
             Api.JetCreateIndex(session, tableid, "pk", CreateIndexGrbit.IndexPrimary, indexDef, indexDef.Length,
                                100);
 
-            indexDef = "+subqueue\0\0";
+			indexDef = "+subqueue\0+timestamp\0\0";
             Api.JetCreateIndex(session, tableid, "by_sub_queue", CreateIndexGrbit.None, indexDef, indexDef.Length,
                                100);
 

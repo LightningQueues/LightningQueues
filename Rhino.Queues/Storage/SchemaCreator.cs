@@ -7,7 +7,7 @@ namespace Rhino.Queues.Storage
     public class SchemaCreator
     {
         private readonly Session session;
-        public const string SchemaVersion = "1.7";
+        public const string SchemaVersion = "1.8";
 
         public SchemaCreator(Session session)
         {
@@ -29,6 +29,7 @@ namespace Rhino.Queues.Storage
                     CreateRecoveryTable(dbid);
                     CreateOutgoingTable(dbid);
                     CreateOutgoingHistoryTable(dbid);
+                	CreateReceivedMessagesTable(dbid);
 
                     tx.Commit(CommitTransactionGrbit.None);
                 }
@@ -426,5 +427,37 @@ namespace Rhino.Queues.Storage
             Api.JetCreateIndex(session, tableid, "pk", CreateIndexGrbit.IndexPrimary, indexDef, indexDef.Length,
                                100);
         }
+
+		private void CreateReceivedMessagesTable(JET_DBID dbid)
+		{
+			JET_TABLEID tableid;
+			Api.JetCreateTable(session, dbid, "recveived_msgs", 16, 100, out tableid);
+			JET_COLUMNID columnid;
+
+			Api.JetAddColumn(session, tableid, "local_id", new JET_COLUMNDEF
+			{
+				coltyp = JET_coltyp.Long,
+				grbit = ColumndefGrbit.ColumnFixed | ColumndefGrbit.ColumnNotNULL | ColumndefGrbit.ColumnAutoincrement
+			}, null, 0, out columnid);
+
+			Api.JetAddColumn(session, tableid, "instance_id", new JET_COLUMNDEF
+			{
+				coltyp = JET_coltyp.Binary,
+				cbMax = 16,
+				grbit = ColumndefGrbit.ColumnFixed | ColumndefGrbit.ColumnNotNULL
+			}, null, 0, out columnid);
+
+			Api.JetAddColumn(session, tableid, "msg_id", new JET_COLUMNDEF
+			{
+				coltyp = JET_coltyp.Binary,
+				cbMax = 16,
+				grbit = ColumndefGrbit.ColumnFixed | ColumndefGrbit.ColumnNotNULL
+			}, null, 0, out columnid);
+
+
+			const string indexDef = "+local_id\0\0";
+			Api.JetCreateIndex(session, tableid, "pk", CreateIndexGrbit.IndexPrimary, indexDef, indexDef.Length,
+							   100);
+		}
     }
 }

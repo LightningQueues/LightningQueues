@@ -248,6 +248,7 @@ namespace Rhino.Queues.Protocol
                             var revert = Encoding.Unicode.GetString(buffer);
                             if (revert == ProtocolConstants.Revert)
                             {
+                            	logger.Warn("Got back revert message from receiver, reverting send");
                                 Revert(bookmarks);
                             }
                         }

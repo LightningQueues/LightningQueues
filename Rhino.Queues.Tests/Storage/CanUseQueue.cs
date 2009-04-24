@@ -6,7 +6,9 @@ using Xunit;
 
 namespace Rhino.Queues.Tests.Storage
 {
-    public class CanUseQueue
+	using System.Linq;
+
+	public class CanUseQueue
     {
         public CanUseQueue()
         {
@@ -22,6 +24,114 @@ namespace Rhino.Queues.Tests.Storage
                 qf.Initialize();
             }
         }
+
+		[Fact]
+		public void CanRegisterReceivedMessageIds()
+		{
+			using (var qf = new QueueStorage("test.esent"))
+			{
+				qf.Initialize();
+
+					var random = MessageId.GenerateRandom();
+				qf.Global(actions =>
+				{
+					actions.MarkReceived(random);
+
+					actions.Commit();
+				});
+
+				qf.Global(actions =>
+				{
+					Assert.True(actions.GetAlreadyReceivedMessageIds().Contains(random));
+
+					actions.Commit();
+				});
+			}
+		}
+
+
+		[Fact]
+		public void CanDeleteOldEntries()
+		{
+			using (var qf = new QueueStorage("test.esent"))
+			{
+				qf.Initialize();
+
+				var random = MessageId.GenerateRandom();
+				qf.Global(actions =>
+				{
+					for (int i = 0; i < 5; i++)
+					{
+						actions.MarkReceived(MessageId.GenerateRandom());
+					} 
+					actions.MarkReceived(random);
+
+					for (int i = 0; i < 5; i++)
+					{
+						actions.MarkReceived(MessageId.GenerateRandom());
+					}
+
+					actions.Commit();
+				});
+
+				
+				qf.Global(actions =>
+				{
+					actions.DeleteOldestReceivedMessages(6).ToArray();//consume & activate
+
+					actions.Commit();
+				});
+
+				qf.Global(actions =>
+				{
+					var array = actions.GetAlreadyReceivedMessageIds().ToArray();
+					Assert.Equal(6, array.Length);
+					Assert.Equal(random, array[0]);
+
+					actions.Commit();
+				});
+			}
+		}
+
+		[Fact]
+		public void CallingDeleteOldEntriesIsSafeIfThereAreNotEnoughEntries()
+		{
+			using (var qf = new QueueStorage("test.esent"))
+			{
+				qf.Initialize();
+
+				var random = MessageId.GenerateRandom();
+				qf.Global(actions =>
+				{
+					for (int i = 0; i < 5; i++)
+					{
+						actions.MarkReceived(MessageId.GenerateRandom());
+					}
+					actions.MarkReceived(random);
+
+					actions.Commit();
+				});
+
+
+				qf.Global(actions =>
+				{
+					actions.DeleteOldestReceivedMessages(10).ToArray();//consume & activate
+
+					actions.Commit();
+				});
+
+				qf.Global(actions =>
+				{
+					var array = actions.GetAlreadyReceivedMessageIds().ToArray();
+					Assert.Equal(6, array.Length);
+					Assert.Equal(random, array[5]);
+
+					actions.Commit();
+				});
+
+
+			}
+		}
 
         [Fact]
         public void CanPutSingleMessageInQueue()
