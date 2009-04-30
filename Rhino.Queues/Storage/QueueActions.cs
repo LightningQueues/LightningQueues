@@ -320,10 +320,10 @@ namespace Rhino.Queues.Storage
             Api.JetSetCurrentIndex(session, msgs, "by_sub_queue");
             Api.MakeKey(session, msgs, subqueue, Encoding.Unicode, MakeKeyGrbit.NewKey);
 
-            if (Api.TrySeek(session, msgs, SeekGrbit.SeekEQ) == false)
+            if (Api.TrySeek(session, msgs, SeekGrbit.SeekGE) == false)
                 return null;
 
-            Api.MakeKey(session, msgs, subqueue, Encoding.Unicode, MakeKeyGrbit.NewKey);
+            Api.MakeKey(session, msgs, subqueue, Encoding.Unicode, MakeKeyGrbit.NewKey | MakeKeyGrbit.FullColumnEndLimit);
             Api.JetSetIndexRange(session, msgs, SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
 
             do
