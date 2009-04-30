@@ -19,10 +19,14 @@ namespace Rhino.Queues.Internal
             this.onCompelete = onCompelete;
         	this.assertNotDisposed = assertNotDisposed;
 
-        	Transaction.Current.EnlistDurable(queueStorage.Id,
-                                              this,
-                                              EnlistmentOptions.None);
-            Id = Guid.NewGuid();
+        	var transaction = Transaction.Current;
+			if (transaction != null)// should happen only during recovery
+			{
+				transaction.EnlistDurable(queueStorage.Id,
+				                          this,
+				                          EnlistmentOptions.None);
+			}
+        	Id = Guid.NewGuid();
             logger.DebugFormat("Enlisting in the current transaction with enlistment id: {0}", Id);
         }
 

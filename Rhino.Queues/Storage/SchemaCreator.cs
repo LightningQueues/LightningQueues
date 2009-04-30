@@ -294,9 +294,9 @@ namespace Rhino.Queues.Storage
 
             Api.JetAddColumn(session, tableid, "recovery_info", new JET_COLUMNDEF
             {
-                cbMax = 255,
-                coltyp = JET_coltyp.Binary,
-                grbit = ColumndefGrbit.ColumnNotNULL
+                cbMax = 1024,
+                coltyp = JET_coltyp.LongBinary,
+                grbit = ColumndefGrbit.ColumnNotNULL 
             }, null, 0, out columnid);
 
             const string indexDef = "+tx_id\0\0";
