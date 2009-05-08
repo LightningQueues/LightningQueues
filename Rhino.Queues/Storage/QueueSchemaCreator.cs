@@ -70,7 +70,7 @@ namespace Rhino.Queues.Storage
             {
                 coltyp = JET_coltyp.LongBinary,
                 // For Win2k3 support, it doesn't support long binary columsn that are not null
-                //grbit = ColumndefGrbit.ColumnNotNULL
+                grbit = ColumndefGrbit.None
             }, null, 0, out columnid);
 
             Api.JetAddColumn(session, tableid, "status", new JET_COLUMNDEF
@@ -136,7 +136,7 @@ namespace Rhino.Queues.Storage
             {
                 coltyp = JET_coltyp.LongBinary,
                 // For Win2k3 support, it doesn't support long binary columsn that are not null
-                //grbit = ColumndefGrbit.ColumnNotNULL
+                grbit = ColumndefGrbit.None
             }, null, 0, out columnid);
 
             Api.JetAddColumn(session, tableid, "status", new JET_COLUMNDEF

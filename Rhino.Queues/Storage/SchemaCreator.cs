@@ -164,6 +164,8 @@ namespace Rhino.Queues.Storage
             Api.JetAddColumn(session, tableid, "data", new JET_COLUMNDEF
             {
                 coltyp = JET_coltyp.LongBinary,
+				// For Win2k3 support, it doesn't support long binary columsn that are not null
+				grbit = ColumndefGrbit.None
             }, null, 0, out columnid);
 
             var indexDef = "+msg_id\0\0";
@@ -268,6 +270,8 @@ namespace Rhino.Queues.Storage
             Api.JetAddColumn(session, tableid, "data", new JET_COLUMNDEF
             {
                 coltyp = JET_coltyp.LongBinary,
+				// For Win2k3 support, it doesn't support long binary columsn that are not null
+				grbit = ColumndefGrbit.None
             }, null, 0, out columnid);
 
             var indexDef = "+msg_id\0\0";
@@ -296,7 +300,8 @@ namespace Rhino.Queues.Storage
             {
                 cbMax = 1024,
                 coltyp = JET_coltyp.LongBinary,
-                grbit = ColumndefGrbit.None
+				// For Win2k3 support, it doesn't support long binary columsn that are not null
+				grbit = ColumndefGrbit.None
             }, null, 0, out columnid);
 
             const string indexDef = "+tx_id\0\0";
