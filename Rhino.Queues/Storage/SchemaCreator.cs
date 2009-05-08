@@ -296,7 +296,7 @@ namespace Rhino.Queues.Storage
             {
                 cbMax = 1024,
                 coltyp = JET_coltyp.LongBinary,
-                grbit = ColumndefGrbit.ColumnNotNULL 
+                grbit = ColumndefGrbit.None
             }, null, 0, out columnid);
 
             const string indexDef = "+tx_id\0\0";
