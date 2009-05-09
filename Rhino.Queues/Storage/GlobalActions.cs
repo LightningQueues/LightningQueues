@@ -89,7 +89,16 @@ namespace Rhino.Queues.Storage
             if (Api.TrySeek(session, txs, SeekGrbit.SeekEQ) == false)
                 return;
             Api.MakeKey(session, txs, transactionId.ToByteArray(), MakeKeyGrbit.NewKey);
-            Api.JetSetIndexRange(session, txs, SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
+        	try
+        	{
+        		Api.JetSetIndexRange(session, txs, SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
+        	}
+        	catch (EsentErrorException e)
+        	{
+				if (e.Error != JET_err.NoCurrentRecord)
+					throw;
+        		return;
+        	}
 
             do
             {
@@ -165,8 +174,17 @@ namespace Rhino.Queues.Storage
             if (Api.TrySeek(session, outgoing, SeekGrbit.SeekEQ) == false)
                 return;
             Api.MakeKey(session, outgoing, transactionId.ToByteArray(), MakeKeyGrbit.NewKey);
-            Api.JetSetIndexRange(session, outgoing,
-                                 SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
+        	try
+        	{
+        		Api.JetSetIndexRange(session, outgoing,
+        		                     SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
+        	}
+        	catch (EsentErrorException e)
+        	{
+				if (e.Error!=JET_err.NoCurrentRecord)
+					throw;
+        		return;
+        	}
             do
             {
                 using (var update = new Update(session, outgoing, JET_prep.Replace))
@@ -188,9 +206,18 @@ namespace Rhino.Queues.Storage
             if (Api.TrySeek(session, outgoing, SeekGrbit.SeekEQ) == false)
                 return;
             Api.MakeKey(session, outgoing, transactionId.ToByteArray(), MakeKeyGrbit.NewKey);
-            Api.JetSetIndexRange(session, outgoing,
-                                 SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
-            do
+        	try
+        	{
+        		Api.JetSetIndexRange(session, outgoing,
+        		                     SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
+        	}
+        	catch (EsentErrorException e)
+        	{
+				if (e.Error!=JET_err.NoCurrentRecord)
+					throw;
+        		return;
+        	}
+        	do
             {
                 logger.DebugFormat("Deleting output message {0}",
                     Api.RetrieveColumnAsInt32(session, outgoing, outgoingColumns["msg_id"]).Value);
@@ -251,7 +278,16 @@ namespace Rhino.Queues.Storage
                 return;
 
             Api.MakeKey(session, txs, transactionId.ToByteArray(), MakeKeyGrbit.NewKey);
-            Api.JetSetIndexRange(session, txs, SetIndexRangeGrbit.RangeUpperLimit | SetIndexRangeGrbit.RangeInclusive);
+        	try
+        	{
+        		Api.JetSetIndexRange(session, txs, SetIndexRangeGrbit.RangeUpperLimit | SetIndexRangeGrbit.RangeInclusive);
+        	}
+			catch (EsentErrorException e)
+			{
+				if (e.Error != JET_err.NoCurrentRecord)
+					throw;
+				return;
+			}
 
             do
             {

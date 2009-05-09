@@ -81,7 +81,16 @@ namespace Rhino.Queues.Storage
 				return list.ToArray();
 
 			Api.MakeKey(session, subqueues, queueName, Encoding.Unicode, MakeKeyGrbit.NewKey);
-			Api.JetSetIndexRange(session, subqueues, SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
+			try
+			{
+				Api.JetSetIndexRange(session, subqueues, SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
+			}
+			catch (EsentErrorException e)
+			{
+				if (e.Error !=JET_err.NoCurrentRecord)
+					throw;
+				return list.ToArray();
+			}
 
 			do
 			{
