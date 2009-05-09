@@ -66,10 +66,6 @@ namespace Rhino.Queues.Internal
 				enlistment.Done();
 				logger.DebugFormat("Commited enlistment with id: {0}", Id);
 			}
-			catch (ObjectDisposedException)
-			{
-				//not much we can do here
-			}
 			catch (Exception e)
 			{
 				logger.Warn("Failed to commit enlistment " + Id, e);
@@ -95,10 +91,6 @@ namespace Rhino.Queues.Internal
 				});
 				enlistment.Done();
 				logger.DebugFormat("Rolledback enlistment with id: {0}", Id);
-			}
-			catch (ObjectDisposedException)
-			{
-				//not much we can do here
 			}
 			catch (Exception e)
 			{

@@ -39,6 +39,7 @@ namespace Rhino.Queues
 		private volatile bool waitingForAllMessagesToBeSent;
 
 		private readonly ThreadSafeSet<MessageId> receivedMsgs = new ThreadSafeSet<MessageId>();
+		private bool disposing;
 
 		public int NumberOfReceivedMessagesToKeep { get; set; }
 		public int? NumberOfMessagesToKeepInProcessedQueues { get; set; }
@@ -169,7 +170,7 @@ namespace Rhino.Queues
 			if (wasDisposed)
 				return;
 
-			wasDisposed = true;
+			disposing = true;
 
 			lock (newMessageArrivedLock)
 			{
@@ -194,6 +195,10 @@ namespace Rhino.Queues
 				logger.WarnFormat("Waiting for {0} transactions currently running", currentlyInsideTransaction);
 				Thread.Sleep(TimeSpan.FromSeconds(1));
 			}
+
+			// only after we finish incoming recieves, and finish processing
+			// active transactions can we mark it as disposed
+			wasDisposed = true; 
 			queueStorage.Dispose();
 		}
 
@@ -202,6 +207,13 @@ namespace Rhino.Queues
 		private void AssertNotDisposed()
 		{
 			if (wasDisposed)
+				throw new ObjectDisposedException("QueueManager");
+		}
+
+
+		private void AssertNotDisposedOrDisposing()
+		{
+			if (disposing || wasDisposed)
 				throw new ObjectDisposedException("QueueManager");
 		}
 
@@ -235,7 +247,7 @@ namespace Rhino.Queues
 
 		public PersistentMessage[] GetAllMessages(string queueName, string subqueue)
 		{
-			AssertNotDisposed();
+			AssertNotDisposedOrDisposing();
 			PersistentMessage[] messages = null;
 			queueStorage.Global(actions =>
 			{
@@ -247,7 +259,7 @@ namespace Rhino.Queues
 
 		public HistoryMessage[] GetAllProcessedMessages(string queueName)
 		{
-			AssertNotDisposed();
+			AssertNotDisposedOrDisposing();
 			HistoryMessage[] messages = null;
 			queueStorage.Global(actions =>
 			{
@@ -259,7 +271,7 @@ namespace Rhino.Queues
 
 		public PersistentMessageToSend[] GetAllSentMessages()
 		{
-			AssertNotDisposed();
+			AssertNotDisposedOrDisposing();
 			PersistentMessageToSend[] msgs = null;
 			queueStorage.Global(actions =>
 			{
@@ -272,7 +284,7 @@ namespace Rhino.Queues
 
 		public PersistentMessageToSend[] GetMessagesCurrentlySending()
 		{
-			AssertNotDisposed();
+			AssertNotDisposedOrDisposing();
 			PersistentMessageToSend[] msgs = null;
 			queueStorage.Send(actions =>
 			{
@@ -396,7 +408,7 @@ namespace Rhino.Queues
 
 		private void EnsureEnslistment()
 		{
-			AssertNotDisposed();
+			AssertNotDisposedOrDisposing();
 
 			if (Transaction.Current == null)
 				throw new InvalidOperationException("You must use TransactionScope when using Rhino.Queues");
@@ -422,7 +434,7 @@ namespace Rhino.Queues
 
 		private PersistentMessage GetMessageFromQueue(string queueName, string subqueue)
 		{
-			AssertNotDisposed();
+			AssertNotDisposedOrDisposing();
 			PersistentMessage message = null;
 			queueStorage.Global(actions =>
 			{
@@ -444,7 +456,7 @@ namespace Rhino.Queues
 
 		private PersistentMessage PeekMessageFromQueue(string queueName, string subqueue)
 		{
-			AssertNotDisposed();
+			AssertNotDisposedOrDisposing();
 			PersistentMessage message = null;
 			queueStorage.Global(actions =>
 			{
@@ -566,7 +578,7 @@ namespace Rhino.Queues
 
 		public void CreateQueues(params string[] queueNames)
 		{
-			AssertNotDisposed();
+			AssertNotDisposedOrDisposing();
 
 			queueStorage.Global(actions =>
 			{
@@ -583,7 +595,7 @@ namespace Rhino.Queues
 		{
 			get
 			{
-				AssertNotDisposed();
+				AssertNotDisposedOrDisposing();
 				string[] queues = null;
 				queueStorage.Global(actions =>
 				{
@@ -597,7 +609,7 @@ namespace Rhino.Queues
 
 		public void MoveTo(string subqueue, Message message)
 		{
-			AssertNotDisposed();
+			AssertNotDisposedOrDisposing();
 			EnsureEnslistment();
 
 			queueStorage.Global(actions =>
