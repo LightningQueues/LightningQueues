@@ -8,7 +8,7 @@ namespace Rhino.Queues.Tests
 	using Queues.Protocol;
 	using Xunit;
 
-	public class Errors
+	public class Errors : IDisposable
 	{
 		 private readonly QueueManager sender, receiver;
 
@@ -48,6 +48,12 @@ namespace Rhino.Queues.Tests
 
 			Assert.Equal("255.255.255.255",endPointWeFailedToSendTo.Host);
 			Assert.Equal(2200, endPointWeFailedToSendTo.Port);
+		}
+
+		public void Dispose()
+		{
+			sender.Dispose();
+			receiver.Dispose();
 		}
 	}
 }
