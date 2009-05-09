@@ -65,7 +65,7 @@ namespace Rhino.Queues.Tests.FromUsers
 			{
 				var message = queueManager.Receive("h", null);
 
-				Assert.Equal("hello-1", Encoding.Unicode.GetString(message.Data));
+				Assert.NotNull(message);
 
 				tx.Complete();
 			}
