@@ -12,12 +12,12 @@ namespace Rhino.Queues.Internal
     public class QueuedMessagesSender
     {
         private readonly QueueStorage queueStorage;
-    	private readonly QueueManager queueManager;
+    	private readonly IQueueManager queueManager;
     	private volatile bool continueSending = true;
         private volatile int currentlySendingCount;
 		private object @lock = new object();
 
-        public QueuedMessagesSender(QueueStorage queueStorage, QueueManager queueManager)
+        public QueuedMessagesSender(QueueStorage queueStorage, IQueueManager queueManager)
         {
         	this.queueStorage = queueStorage;
         	this.queueManager = queueManager;

@@ -6,10 +6,10 @@ namespace Rhino.Queues
 {
     public class Queue : IQueue
     {
-        private readonly QueueManager queueManager;
+        private readonly IQueueManager queueManager;
         private readonly string queueName;
 
-        public Queue(QueueManager queueManager, string queueName)
+        public Queue(IQueueManager queueManager, string queueName)
         {
             this.queueManager = queueManager;
             this.queueName = queueName;

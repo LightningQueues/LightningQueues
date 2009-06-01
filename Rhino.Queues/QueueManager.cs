@@ -16,7 +16,7 @@ namespace Rhino.Queues
 	using Exceptions;
 	using Utils;
 
-	public class QueueManager : IDisposable
+	public class QueueManager : IQueueManager
 	{
 		[ThreadStatic]
 		private static TransactionEnlistment Enlistment;
@@ -695,7 +695,7 @@ namespace Rhino.Queues
 			return numberOfMsgs;
 		}
 
-		internal void FailedToSendTo(Endpoint endpointThatWeFailedToSendTo)
+		public void FailedToSendTo(Endpoint endpointThatWeFailedToSendTo)
 		{
 			var action = FailedToSendMessagesTo;
 			if (action != null)
