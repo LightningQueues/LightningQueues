@@ -50,6 +50,38 @@ namespace Rhino.Queues.Tests
             }
         }
 
+		[Fact]
+		public void SendingTwoMessages_OneOfWhichToUnknownQueue_WillStillWork()
+		{
+			using (var tx = new TransactionScope())
+			{
+				sender.Send(
+					new Uri("rhino.queues://localhost:23457/h"),
+					 new MessagePayload
+					 {
+						 Data = new byte[] { 1, 2, 4, 5 }
+					 });
+
+				sender.Send(
+					new Uri("rhino.queues://localhost:23457/I_dont_exists"),
+					 new MessagePayload
+					 {
+						 Data = new byte[] { 1, 2, 4, 5 }
+					 });
+
+				tx.Complete();
+			}
+
+			using (var tx = new TransactionScope())
+			{
+				var message = receiver.Receive("h", null, TimeSpan.FromSeconds(5));
+
+				Assert.Equal(new byte[] { 1, 2, 4, 5 }, message.Data);
+
+				tx.Complete();
+			}
+		}
+
         [Fact]
         public void CanSendHeaders()
         {

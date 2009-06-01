@@ -27,6 +27,7 @@ namespace Rhino.Queues.Storage
             Api.MoveBeforeFirst(session, outgoing);
 
             endPoint = null;
+        	string queue = null;
             var messages = new List<PersistentMessage>();
 
             while (Api.TryMoveNext(session, outgoing))
@@ -55,10 +56,20 @@ namespace Rhino.Queues.Storage
                 if (endPoint.Equals(rowEndpoint) == false)
                     continue;
 
+				var rowQueue = Api.RetrieveColumnAsString(session, outgoing, outgoingColumns["queue"], Encoding.Unicode);
+
+				if (queue == null) 
+					queue = rowQueue;
+
+				if(queue != rowQueue)
+					continue;
+
+				logger.DebugFormat("Adding message {0} to returned messages", msgId);
+               
                 var bookmark = new MessageBookmark();
                 Api.JetGetBookmark(session, outgoing, bookmark.Bookmark, bookmark.Size, out bookmark.Size);
                 var headerAsQueryString = Api.RetrieveColumnAsString(session, outgoing, outgoingColumns["headers"],Encoding.Unicode);
-                messages.Add(new PersistentMessage
+            	messages.Add(new PersistentMessage
                 {
                     Id = new MessageId
                     {
@@ -66,7 +77,7 @@ namespace Rhino.Queues.Storage
                         MessageIdentifier = msgId
                     },
                     Headers = HttpUtility.ParseQueryString(headerAsQueryString),
-                    Queue = Api.RetrieveColumnAsString(session, outgoing, outgoingColumns["queue"], Encoding.Unicode),
+                    Queue = rowQueue,
                     SubQueue = Api.RetrieveColumnAsString(session, outgoing, outgoingColumns["subqueue"], Encoding.Unicode),
                     SentAt = DateTime.FromOADate(Api.RetrieveColumnAsDouble(session, outgoing, outgoingColumns["sent_at"]).Value),
                     Data = Api.RetrieveColumn(session, outgoing, outgoingColumns["data"]),
