@@ -137,7 +137,7 @@ namespace Rhino.Queues.Storage
                             );
                     }
                     Api.SetColumn(session, outgoingHistory, outgoingHistoryColumns["send_status"],
-                        (int)OutgoingMessageStatus.Sent);
+                        (int)OutgoingMessageStatus.Failed);
 
                     logger.DebugFormat("Marking outgoing message {0} as permenantly failed after {1} retries",
                                        msgId, numOfRetries + 1);
