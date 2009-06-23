@@ -121,7 +121,7 @@ namespace Rhino.Queues.Storage
                                   numOfRetries + 1);
 
                     logger.DebugFormat("Marking outgoing message {0} as failed with retries: {1}",
-                                       msgId, numOfRetries + 1);
+                                       msgId, numOfRetries);
 
                     update.Save();
                 }
@@ -140,7 +140,7 @@ namespace Rhino.Queues.Storage
                         (int)OutgoingMessageStatus.Failed);
 
                     logger.DebugFormat("Marking outgoing message {0} as permenantly failed after {1} retries",
-                                       msgId, numOfRetries + 1);
+                                       msgId, numOfRetries);
 
                     update.Save();
                 }
