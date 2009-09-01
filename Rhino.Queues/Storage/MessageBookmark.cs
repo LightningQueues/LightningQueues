@@ -9,7 +9,7 @@ namespace Rhino.Queues.Storage
             
         }
         public string QueueName;
-        public byte[] Bookmark = new byte[Api.BookmarkMost];
-        public int Size = Api.BookmarkMost;
+        public byte[] Bookmark = new byte[SystemParameters.BookmarkMost];
+        public int Size = SystemParameters.BookmarkMost;
     }
 }

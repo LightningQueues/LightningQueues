@@ -12,19 +12,19 @@ namespace Rhino.Queues.Storage
         protected Table queues;
 		protected Table subqueues;
         protected Table recovery;
-        protected Dictionary<string, JET_COLUMNID> recoveryColumns;
-        protected Dictionary<string, JET_COLUMNID> outgoingColumns;
-		protected Dictionary<string, JET_COLUMNID> subqueuesColumns;
-        protected Dictionary<string, JET_COLUMNID> outgoingHistoryColumns;
-		protected Dictionary<string, JET_COLUMNID> recveivedMsgsColumns;
+        protected IDictionary<string, JET_COLUMNID> recoveryColumns;
+        protected IDictionary<string, JET_COLUMNID> outgoingColumns;
+		protected IDictionary<string, JET_COLUMNID> subqueuesColumns;
+        protected IDictionary<string, JET_COLUMNID> outgoingHistoryColumns;
+		protected IDictionary<string, JET_COLUMNID> recveivedMsgsColumns;
 		protected Session session;
         protected Transaction transaction;
         protected Table txs;
         protected Table outgoing;
         protected Table outgoingHistory;
 		protected Table recveivedMsgs;
-		protected Dictionary<string, JET_COLUMNID> txsColumns;
-        protected Dictionary<string, JET_COLUMNID> queuesColumns;
+		protected IDictionary<string, JET_COLUMNID> txsColumns;
+        protected IDictionary<string, JET_COLUMNID> queuesColumns;
         protected readonly Dictionary<string, QueueActions> queuesByName = new Dictionary<string, QueueActions>();
 
     	protected AbstractActions(JET_INSTANCE instance, string database)

@@ -1,0 +1,1 @@
+Rhino Queues is making use of the builtin Esent database and the ManagedEsent project (http://codeplex.com/ManagedEsent)

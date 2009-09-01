@@ -21,8 +21,8 @@ namespace Rhino.Queues.Storage
 		private readonly Action<int> changeNumberOfMessages;
 		private readonly Table msgs;
 		private readonly Table msgsHistory;
-		private readonly Dictionary<string, JET_COLUMNID> msgsColumns;
-		private readonly Dictionary<string, JET_COLUMNID> msgsHistoryColumns;
+		private readonly IDictionary<string, JET_COLUMNID> msgsColumns;
+		private readonly IDictionary<string, JET_COLUMNID> msgsHistoryColumns;
 
 		public QueueActions(Session session, JET_DBID dbid, string queueName, string[] subqueues, AbstractActions actions, Action<int> changeNumberOfMessages)
 		{
