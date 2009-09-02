@@ -79,15 +79,15 @@
     <Compile Include="UsingSubQueues.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\ayende-open-source.snk">
+      <Link>ayende-open-source.snk</Link>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Rhino.Queues\Rhino.Queues.csproj">
       <Project>{398BF580-41F5-418E-A017-19D19B289A97}</Project>
       <Name>Rhino.Queues</Name>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\ayende-open-source.snk">
-      <Link>ayende-open-source.snk</Link>
-    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

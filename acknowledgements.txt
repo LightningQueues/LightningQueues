@@ -1,1 +1,2 @@
 Rhino Queues is making use of the builtin Esent database and the ManagedEsent project (http://codeplex.com/ManagedEsent)
+and of the Wintellect Power Threading (http://www.wintellect.com/PowerThreading.aspx) library

@@ -72,6 +72,8 @@ task Release -depends Test {
         $build_dir\Rhino.Queues.xml `
         $build_dir\Esent.Interop.dll `
 		$build_dir\Esent.Interop.xml `
+        $build_dir\Wintellect.Threading.dll `
+        $build_dir\Wintellect.Threading.xml `
 		license.txt `
 		acknowledgements.txt
 	if ($lastExitCode -ne 0) {
