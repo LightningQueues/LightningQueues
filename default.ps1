@@ -5,9 +5,11 @@ properties {
   $buildartifacts_dir = "$build_dir\" 
   $sln_file = "$base_dir\Rhino.Queues.sln" 
   $version = "1.2.0.0"
+  $humanReadableversion = "1.2"
   $tools_dir = "$base_dir\Tools"
   $release_dir = "$base_dir\Release"
-} 
+  $uploadCategory = "Rhino-Queues"
+  $uploadScript = "C:\Builds\Upload\PublishBuild.build"} 
 
 include .\psake_ext.ps1
 	
@@ -67,7 +69,7 @@ task Test -depends Compile {
 
 task Release -depends Test {
 	& $tools_dir\zip.exe -9 -A -j `
-		$release_dir\Rhino.Queues.zip `
+		$release_dir\Rhino.Queues-$humanReadableversion-Build-$env:ccnetnumericlabel.zip `
         $build_dir\Rhino.Queues.dll `
         $build_dir\Rhino.Queues.xml `
         $build_dir\Esent.Interop.dll `
@@ -79,4 +81,18 @@ task Release -depends Test {
 	if ($lastExitCode -ne 0) {
         throw "Error: Failed to execute ZIP command"
     }
+}
+
+task Upload -depend Release {
+	if (Test-Path $uploadScript ) {
+		$log = git log -n 1 --oneline		
+		msbuild $uploadScript /p:Category=$uploadCategory "/p:Comment=$log" "/p:File=$release_dir\Rhino.Queues-$humanReadableversion-Build-$env:ccnetnumericlabel.zip"
+		
+		if ($lastExitCode -ne 0) {
+			throw "Error: Failed to publish build"
+		}
+	}
+	else {
+		Write-Host "could not find upload script $uploadScript, skipping upload"
+	}
 }
