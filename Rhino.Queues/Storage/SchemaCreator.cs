@@ -7,7 +7,7 @@ namespace Rhino.Queues.Storage
     public class SchemaCreator
     {
         private readonly Session session;
-        public const string SchemaVersion = "1.8";
+        public const string SchemaVersion = "1.9";
 
         public SchemaCreator(Session session)
         {
@@ -400,6 +400,10 @@ namespace Rhino.Queues.Storage
             indexDef = "+tx_id\0\0";
             Api.JetCreateIndex(session, tableid, "by_tx_id", CreateIndexGrbit.IndexDisallowNull, indexDef, indexDef.Length,
                                100);
+
+			indexDef = "+bookmark_size\0bookmark_data\0\0";
+			Api.JetCreateIndex(session, tableid, "by_bookmark", CreateIndexGrbit.IndexDisallowNull | CreateIndexGrbit.IndexUnique, indexDef, indexDef.Length,
+							  100);
         }
         private void CreateQueuesTable(JET_DBID dbid)
         {

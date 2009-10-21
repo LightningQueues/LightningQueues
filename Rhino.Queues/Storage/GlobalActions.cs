@@ -68,11 +68,23 @@ namespace Rhino.Queues.Storage
 
         public void RegisterUpdateToReverse(Guid txId, MessageBookmark bookmark, MessageStatus statusToRestore, string subQueue)
         {
+			Api.JetSetCurrentIndex(session, txs, "by_bookmark");
+
+			var actualBookmark = bookmark.Bookmark.Take(bookmark.Size).ToArray();
+
+			Api.MakeKey(session, txs, bookmark.Size, MakeKeyGrbit.NewKey);
+			Api.MakeKey(session, txs, actualBookmark, MakeKeyGrbit.None);
+
+			if(Api.TrySeek(session, txs, SeekGrbit.SeekEQ))
+			{
+				Api.JetDelete(session, txs);
+			}
+
             using (var update = new Update(session, txs, JET_prep.Insert))
             {
 				Api.SetColumn(session, txs, ColumnsInformation.TxsColumns["tx_id"], txId.ToByteArray());
 				Api.SetColumn(session, txs, ColumnsInformation.TxsColumns["bookmark_size"], bookmark.Size);
-				Api.SetColumn(session, txs, ColumnsInformation.TxsColumns["bookmark_data"], bookmark.Bookmark.Take(bookmark.Size).ToArray());
+            	Api.SetColumn(session, txs, ColumnsInformation.TxsColumns["bookmark_data"], actualBookmark);
 				Api.SetColumn(session, txs, ColumnsInformation.TxsColumns["value_to_restore"], (int)statusToRestore);
 				Api.SetColumn(session, txs, ColumnsInformation.TxsColumns["queue"], bookmark.QueueName, Encoding.Unicode);
 				Api.SetColumn(session, txs, ColumnsInformation.TxsColumns["subqueue"], subQueue, Encoding.Unicode);
