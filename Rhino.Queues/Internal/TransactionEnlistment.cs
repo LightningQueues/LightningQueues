@@ -6,7 +6,7 @@ using Transaction = System.Transactions.Transaction;
 
 namespace Rhino.Queues.Internal
 {
-	public class TransactionEnlistment : IEnlistmentNotification
+	public class TransactionEnlistment : ISinglePhaseNotification
 	{
 		private readonly QueueStorage queueStorage;
 		private readonly Action onCompelete;
@@ -54,17 +54,8 @@ namespace Rhino.Queues.Internal
 		{
 			try
 			{
-				assertNotDisposed();
-				logger.DebugFormat("Committing enlistment with id: {0}", Id);
-				queueStorage.Global(actions =>
-				{
-					actions.RemoveReversalsMoveCompletedMessagesAndFinishSubQueueMove(Id);
-					actions.MarkAsReadyToSend(Id);
-					actions.DeleteRecoveryInformation(Id);
-					actions.Commit();
-				});
+				PerformActualCommit();
 				enlistment.Done();
-				logger.DebugFormat("Commited enlistment with id: {0}", Id);
 			}
 			catch (Exception e)
 			{
@@ -75,6 +66,20 @@ namespace Rhino.Queues.Internal
 			{
 				onCompelete();
 			}
+		}
+
+		private void PerformActualCommit()
+		{
+			assertNotDisposed();
+			logger.DebugFormat("Committing enlistment with id: {0}", Id);
+			queueStorage.Global(actions =>
+			{
+				actions.RemoveReversalsMoveCompletedMessagesAndFinishSubQueueMove(Id);
+				actions.MarkAsReadyToSend(Id);
+				actions.DeleteRecoveryInformation(Id);
+				actions.Commit();
+			});
+			logger.DebugFormat("Commited enlistment with id: {0}", Id);
 		}
 
 		public void Rollback(Enlistment enlistment)
@@ -106,6 +111,24 @@ namespace Rhino.Queues.Internal
 		public void InDoubt(Enlistment enlistment)
 		{
 			enlistment.Done();
+		}
+
+		public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
+		{
+			try
+			{
+				PerformActualCommit();
+				singlePhaseEnlistment.Done();
+			}
+			catch (Exception e)
+			{
+				logger.Warn("Failed to commit enlistment " + Id, e);
+				throw;
+			}
+			finally
+			{
+				onCompelete();
+			}
 		}
 	}
 }
