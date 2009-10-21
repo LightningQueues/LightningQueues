@@ -11,6 +11,7 @@ namespace Rhino.Queues.Storage
         private JET_INSTANCE instance;
         private readonly string database;
         private readonly string path;
+    	private ColumnsInformation columnsInformation;
 
         public Guid Id { get; private set; }
 
@@ -34,6 +35,8 @@ namespace Rhino.Queues.Storage
                 EnsureDatabaseIsCreatedAndAttachToDatabase();
 
                 SetIdFromDb();
+
+            	LoadColumnInformation();
             }
             catch (Exception e)
             {
@@ -42,7 +45,43 @@ namespace Rhino.Queues.Storage
             }
         }
 
-        private void ConfigureInstance(JET_INSTANCE jetInstance)
+    	private void LoadColumnInformation()
+    	{
+			columnsInformation = new ColumnsInformation();
+			instance.WithDatabase(database, (session, dbid) =>
+			{
+				using (var table = new Table(session, dbid, "subqueues", OpenTableGrbit.ReadOnly))
+				{
+					columnsInformation.SubqueuesColumns = Api.GetColumnDictionary(session, table);
+				}
+				using (var table = new Table(session, dbid, "outgoing_history", OpenTableGrbit.ReadOnly))
+				{
+					columnsInformation.OutgoingHistoryColumns = Api.GetColumnDictionary(session, table);
+				}
+				using (var table = new Table(session, dbid, "outgoing", OpenTableGrbit.ReadOnly))
+				{
+					columnsInformation.OutgoingColumns = Api.GetColumnDictionary(session, table);
+				}
+				using (var table = new Table(session, dbid, "recovery", OpenTableGrbit.ReadOnly))
+				{
+					columnsInformation.RecoveryColumns = Api.GetColumnDictionary(session, table);
+				}
+				using (var table = new Table(session, dbid, "transactions", OpenTableGrbit.ReadOnly))
+				{
+					columnsInformation.TxsColumns = Api.GetColumnDictionary(session, table);
+				}
+				using (var table = new Table(session, dbid, "queues", OpenTableGrbit.ReadOnly))
+				{
+					columnsInformation.QueuesColumns = Api.GetColumnDictionary(session, table);
+				}
+				using (var table = new Table(session, dbid, "recveived_msgs", OpenTableGrbit.ReadOnly))
+				{
+					columnsInformation.RecveivedMsgsColumns = Api.GetColumnDictionary(session, table);
+				}
+			});
+    	}
+
+    	private void ConfigureInstance(JET_INSTANCE jetInstance)
         {
             new InstanceParameters(jetInstance)
             {
@@ -159,7 +198,7 @@ namespace Rhino.Queues.Storage
 
         public void Global(Action<GlobalActions> action)
         {
-            using (var qa = new GlobalActions(instance, database, Id))
+            using (var qa = new GlobalActions(instance, columnsInformation, database, Id))
             {
                 action(qa);
             }
@@ -167,7 +206,7 @@ namespace Rhino.Queues.Storage
 
         public void Send(Action<SenderActions> action)
         {
-            using (var qa = new SenderActions(instance, database, Id))
+			using (var qa = new SenderActions(instance, columnsInformation, database, Id))
             {
                 action(qa);
             }

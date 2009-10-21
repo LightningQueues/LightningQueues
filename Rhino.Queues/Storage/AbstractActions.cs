@@ -8,28 +8,24 @@ namespace Rhino.Queues.Storage
 {
     public abstract class AbstractActions : IDisposable
     {
-        protected JET_DBID dbid;
+    	protected readonly ColumnsInformation ColumnsInformation;
+    	protected JET_DBID dbid;
         protected Table queues;
 		protected Table subqueues;
         protected Table recovery;
-        protected IDictionary<string, JET_COLUMNID> recoveryColumns;
-        protected IDictionary<string, JET_COLUMNID> outgoingColumns;
-		protected IDictionary<string, JET_COLUMNID> subqueuesColumns;
-        protected IDictionary<string, JET_COLUMNID> outgoingHistoryColumns;
-		protected IDictionary<string, JET_COLUMNID> recveivedMsgsColumns;
 		protected Session session;
         protected Transaction transaction;
         protected Table txs;
         protected Table outgoing;
         protected Table outgoingHistory;
 		protected Table recveivedMsgs;
-		protected IDictionary<string, JET_COLUMNID> txsColumns;
-        protected IDictionary<string, JET_COLUMNID> queuesColumns;
+
         protected readonly Dictionary<string, QueueActions> queuesByName = new Dictionary<string, QueueActions>();
 
-    	protected AbstractActions(JET_INSTANCE instance, string database)
+		protected AbstractActions(JET_INSTANCE instance, ColumnsInformation ColumnsInformation, string database)
         {
-            session = new Session(instance);
+			this.ColumnsInformation = ColumnsInformation;
+			session = new Session(instance);
 
             transaction = new Transaction(session);
             Api.JetOpenDatabase(session, database, null, out dbid, OpenDatabaseGrbit.None);
@@ -41,14 +37,6 @@ namespace Rhino.Queues.Storage
             outgoing = new Table(session, dbid, "outgoing", OpenTableGrbit.None);
             outgoingHistory = new Table(session, dbid, "outgoing_history", OpenTableGrbit.None);
         	recveivedMsgs = new Table(session, dbid, "recveived_msgs", OpenTableGrbit.None);
-
-            queuesColumns = Api.GetColumnDictionary(session, queues);
-        	subqueuesColumns = Api.GetColumnDictionary(session, subqueues);
-            txsColumns = Api.GetColumnDictionary(session, txs);
-            recoveryColumns = Api.GetColumnDictionary(session, recovery);
-            outgoingColumns = Api.GetColumnDictionary(session, outgoing);
-            outgoingHistoryColumns = Api.GetColumnDictionary(session, outgoingHistory);
-    		recveivedMsgsColumns = Api.GetColumnDictionary(session, recveivedMsgs);
         }
 
         public QueueActions GetQueue(string queueName)
@@ -94,7 +82,7 @@ namespace Rhino.Queues.Storage
 
 			do
 			{
-				list.Add(Api.RetrieveColumnAsString(session, subqueues, subqueuesColumns["subqueue"]));
+				list.Add(Api.RetrieveColumnAsString(session, subqueues, ColumnsInformation.SubqueuesColumns["subqueue"]));
 			} while (Api.TryMoveNext(session, subqueues));
 			
 			
@@ -107,8 +95,8 @@ namespace Rhino.Queues.Storage
 			{
 				using(var update = new Update(session, subqueues, JET_prep.Insert))
 				{
-					Api.SetColumn(session, subqueues, subqueuesColumns["queue"], queueName, Encoding.Unicode);
-					Api.SetColumn(session, subqueues, subqueuesColumns["subqueue"], subQueue, Encoding.Unicode);
+					Api.SetColumn(session, subqueues, ColumnsInformation.SubqueuesColumns["queue"], queueName, Encoding.Unicode);
+					Api.SetColumn(session, subqueues, ColumnsInformation.SubqueuesColumns["subqueue"], subQueue, Encoding.Unicode);
 
 					update.Save();
 				}
@@ -130,7 +118,7 @@ namespace Rhino.Queues.Storage
 
             var bytes = BitConverter.GetBytes(count);
             int actual;
-            Api.JetEscrowUpdate(session, queues, queuesColumns["number_of_messages"], bytes, bytes.Length,
+			Api.JetEscrowUpdate(session, queues, ColumnsInformation.QueuesColumns["number_of_messages"], bytes, bytes.Length,
                                 null, 0, out actual, EscrowUpdateGrbit.None);
         }
 

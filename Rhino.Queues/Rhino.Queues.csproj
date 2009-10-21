@@ -85,6 +85,7 @@
     <Compile Include="Queue.cs" />
     <Compile Include="QueueManager.cs" />
     <Compile Include="Storage\AbstractActions.cs" />
+    <Compile Include="Storage\ColumnsInformation.cs" />
     <Compile Include="Storage\EsentExtension.cs" />
     <Compile Include="Storage\MessageBookmark.cs" />
     <Compile Include="Storage\MessageStatus.cs" />
