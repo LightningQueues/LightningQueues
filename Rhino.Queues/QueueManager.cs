@@ -328,9 +328,14 @@ namespace Rhino.Queues
 					var sp = Stopwatch.StartNew();
 					if (Monitor.Wait(newMessageArrivedLock, remaining) == false)
 						throw new TimeoutException("No message arrived in the specified timeframe " + timeout);
-					remaining = remaining - sp.Elapsed;
+					remaining = Max(TimeSpan.Zero, remaining - sp.Elapsed);
 				}
 			}
+		}
+
+		private static TimeSpan Max(TimeSpan x, TimeSpan y)
+		{
+			return x>=y ? x : y;
 		}
 
 		public Message Receive(string queueName)
