@@ -71,6 +71,7 @@ task Release -depends Test {
 	& $tools_dir\zip.exe -9 -A -j `
 		$release_dir\Rhino.Queues-$humanReadableversion-Build-$env:ccnetnumericlabel.zip `
         $build_dir\Rhino.Queues.dll `
+        $build_dir\log4net.dll `
         $build_dir\Rhino.Queues.xml `
         $build_dir\Esent.Interop.dll `
 		$build_dir\Esent.Interop.xml `
