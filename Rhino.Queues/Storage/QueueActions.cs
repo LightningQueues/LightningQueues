@@ -140,7 +140,7 @@ namespace Rhino.Queues.Storage
 
 				var headersAsQueryString = Api.RetrieveColumnAsString(session, msgs, msgsColumns["headers"]);
 
-				return new PersistentMessage
+				var message = new PersistentMessage
 				{
 					Bookmark = bookmark,
 					Headers = HttpUtility.ParseQueryString(headersAsQueryString),
@@ -151,6 +151,7 @@ namespace Rhino.Queues.Storage
 					SubQueue = subqueue,
 					Status = (MessageStatus)Api.RetrieveColumnAsInt32(session, msgs, msgsColumns["status"]).Value
 				};
+				return message;
 			} while (Api.TryMoveNext(session, msgs));
 
 			return null;
@@ -221,7 +222,8 @@ namespace Rhino.Queues.Storage
 					DateTime.Now.ToOADate());
 				update.Save();
 			}
-			logger.DebugFormat("Moving message {0} on queue {1}",
+			Api.JetDelete(session, msgs);
+			logger.DebugFormat("Moving message {0} on queue {1} to history",
 							   id, queueName);
 		}
 
