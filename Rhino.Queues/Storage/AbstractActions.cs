@@ -156,7 +156,7 @@ namespace Rhino.Queues.Storage
 
         public void Commit()
         {
-            transaction.Commit(CommitTransactionGrbit.None);
+            transaction.Commit(CommitTransactionGrbit.LazyFlush);
         }
     }
 }
