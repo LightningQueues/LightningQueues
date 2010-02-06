@@ -12,13 +12,11 @@ namespace Rhino.Queues.Storage
 {
     public class SenderActions : AbstractActions
     {
-        private readonly Guid instanceId;
         private readonly ILog logger = LogManager.GetLogger(typeof (SenderActions));
 
 		public SenderActions(JET_INSTANCE instance, ColumnsInformation columnsInformation, string database, Guid instanceId)
-            : base(instance, columnsInformation, database)
+            : base(instance, columnsInformation, database, instanceId)
         {
-            this.instanceId = instanceId;
         }
 
         public IList<PersistentMessage> GetMessagesToSendAndMarkThemAsInFlight(int maxNumberOfMessage, int maxSizeOfMessagesInTotal, out Endpoint endPoint)

@@ -13,13 +13,11 @@ namespace Rhino.Queues.Storage
 
 	public class GlobalActions : AbstractActions
     {
-        private readonly Guid instanceId;
         private readonly ILog logger = LogManager.GetLogger(typeof(GlobalActions));
 
         public GlobalActions(JET_INSTANCE instance, ColumnsInformation columnsInformation,string database, Guid instanceId)
-            : base(instance, columnsInformation, database)
+			: base(instance, columnsInformation, database, instanceId)
         {
-            this.instanceId = instanceId;
         }
 
         public void CreateQueueIfDoesNotExists(string queueName)
