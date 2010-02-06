@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Runtime.ConstrainedExecution;
+using System.Threading;
 using log4net;
 using Microsoft.Isam.Esent.Interop;
 
@@ -13,6 +14,8 @@ namespace Rhino.Queues.Storage
 		private readonly string database;
 		private readonly string path;
 		private ColumnsInformation columnsInformation;
+
+		private readonly ReaderWriterLockSlim usageLock = new ReaderWriterLockSlim();
 
 		public Guid Id { get; private set; }
 
@@ -168,31 +171,47 @@ namespace Rhino.Queues.Storage
 
 		public void Dispose()
 		{
-			log.Debug("Disposing queue storage");
+			usageLock.EnterWriteLock();
 			try
 			{
-				Api.JetTerm2(instance, TermGrbit.Complete);
-				GC.SuppressFinalize(this);
+				log.Debug("Disposing queue storage");
+				try
+				{
+					Api.JetTerm2(instance, TermGrbit.Complete);
+					GC.SuppressFinalize(this);
+				}
+				catch (Exception e)
+				{
+					log.Error("Could not dispose of queue storage properly", e);
+					throw;
+				}
 			}
-			catch (Exception e)
+			finally
 			{
-				log.Error("Could not dispose of queue storage properly", e);
-				throw;
+				usageLock.ExitWriteLock();
 			}
 		}
 
 		public void DisposeRudely()
 		{
-			log.Debug("Rudely disposing queue storage");
+			usageLock.EnterWriteLock();
 			try
 			{
-				Api.JetTerm2(instance, TermGrbit.Abrupt);
-				GC.SuppressFinalize(this);
+				log.Debug("Rudely disposing queue storage");
+				try
+				{
+					Api.JetTerm2(instance, TermGrbit.Abrupt);
+					GC.SuppressFinalize(this);
+				}
+				catch (Exception e)
+				{
+					log.Error("Could not dispose of queue storage properly", e);
+					throw;
+				}
 			}
-			catch (Exception e)
+			finally
 			{
-				log.Error("Could not dispose of queue storage properly", e);
-				throw;
+				usageLock.ExitWriteLock();
 			}
 		}
 
@@ -226,17 +245,39 @@ namespace Rhino.Queues.Storage
 
 		public void Global(Action<GlobalActions> action)
 		{
-			using (var qa = new GlobalActions(instance, columnsInformation, database, Id))
+			var shouldTakeLock = usageLock.IsReadLockHeld == false;
+			try
 			{
-				action(qa);
+				if (shouldTakeLock)
+					usageLock.EnterReadLock();
+				using (var qa = new GlobalActions(instance, columnsInformation, database, Id))
+				{
+					action(qa);
+				}
+			}
+			finally 
+			{
+				if(shouldTakeLock)
+					usageLock.ExitReadLock();
 			}
 		}
 
 		public void Send(Action<SenderActions> action)
 		{
-			using (var qa = new SenderActions(instance, columnsInformation, database, Id))
+			var shouldTakeLock = usageLock.IsReadLockHeld == false;
+			try
 			{
-				action(qa);
+				if (shouldTakeLock)
+					usageLock.EnterReadLock();
+				using (var qa = new SenderActions(instance, columnsInformation, database, Id))
+				{
+					action(qa);
+				}
+			}
+			finally
+			{
+				if (shouldTakeLock)
+					usageLock.ExitReadLock();
 			}
 		}
 	}
