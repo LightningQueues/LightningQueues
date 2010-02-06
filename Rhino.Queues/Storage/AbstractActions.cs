@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using Microsoft.Isam.Esent.Interop;
 using Rhino.Queues.Exceptions;
@@ -8,7 +9,8 @@ namespace Rhino.Queues.Storage
 {
     public abstract class AbstractActions : IDisposable
     {
-    	protected readonly ColumnsInformation ColumnsInformation;
+    	protected readonly Guid instanceId;
+		protected readonly ColumnsInformation ColumnsInformation;
     	protected JET_DBID dbid;
         protected Table queues;
 		protected Table subqueues;
@@ -22,24 +24,33 @@ namespace Rhino.Queues.Storage
 
         protected readonly Dictionary<string, QueueActions> queuesByName = new Dictionary<string, QueueActions>();
 
-		protected AbstractActions(JET_INSTANCE instance, ColumnsInformation ColumnsInformation, string database)
-        {
-			this.ColumnsInformation = ColumnsInformation;
-			session = new Session(instance);
+		protected AbstractActions(JET_INSTANCE instance, ColumnsInformation columnsInformation, string database, Guid instanceId)
+		{
+			try
+			{
+				this.instanceId = instanceId;
+				ColumnsInformation = columnsInformation;
+				session = new Session(instance);
 
-            transaction = new Transaction(session);
-            Api.JetOpenDatabase(session, database, null, out dbid, OpenDatabaseGrbit.None);
+				transaction = new Transaction(session);
+				Api.JetOpenDatabase(session, database, null, out dbid, OpenDatabaseGrbit.None);
 
-            queues = new Table(session, dbid, "queues", OpenTableGrbit.None);
-			subqueues = new Table(session, dbid, "subqueues", OpenTableGrbit.None);
-            txs = new Table(session, dbid, "transactions", OpenTableGrbit.None);
-            recovery = new Table(session, dbid, "recovery", OpenTableGrbit.None);
-            outgoing = new Table(session, dbid, "outgoing", OpenTableGrbit.None);
-            outgoingHistory = new Table(session, dbid, "outgoing_history", OpenTableGrbit.None);
-        	recveivedMsgs = new Table(session, dbid, "recveived_msgs", OpenTableGrbit.None);
-        }
+				queues = new Table(session, dbid, "queues", OpenTableGrbit.None);
+				subqueues = new Table(session, dbid, "subqueues", OpenTableGrbit.None);
+				txs = new Table(session, dbid, "transactions", OpenTableGrbit.None);
+				recovery = new Table(session, dbid, "recovery", OpenTableGrbit.None);
+				outgoing = new Table(session, dbid, "outgoing", OpenTableGrbit.None);
+				outgoingHistory = new Table(session, dbid, "outgoing_history", OpenTableGrbit.None);
+				recveivedMsgs = new Table(session, dbid, "recveived_msgs", OpenTableGrbit.None);
+			}
+			catch (Exception)
+			{
+				Dispose();
+				throw;
+			}
+		}
 
-        public QueueActions GetQueue(string queueName)
+    	public QueueActions GetQueue(string queueName)
         {
             QueueActions actions;
             if (queuesByName.TryGetValue(queueName, out actions))
@@ -124,37 +135,45 @@ namespace Rhino.Queues.Storage
 
         public void Dispose()
         {
-            foreach (var action in queuesByName.Values)
-            {
-                action.Dispose();
-            }
+        	try
+        	{
+        		foreach (var action in queuesByName.Values)
+        		{
+        			action.Dispose();
+        		}
 
-            if (queues != null)
-                queues.Dispose();
-			if (subqueues != null)
-				subqueues.Dispose();
-            if (txs != null)
-                txs.Dispose();
-            if (recovery != null)
-                recovery.Dispose();
-            if (outgoing != null)
-                outgoing.Dispose();
-            if (outgoingHistory != null)
-                outgoingHistory.Dispose();
-			if (recveivedMsgs != null)
-				recveivedMsgs.Dispose();
+        		if (queues != null)
+        			queues.Dispose();
+        		if (subqueues != null)
+        			subqueues.Dispose();
+        		if (txs != null)
+        			txs.Dispose();
+        		if (recovery != null)
+        			recovery.Dispose();
+        		if (outgoing != null)
+        			outgoing.Dispose();
+        		if (outgoingHistory != null)
+        			outgoingHistory.Dispose();
+        		if (recveivedMsgs != null)
+        			recveivedMsgs.Dispose();
 
-            if (Equals(dbid, JET_DBID.Nil) == false)
-                Api.JetCloseDatabase(session, dbid, CloseDatabaseGrbit.None);
+        		if (Equals(dbid, JET_DBID.Nil) == false)
+        			Api.JetCloseDatabase(session, dbid, CloseDatabaseGrbit.None);
 
-            if (transaction != null)
-                transaction.Dispose();
+        		if (transaction != null)
+        			transaction.Dispose();
 
-            if (session != null)
-                session.Dispose();
+        		if (session != null)
+        			session.Dispose();
+        	}
+        	catch (Exception e)
+        	{
+				Trace.WriteLine(e.ToString());
+        		Debugger.Break();
+        	}
         }
 
-        public void Commit()
+    	public void Commit()
         {
             transaction.Commit(CommitTransactionGrbit.LazyFlush);
         }
