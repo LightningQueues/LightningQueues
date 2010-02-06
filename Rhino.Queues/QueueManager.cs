@@ -170,6 +170,31 @@ namespace Rhino.Queues
 			if (wasDisposed)
 				return;
 
+			DisposeResourcesWhoseDisposalCannotFail();
+
+			queueStorage.Dispose();
+
+			// only after we finish incoming recieves, and finish processing
+			// active transactions can we mark it as disposed
+			wasDisposed = true;
+		}
+
+		public void DisposeRudely()
+		{
+			if (wasDisposed)
+				return;
+
+			DisposeResourcesWhoseDisposalCannotFail();
+
+			queueStorage.DisposeRudely();
+
+			// only after we finish incoming recieves, and finish processing
+			// active transactions can we mark it as disposed
+			wasDisposed = true;
+		}
+
+		private void DisposeResourcesWhoseDisposalCannotFail()
+		{
 			disposing = true;
 
 			lock (newMessageArrivedLock)
@@ -190,16 +215,11 @@ namespace Rhino.Queues
 				Thread.Sleep(TimeSpan.FromSeconds(1));
 			}
 
-			while (currentlyInsideTransaction > 0 )
+			while (currentlyInsideTransaction > 0)
 			{
 				logger.WarnFormat("Waiting for {0} transactions currently running", currentlyInsideTransaction);
 				Thread.Sleep(TimeSpan.FromSeconds(1));
 			}
-
-			// only after we finish incoming recieves, and finish processing
-			// active transactions can we mark it as disposed
-			wasDisposed = true; 
-			queueStorage.Dispose();
 		}
 
 		#endregion
@@ -335,7 +355,7 @@ namespace Rhino.Queues
 
 		private static TimeSpan Max(TimeSpan x, TimeSpan y)
 		{
-			return x>=y ? x : y;
+			return x >= y ? x : y;
 		}
 
 		public Message Receive(string queueName)
@@ -482,7 +502,7 @@ namespace Rhino.Queues
 			var bookmarks = new List<MessageBookmark>();
 			queueStorage.Global(actions =>
 			{
-				foreach (var msg in receivedMsgs.Filter(msgs,message => message.Id))
+				foreach (var msg in receivedMsgs.Filter(msgs, message => message.Id))
 				{
 					var queue = actions.GetQueue(msg.Queue);
 					var bookmark = queue.Enqueue(msg);
@@ -490,7 +510,7 @@ namespace Rhino.Queues
 				}
 				actions.Commit();
 			});
-			var msgIds = msgs.Select(m=>m.Id).ToArray();
+			var msgIds = msgs.Select(m => m.Id).ToArray();
 			return new MessageAcceptance(this, bookmarks, msgIds, queueStorage);
 		}
 
@@ -504,7 +524,7 @@ namespace Rhino.Queues
 			private readonly QueueStorage queueStorage;
 
 			public MessageAcceptance(QueueManager parent,
-				IList<MessageBookmark> bookmarks, 
+				IList<MessageBookmark> bookmarks,
 				IEnumerable<MessageId> messageIds,
 				QueueStorage queueStorage)
 			{
@@ -557,7 +577,7 @@ namespace Rhino.Queues
 			{
 				try
 				{
-					parent.AssertNotDisposed(); 
+					parent.AssertNotDisposed();
 					queueStorage.Global(actions =>
 					{
 						foreach (var bookmark in bookmarks)

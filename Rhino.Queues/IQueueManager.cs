@@ -41,5 +41,6 @@ namespace Rhino.Queues
         string[] GetSubqueues(string queueName);
         int GetNumberOfMessages(string queueName);
         void FailedToSendTo(Endpoint endpointThatWeFailedToSendTo);
+    	void DisposeRudely();
     }
 }
