@@ -258,6 +258,7 @@ namespace Rhino.Queues.Storage
 					SentAt =
 						DateTime.FromOADate(Api.RetrieveColumnAsDouble(session, msgs, msgsColumns["timestamp"]).Value),
 					Data = Api.RetrieveColumn(session, msgs, msgsColumns["data"]),
+					SubQueue = subQueue,
 					Id = new MessageId
 					{
 						MessageIdentifier = new Guid(Api.RetrieveColumn(session, msgs, msgsColumns["msg_id"])),

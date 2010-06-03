@@ -40,16 +40,6 @@ task Init -depends Clean {
 		-version $version `
 		-copyright "Hibernating Rhinos & Ayende Rahien 2004 - 2009" `
         -clsCompliant "false"
-        
-    Generate-Assembly-Info `
-		-file "$base_dir\Rhino.Queues.Visualizer\Properties\AssemblyInfo.cs" `
-		-title "Rhino Queues $version" `
-		-description "HTTP based reliable async queuing system" `
-		-company "Hibernating Rhinos" `
-		-product "Rhino Queues $version" `
-		-version $version `
-		-copyright "Hibernating Rhinos & Ayende Rahien 2004 - 2009" `
-        -clsCompliant "false"
 		
 	new-item $release_dir -itemType directory 
 	new-item $buildartifacts_dir -itemType directory 
