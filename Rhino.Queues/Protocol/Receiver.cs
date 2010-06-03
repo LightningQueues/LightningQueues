@@ -33,17 +33,23 @@ namespace Rhino.Queues.Protocol
             listener.BeginAcceptTcpClient(BeginAcceptTcpClientCallback, null);
         }
 
-        private void BeginAcceptTcpClientCallback(IAsyncResult result)
-        {
-            TcpClient client;
-            try
-            {
-                client = listener.EndAcceptTcpClient(result);
-            }
-            catch (ObjectDisposedException)
-            {
-                return;
-            }
+		private void BeginAcceptTcpClientCallback(IAsyncResult result)
+		{
+			TcpClient client;
+			try
+			{
+				client = listener.EndAcceptTcpClient(result);
+			}
+			catch (ObjectDisposedException)
+			{
+				return;
+			}
+			catch (Exception ex)
+			{
+				logger.Warn("Error on EndAcceptTcpClient", ex);
+				StartAcceptingTcpClient();
+				return;
+			}
 
             logger.DebugFormat("Accepting connection from {0}", client.Client.RemoteEndPoint);
             var enumerator = new AsyncEnumerator(
@@ -61,14 +67,19 @@ namespace Rhino.Queues.Protocol
                 }
             });
 
-            try
-            {
-                listener.BeginAcceptTcpClient(BeginAcceptTcpClientCallback, null);
-            }
-            catch (ObjectDisposedException)
-            {
-            }
-        }
+			StartAcceptingTcpClient();
+		}
+
+		private void StartAcceptingTcpClient()
+		{
+			try
+			{
+				listener.BeginAcceptTcpClient(BeginAcceptTcpClientCallback, null);
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+		}
 
         private IEnumerator<int> ProcessRequest(TcpClient client, AsyncEnumerator ae)
         {
