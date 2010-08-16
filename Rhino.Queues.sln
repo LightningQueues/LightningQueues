@@ -1,6 +1,6 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual Studio 2008
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rhino.Queues", "Rhino.Queues\Rhino.Queues.csproj", "{398BF580-41F5-418E-A017-19D19B289A97}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rhino.Queues.Tests", "Rhino.Queues.Tests\Rhino.Queues.Tests.csproj", "{98D394CA-9FEF-49AD-8DAB-FE039152E001}"
