@@ -6,6 +6,7 @@ using log4net;
 using Microsoft.Isam.Esent.Interop;
 using Rhino.Queues.Model;
 using Rhino.Queues.Protocol;
+using Rhino.Queues.Utils;
 
 namespace Rhino.Queues.Storage
 {
