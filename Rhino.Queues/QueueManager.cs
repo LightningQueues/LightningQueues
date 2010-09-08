@@ -393,7 +393,8 @@ namespace Rhino.Queues
 					var sp = Stopwatch.StartNew();
 					if (Monitor.Wait(newMessageArrivedLock, remaining) == false)
 						throw new TimeoutException("No message arrived in the specified timeframe " + timeout);
-					remaining = remaining - sp.Elapsed;
+				    var newRemaining = remaining - sp.Elapsed;
+				    remaining = newRemaining >= TimeSpan.Zero ? newRemaining : TimeSpan.Zero;
 				}
 			}
 		}
