@@ -2353,6 +2353,25 @@
             <param name="grbit">Retrieval options.</param>
             <returns>The data retrieved from the column as an UInt64. Null if the column is null.</returns>
         </member>
+        <member name="M:Microsoft.Isam.Esent.Interop.Api.DeserializeObjectFromColumn(Microsoft.Isam.Esent.Interop.JET_SESID,Microsoft.Isam.Esent.Interop.JET_TABLEID,Microsoft.Isam.Esent.Interop.JET_COLUMNID)">
+            <summary>
+            Deserialize an object from a column.
+            </summary>
+            <param name="sesid">The session to use.</param>
+            <param name="tableid">The table to read from.</param>
+            <param name="columnid">The column to read from.</param>
+            <returns>The deserialized object. Null if the column was null.</returns>
+        </member>
+        <member name="M:Microsoft.Isam.Esent.Interop.Api.DeserializeObjectFromColumn(Microsoft.Isam.Esent.Interop.JET_SESID,Microsoft.Isam.Esent.Interop.JET_TABLEID,Microsoft.Isam.Esent.Interop.JET_COLUMNID,Microsoft.Isam.Esent.Interop.RetrieveColumnGrbit)">
+            <summary>
+            Deserialize an object from a column.
+            </summary>
+            <param name="sesid">The session to use.</param>
+            <param name="tableid">The table to read from.</param>
+            <param name="columnid">The column to read from.</param>
+            <param name="grbit">The retrieval options to use.</param>
+            <returns>The deserialized object. Null if the column was null.</returns>
+        </member>
         <member name="M:Microsoft.Isam.Esent.Interop.Api.CreateReturnValue``1(``0,System.Int32,Microsoft.Isam.Esent.Interop.JET_wrn,System.Int32)">
             <summary>
             Create the nullable return value.
@@ -2379,6 +2398,15 @@
             <param name="sesid">The sesid to use.</param>
             <param name="tableid">The table to retrieve the information for.</param>
             <returns>A dictionary mapping column names to column IDs.</returns>
+        </member>
+        <member name="M:Microsoft.Isam.Esent.Interop.Api.GetTableColumnid(Microsoft.Isam.Esent.Interop.JET_SESID,Microsoft.Isam.Esent.Interop.JET_TABLEID,System.String)">
+            <summary>
+            Get the columnid of the specified column.
+            </summary>
+            <param name="sesid">The session to use.</param>
+            <param name="tableid">The table containing the column.</param>
+            <param name="columnName">The name of the column.</param>
+            <returns>The id of the column.</returns>
         </member>
         <member name="M:Microsoft.Isam.Esent.Interop.Api.GetTableColumns(Microsoft.Isam.Esent.Interop.JET_SESID,Microsoft.Isam.Esent.Interop.JET_TABLEID)">
             <summary>
@@ -2484,6 +2512,7 @@
             <param name="dataOffset">The offset in the data buffer to set data from.</param>
             <param name="grbit">SetColumn options.</param>
             <param name="setinfo">Used to specify itag or long-value offset.</param>
+            <returns>A warning value.</returns>
         </member>
         <member name="M:Microsoft.Isam.Esent.Interop.Api.JetRetrieveColumn(Microsoft.Isam.Esent.Interop.JET_SESID,Microsoft.Isam.Esent.Interop.JET_TABLEID,Microsoft.Isam.Esent.Interop.JET_COLUMNID,System.Byte[],System.Int32,System.Int32,System.Int32@,Microsoft.Isam.Esent.Interop.RetrieveColumnGrbit,Microsoft.Isam.Esent.Interop.JET_RETINFO)">
             <summary>
@@ -2574,6 +2603,7 @@
             <param name="dataSize">The size of data to set.</param>
             <param name="grbit">SetColumn options.</param>
             <param name="setinfo">Used to specify itag or long-value offset.</param>
+            <returns>A warning value.</returns>
         </member>
         <member name="M:Microsoft.Isam.Esent.Interop.Api.MakeKey(Microsoft.Isam.Esent.Interop.JET_SESID,Microsoft.Isam.Esent.Interop.JET_TABLEID,System.Byte[],Microsoft.Isam.Esent.Interop.MakeKeyGrbit)">
             <summary>
@@ -2883,6 +2913,15 @@
             <param name="tableid">The cursor to update. An update should be prepared.</param>
             <param name="columnid">The columnid to set.</param>
             <param name="data">The data to set.</param>
+        </member>
+        <member name="M:Microsoft.Isam.Esent.Interop.Api.SerializeObjectToColumn(Microsoft.Isam.Esent.Interop.JET_SESID,Microsoft.Isam.Esent.Interop.JET_TABLEID,Microsoft.Isam.Esent.Interop.JET_COLUMNID,System.Object)">
+            <summary>
+            Write a serialized form of an object to a column.
+            </summary>
+            <param name="sesid">The session to use.</param>
+            <param name="tableid">The table to write to. An update should be prepared.</param>
+            <param name="columnid">The column to write to.</param>
+            <param name="value">The object to write. The object must be serializable.</param>
         </member>
         <member name="M:Microsoft.Isam.Esent.Interop.Api.SetColumns(Microsoft.Isam.Esent.Interop.JET_SESID,Microsoft.Isam.Esent.Interop.JET_TABLEID,Microsoft.Isam.Esent.Interop.ColumnValue[])">
             <summary>
@@ -7075,6 +7114,21 @@
             Gets a text message describing the exception.
             </summary>
         </member>
+        <member name="T:Microsoft.Isam.Esent.Interop.Server2003.Server2003Param">
+            <summary>
+            System parameters that have been added to the Windows Server 2003 version of ESENT.
+            </summary>
+        </member>
+        <member name="F:Microsoft.Isam.Esent.Interop.Server2003.Server2003Param.AlternateDatabaseRecoveryPath">
+            <summary>
+            The full path to each database is persisted in the transaction logs
+            at run time. Ordinarily, these databases must remain at the original
+            location for transaction replay to function correctly. This
+            parameter can be used to force crash recovery or a restore operation
+            to look for the databases referenced in the transaction log in the
+            specified folder.
+            </summary>
+        </member>
         <member name="T:Microsoft.Isam.Esent.Interop.SystemParameters">
             <summary>
             This class provides static properties to set and get
@@ -7192,10 +7246,6 @@
             <summary>
             Gets the maximum key size. This depends on the Esent version and database
             page size.
-            <para>
-            Supported on Windows Vista and up. Ignored on Windows XP and
-            Windows Server 2003.
-            </para>
             </summary>
         </member>
         <member name="P:Microsoft.Isam.Esent.Interop.SystemParameters.ColumnsKeyMost">
@@ -7211,10 +7261,6 @@
         <member name="P:Microsoft.Isam.Esent.Interop.SystemParameters.LVChunkSizeMost">
             <summary>
             Gets the lv chunks size. This depends on the database page size.
-            <para>
-            Supported on Windows 7 and up. Ignored on Windows XP,
-            Windows Server 2003, Windows Vista and Windows Server 2008.
-            </para>
             </summary>
         </member>
         <member name="P:Microsoft.Isam.Esent.Interop.SystemParameters.Configuration">
@@ -8475,6 +8521,17 @@
             folder that will contain the transaction logs for the instance.
             </summary>
         </member>
+        <member name="P:Microsoft.Isam.Esent.Interop.InstanceParameters.AlternateDatabaseRecoveryDirectory">
+            <summary>
+            Gets or sets the relative or absolute file system path of the
+            a folder where crash recovery or a restore operation can find
+            the databases referenced in the transaction log in the
+            specified folder.
+            </summary>
+            <remarks>
+            This parameter is ignored on Windows XP.
+            </remarks>
+        </member>
         <member name="P:Microsoft.Isam.Esent.Interop.InstanceParameters.BaseName">
             <summary>
             Gets or sets the three letter prefix used for many of the files used by
@@ -9268,6 +9325,19 @@
         <member name="M:Microsoft.Isam.Esent.Interop.Update.Save">
             <summary>
             Update the tableid.
+            </summary>
+            <remarks>
+            Save is the final step in performing an insert or an update. The update is begun by
+            calling creating an Update object and then by calling JetSetColumn or JetSetColumns one or more times
+            to set the record state. Finally, Update is called to complete the update operation.
+            Indexes are updated only by Update or and not during JetSetColumn or JetSetColumns
+            </remarks>
+        </member>
+        <member name="M:Microsoft.Isam.Esent.Interop.Update.SaveAndGotoBookmark">
+            <summary>
+            Update the tableid and position the tableid on the record that was modified.
+            This can be useful when inserting a record because by default the tableid
+            remains in its old location.
             </summary>
             <remarks>
             Save is the final step in performing an insert or an update. The update is begun by
