@@ -85,7 +85,7 @@ namespace Rhino.Queues.Tests
 		}
 
 		[Fact]
-		public void Moving_to_subqueue_move_from_main_queue()
+		public void Moving_to_subqueue_should_remove_from_main_queue()
 		{
 			using (var tx = new TransactionScope())
 			{
@@ -99,9 +99,10 @@ namespace Rhino.Queues.Tests
 				tx.Complete();
 			}
 
-			using (var tx = new TransactionScope())
+            var message = receiver.Peek("h");
+            
+            using (var tx = new TransactionScope())
 			{
-				var message = receiver.Receive("h");
 
 				receiver.MoveTo("b", message);
 
