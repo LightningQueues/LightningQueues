@@ -13,16 +13,14 @@ using Xunit;
 
 namespace Rhino.Queues.Tests
 {
-    class RaisingSendEvents : WithDebugging, IDisposable
+    class RaisingSendEvents : WithDebugging
     {
-        private const string TEST_QUEUE_1 = "test.esent";
-        private const string TEST_QUEUE_2 = "test2.esent";
-
-        private QueueManager sender, receiver;
+        private const string TEST_QUEUE_1 = "testA.esent";
+        private const string TEST_QUEUE_2 = "testB.esent";
 
         private MessageEventArgs messageEventArgs;
 
-        public void Setup()
+        public QueueManager SetupSender()
         {
             if (Directory.Exists(TEST_QUEUE_1))
                 Directory.Delete(TEST_QUEUE_1, true);
@@ -30,8 +28,9 @@ namespace Rhino.Queues.Tests
             if (Directory.Exists(TEST_QUEUE_2))
                 Directory.Delete(TEST_QUEUE_2, true);
 
-            sender = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23456), TEST_QUEUE_1);
+            var sender = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23456), TEST_QUEUE_1);
             messageEventArgs = null;
+            return sender;
         }
 
         void RecordMessageEvent(object s, MessageEventArgs e)
@@ -42,20 +41,21 @@ namespace Rhino.Queues.Tests
         [Fact]
         public void MessageQueuedForSend_EventIsRaised()
         {
-            Setup();
-
-            sender.MessageQueuedForSend += RecordMessageEvent;
-
-            using (var tx = new TransactionScope())
+            using(var sender = SetupSender())
             {
-                sender.Send(
-                    new Uri("rhino.queues://localhost:23999/h"),
-                     new MessagePayload
-                     {
-                         Data = new byte[] { 1, 2, 4, 5 }
-                     });
+                sender.MessageQueuedForSend += RecordMessageEvent;
 
-                tx.Complete();
+                using (var tx = new TransactionScope())
+                {
+                    sender.Send(
+                        new Uri("rhino.queues://localhost:23999/h"),
+                         new MessagePayload
+                         {
+                             Data = new byte[] { 1, 2, 4, 5 }
+                         });
+
+                    tx.Complete();
+                }
             }
 
             Assert.NotNull(messageEventArgs);
@@ -67,19 +67,20 @@ namespace Rhino.Queues.Tests
         [Fact]
         public void MessageQueuedForSend_EventIsRaised_EvenIfTransactionFails()
         {
-            Setup();
-
-            sender.MessageQueuedForSend += RecordMessageEvent;
-
-            using (new TransactionScope())
+            using(var sender = SetupSender())
             {
-                sender.Send(
-                    new Uri("rhino.queues://localhost:23999/h"),
-                    new MessagePayload
+                sender.MessageQueuedForSend += RecordMessageEvent;
+
+                using (new TransactionScope())
+                {
+                    sender.Send(
+                        new Uri("rhino.queues://localhost:23999/h"),
+                        new MessagePayload
                         {
                             Data = new byte[] { 1, 2, 4, 5 }
                         });
 
+                }
             }
 
             Assert.NotNull(messageEventArgs);
@@ -91,26 +92,28 @@ namespace Rhino.Queues.Tests
         [Fact]
         public void MessageSent_EventIsRaised()
         {
-            Setup();
-
-            sender.MessageSent += RecordMessageEvent;
-
-            receiver = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2);
-            receiver.CreateQueues("h");
-
-            using (var tx = new TransactionScope())
+            using(var sender = SetupSender())
             {
-                sender.Send(
-                    new Uri("rhino.queues://localhost:23457/h"),
-                     new MessagePayload
-                     {
-                         Data = new byte[] { 1, 2, 4, 5 }
-                     });
+                sender.MessageSent += RecordMessageEvent;
 
-                tx.Complete();
+                using (var receiver = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2))
+                {
+                    receiver.CreateQueues("h");
+
+                    using (var tx = new TransactionScope())
+                    {
+                        sender.Send(
+                            new Uri("rhino.queues://localhost:23457/h"),
+                            new MessagePayload
+                                {
+                                    Data = new byte[] {1, 2, 4, 5}
+                                });
+
+                        tx.Complete();
+                    }
+                    Thread.Sleep(1000);
+                }
             }
-
-            Thread.Sleep(1000);
 
             Assert.NotNull(messageEventArgs);
             Assert.Equal("localhost", messageEventArgs.Endpoint.Host);
@@ -121,23 +124,24 @@ namespace Rhino.Queues.Tests
         [Fact]
         public void MessageSent_EventNotRaised_IfNotSent()
         {
-            Setup();
-
-            sender.MessageSent += RecordMessageEvent;
-
-            using (var tx = new TransactionScope())
+            using (var sender = SetupSender())
             {
-                sender.Send(
-                    new Uri("rhino.queues://localhost:23999/h"),
-                     new MessagePayload
-                     {
-                         Data = new byte[] { 1, 2, 4, 5 }
-                     });
 
-                tx.Complete();
+                sender.MessageSent += RecordMessageEvent;
+
+                using (var tx = new TransactionScope())
+                {
+                    sender.Send(
+                        new Uri("rhino.queues://localhost:23999/h"),
+                        new MessagePayload
+                            {
+                                Data = new byte[] {1, 2, 4, 5}
+                            });
+
+                    tx.Complete();
+                }
+                Thread.Sleep(1000);
             }
-
-            Thread.Sleep(1000);
 
             Assert.Null(messageEventArgs);
         }
@@ -145,26 +149,28 @@ namespace Rhino.Queues.Tests
         [Fact]
         public void MessageSent_EventNotRaised_IfReceiverReverts()
         {
-            Setup();
-
-            sender.MessageSent += RecordMessageEvent;
-
-            receiver = new RevertingQueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2);
-            receiver.CreateQueues("h");
-
-            using (var tx = new TransactionScope())
+            using (var sender = SetupSender())
             {
-                sender.Send(
-                    new Uri("rhino.queues://localhost:23457/h"),
-                     new MessagePayload
-                     {
-                         Data = new byte[] { 1, 2, 4, 5 }
-                     });
+                sender.MessageSent += RecordMessageEvent;
 
-                tx.Complete();
+                using (var receiver = new RevertingQueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2))
+                {
+                    receiver.CreateQueues("h");
+
+                    using (var tx = new TransactionScope())
+                    {
+                        sender.Send(
+                            new Uri("rhino.queues://localhost:23457/h"),
+                            new MessagePayload
+                                {
+                                    Data = new byte[] {1, 2, 4, 5}
+                                });
+
+                        tx.Complete();
+                    }
+                    Thread.Sleep(1000);
+                }
             }
-
-            Thread.Sleep(1000);
 
             Assert.Null(messageEventArgs);
         }
@@ -180,12 +186,6 @@ namespace Rhino.Queues.Tests
             {
                 throw new Exception("Cannot accept messages.");
             }
-        }
-
-        public void Dispose()
-        {
-            if (sender != null) sender.Dispose();
-            if (receiver != null) receiver.Dispose();
         }
     }
 }
