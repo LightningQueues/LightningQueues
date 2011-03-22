@@ -61,7 +61,8 @@ namespace Rhino.Queues.Internal
                     Messages = messages.ToArray(),
 					Success = OnSuccess(messages),
 					Failure = OnFailure(point, messages),
-					Revert = OnRevert(point)
+					Revert = OnRevert(point),
+                    Commit = OnCommit(point, messages)
                 }.Send();
             }
         }
@@ -117,6 +118,17 @@ namespace Rhino.Queues.Internal
 #pragma warning restore 420
                 });
                 return newBookmarks.ToArray();
+            };
+        }
+
+        private Action OnCommit(Endpoint endpoint, IEnumerable<PersistentMessage> messages)
+        {
+            return () =>
+            {
+                foreach (var message in messages)
+                {
+                    queueManager.OnMessageSent(new MessageEventArgs(endpoint, message));
+                }
             };
         }
 

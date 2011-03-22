@@ -69,6 +69,7 @@
     <Compile Include="Exceptions\QueueDoesNotExistsException.cs" />
     <Compile Include="IQueue.cs" />
     <Compile Include="IQueueManager.cs" />
+    <Compile Include="MessageEventArgs.cs" />
     <Compile Include="MessagePayload.cs" />
     <Compile Include="Model\HistoryMessage.cs" />
     <Compile Include="Model\PersistentMessageToSend.cs" />

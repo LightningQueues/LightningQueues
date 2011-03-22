@@ -42,5 +42,9 @@ namespace Rhino.Queues
         int GetNumberOfMessages(string queueName);
         void FailedToSendTo(Endpoint endpointThatWeFailedToSendTo);
     	void DisposeRudely();
+
+        event Action<object, MessageEventArgs> MessageQueuedForSend;
+        event Action<object, MessageEventArgs> MessageSent;
+        void OnMessageSent(MessageEventArgs messageEventArgs);
     }
 }

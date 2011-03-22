@@ -19,6 +19,7 @@ namespace Rhino.Queues.Protocol
         public Func<MessageBookmark[]> Success { get; set; }
         public Action<Exception> Failure { get; set; }
         public Action<MessageBookmark[]> Revert { get; set; }
+        public Action Commit { get; set; }
         public Endpoint Destination { get; set; }
         public Message[] Messages { get; set; }
 
@@ -27,6 +28,7 @@ namespace Rhino.Queues.Protocol
             Failure = e => { };
             Success = () => null;
             Revert = bookmarks => { };
+            Commit = () => { };
         }
 
         public void Send()
@@ -240,7 +242,10 @@ namespace Rhino.Queues.Protocol
                             startingToReadFailed = true;
                         }
                         if (startingToReadFailed)
+                        {
+                            Commit();
                             yield break;
+                        }
                         yield return 1;
                         try
                         {
@@ -248,14 +253,17 @@ namespace Rhino.Queues.Protocol
                             var revert = Encoding.Unicode.GetString(buffer);
                             if (revert == ProtocolConstants.Revert)
                             {
-                            	logger.Warn("Got back revert message from receiver, reverting send");
+                                logger.Warn("Got back revert message from receiver, reverting send");
                                 Revert(bookmarks);
                             }
+                            else
+                                Commit();
                         }
                         catch (Exception)
                         {
                             // expected, there is nothing to do here, the
                             // reciever didn't report anything for us
+                            Commit();
                         }
 
                     }

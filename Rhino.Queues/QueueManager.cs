@@ -50,6 +50,9 @@ namespace Rhino.Queues
 
 		public event Action<Endpoint> FailedToSendMessagesTo;
 
+        public event Action<object, MessageEventArgs> MessageQueuedForSend;
+        public event Action<object, MessageEventArgs> MessageSent;
+
 		public QueueManager(IPEndPoint endpoint, string path)
 		{
 			NumberOfMessagesToKeepInProcessedQueues = 100;
@@ -193,7 +196,7 @@ namespace Rhino.Queues
 			wasDisposed = true;
 		}
 
-		private void DisposeResourcesWhoseDisposalCannotFail()
+	    private void DisposeResourcesWhoseDisposalCannotFail()
 		{
 			disposing = true;
 
@@ -405,8 +408,7 @@ namespace Rhino.Queues
 				throw new CannotSendWhileWaitingForAllMessagesToBeSentException("Currently waiting for all messages to be sent, so we cannot send. You probably have a race condition in your application.");
 
 			EnsureEnslistment();
-
-			var parts = uri.AbsolutePath.Substring(1).Split('/');
+            var parts = uri.AbsolutePath.Substring(1).Split('/');
 			var queue = parts[0];
 			string subqueue = null;
 			if (parts.Length > 1)
@@ -414,22 +416,38 @@ namespace Rhino.Queues
 				subqueue = string.Join("/", parts.Skip(1).ToArray());
 			}
 
-			Guid msgId = Guid.Empty;
-			queueStorage.Global(actions =>
+            Guid msgId = Guid.Empty;
+
+            var port = uri.Port;
+            if (port == -1)
+                port = 2200;
+            var destination = new Endpoint(uri.Host, port);
+            
+            queueStorage.Global(actions =>
 			{
-				var port = uri.Port;
-				if (port == -1)
-					port = 2200;
-				msgId = actions.RegisterToSend(new Endpoint(uri.Host, port), queue,
+			    msgId = actions.RegisterToSend(destination, queue,
 											   subqueue, payload, Enlistment.Id);
 
 				actions.Commit();
 			});
-			return new MessageId
-			{
-				SourceInstanceId = queueStorage.Id,
-				MessageIdentifier = msgId
-			};
+
+		    var messageId = new MessageId
+		                        {
+		                            SourceInstanceId = queueStorage.Id,
+		                            MessageIdentifier = msgId
+		                        };
+            var message = new Message
+            {
+                Id = messageId,
+                Data = payload.Data,
+                Headers = payload.Headers,
+                Queue = queue,
+                SubQueue = subqueue
+            };
+
+            OnMessageQueuedForSend(new MessageEventArgs(destination, message));
+
+            return messageId;
 		}
 
 		private void EnsureEnslistment()
@@ -498,7 +516,7 @@ namespace Rhino.Queues
 			return message;
 		}
 
-		private IMessageAcceptance AcceptMessages(Message[] msgs)
+		protected virtual IMessageAcceptance AcceptMessages(Message[] msgs)
 		{
 			var bookmarks = new List<MessageBookmark>();
 			queueStorage.Global(actions =>
@@ -727,5 +745,17 @@ namespace Rhino.Queues
 			if (action != null)
 				action(endpointThatWeFailedToSendTo);
 		}
-	}
+
+        public void OnMessageQueuedForSend(MessageEventArgs messageEventArgs)
+        {
+            var action = MessageQueuedForSend;
+            if (action != null) action(this, messageEventArgs);
+        }
+
+        public void OnMessageSent(MessageEventArgs messageEventArgs)
+        {
+            var action = MessageSent;
+            if (action != null) action(this, messageEventArgs);
+        }
+    }
 }
