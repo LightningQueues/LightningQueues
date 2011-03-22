@@ -70,6 +70,28 @@ namespace Rhino.Queues.Tests
             Assert.Equal("h", messageEventArgs.Message.Queue);
         }
 
+        [Fact]
+        public void MessageQueuedForReceive_EventIsRaised_DirectEnqueuing()
+        {
+            using (var receiver = SetupReciever())
+            {
+                receiver.MessageQueuedForReceive += RecordMessageEvent;
+
+                using (var tx = new TransactionScope())
+                {
+                    receiver.EnqueueDirectlyTo("h",null, new MessagePayload{Data = new byte[]{1,2,3}});
+
+                    tx.Complete();
+                }
+                Thread.Sleep(1000);
+            }
+
+            Assert.NotNull(messageEventArgs);
+            Assert.Equal("127.0.0.1", messageEventArgs.Endpoint.Host);
+            Assert.Equal(23457, messageEventArgs.Endpoint.Port);
+            Assert.Equal("h", messageEventArgs.Message.Queue);
+        }
+
         //Unable to find a clean way of causing receive to abort;
         //This test only passes if I deliberately break the acknowledgment sending code in Sender.
         //[Fact]

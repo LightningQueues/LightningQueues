@@ -683,28 +683,33 @@ namespace Rhino.Queues
 		{
 			EnsureEnslistment();
 
-			queueStorage.Global(actions =>
+            var message = new PersistentMessage
+            {
+                Data = payload.Data,
+                Headers = payload.Headers,
+                Id = new MessageId
+                {
+                    SourceInstanceId = queueStorage.Id,
+                    MessageIdentifier = GuidCombGenerator.Generate()
+                },
+                Queue = queue,
+                SentAt = DateTime.Now,
+                SubQueue = subqueue,
+                Status = MessageStatus.EnqueueWait
+            };
+            
+            queueStorage.Global(actions =>
 			{
 				var queueActions = actions.GetQueue(queue);
 
-				var bookmark = queueActions.Enqueue(new PersistentMessage
-				{
-					Data = payload.Data,
-					Headers = payload.Headers,
-					Id = new MessageId
-					{
-						SourceInstanceId = queueStorage.Id,
-						MessageIdentifier = GuidCombGenerator.Generate()
-					},
-					Queue = queue,
-					SentAt = DateTime.Now,
-					SubQueue = subqueue,
-					Status = MessageStatus.EnqueueWait
-				});
+			    var bookmark = queueActions.Enqueue(message);
 				actions.RegisterUpdateToReverse(Enlistment.Id, bookmark, MessageStatus.EnqueueWait, subqueue);
 
 				actions.Commit();
 			});
+
+            OnMessageQueuedForReceive(message);
+
 			lock (newMessageArrivedLock)
 			{
 				Monitor.PulseAll(newMessageArrivedLock);
