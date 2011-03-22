@@ -67,6 +67,11 @@
   <ItemGroup>
     <Compile Include="Exceptions\CannotSendWhileWaitingForAllMessagesToBeSentException.cs" />
     <Compile Include="Exceptions\QueueDoesNotExistsException.cs" />
+    <Compile Include="Monitoring\IInboundPerfomanceCounters.cs" />
+    <Compile Include="Monitoring\InboundPerfomanceCounters.cs" />
+    <Compile Include="Monitoring\IOutboundPerfomanceCounters.cs" />
+    <Compile Include="Monitoring\OutboundPerfomanceCounters.cs" />
+    <Compile Include="Monitoring\PerformanceMonitor.cs" />
     <Compile Include="IQueue.cs" />
     <Compile Include="IQueueManager.cs" />
     <Compile Include="MessageEventArgs.cs" />
