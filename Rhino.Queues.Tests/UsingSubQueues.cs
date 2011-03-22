@@ -51,7 +51,7 @@ namespace Rhino.Queues.Tests
 		}
 
 		[Fact]
-		public void Can_move_msg_to_subqueue()
+		public void Can_remove_and_move_msg_to_subqueue()
 		{
 			using (var tx = new TransactionScope())
 			{
@@ -77,6 +77,40 @@ namespace Rhino.Queues.Tests
 			using (var tx = new TransactionScope())
 			{
 				var message = receiver.Receive("h", "b");
+
+				Assert.Equal("subzero", Encoding.Unicode.GetString(message.Data));
+
+				tx.Complete();
+			}
+		}
+
+		[Fact]
+		public void Can_peek_and_move_msg_to_subqueue()
+		{
+			using (var tx = new TransactionScope())
+			{
+				sender.Send(
+					new Uri("rhino.queues://localhost:23457/h"),
+					new MessagePayload
+					{
+						Data = Encoding.Unicode.GetBytes("subzero")
+					});
+
+				tx.Complete();
+			}
+
+            var message = receiver.Peek("h");
+            
+            using (var tx = new TransactionScope())
+			{
+				receiver.MoveTo("b", message);
+
+				tx.Complete();
+			}
+
+			using (var tx = new TransactionScope())
+			{
+				message = receiver.Receive("h", "b");
 
 				Assert.Equal("subzero", Encoding.Unicode.GetString(message.Data));
 
