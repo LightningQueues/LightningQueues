@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
-using System.Text;
 using System.Threading;
 using System.Transactions;
 using Rhino.Queues.Model;
@@ -111,7 +108,7 @@ namespace Rhino.Queues.Tests
 
                         tx.Complete();
                     }
-                    Thread.Sleep(1000);
+                    sender.WaitForAllMessagesToBeSent();
                 }
             }
 
