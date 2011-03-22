@@ -45,7 +45,7 @@ namespace Rhino.Queues.Tests
         {
             using (var sender = SetupSender())
             {
-                using (var receiver = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2))
+                using (var receiver = SetupReciever())
                 {
                     receiver.MessageQueuedForReceive += RecordMessageEvent;
 
@@ -77,7 +77,7 @@ namespace Rhino.Queues.Tests
         {
             using (var sender = SetupSender())
             {
-                using (var receiver = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2))
+                using (var receiver = SetupReciever())
                 {
                     receiver.MessageQueuedForReceive += RecordMessageEvent;
 
@@ -104,7 +104,7 @@ namespace Rhino.Queues.Tests
         {
             using (var sender = SetupSender())
             {
-                using (var receiver = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2))
+                using (var receiver = SetupReciever())
                 {
                     receiver.MessageReceived += RecordMessageEvent;
 
@@ -140,7 +140,7 @@ namespace Rhino.Queues.Tests
         {
             using (var sender = SetupSender())
             {
-                using (var receiver = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2))
+                using (var receiver = SetupReciever())
                 {
                     receiver.MessageReceived += RecordMessageEvent;
 
