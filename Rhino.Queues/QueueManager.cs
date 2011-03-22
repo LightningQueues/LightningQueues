@@ -677,6 +677,21 @@ namespace Rhino.Queues
 					);
 				actions.Commit();
 			});
+
+            if(((PersistentMessage)message).Status == MessageStatus.ReadyToDeliver)
+                OnMessageReceived(message);
+
+		    var updatedMessage = new Message
+		                             {
+		                                 Id = message.Id,
+		                                 Data = message.Data,
+		                                 Headers = message.Headers,
+		                                 Queue = message.Queue,
+		                                 SubQueue = subqueue,
+		                                 SentAt = message.SentAt
+		                             };
+		
+            OnMessageQueuedForReceive(updatedMessage);
 		}
 
 		public void EnqueueDirectlyTo(string queue, string subqueue, MessagePayload payload)

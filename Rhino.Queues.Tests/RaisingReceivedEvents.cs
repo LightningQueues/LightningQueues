@@ -14,6 +14,9 @@ namespace Rhino.Queues.Tests
         private const string TEST_QUEUE_2 = "testB.esent";
 
         private MessageEventArgs messageEventArgs;
+        private MessageEventArgs messageEventArgs2;
+        private int messageEventCount;
+        private int messageEventCount2;
 
         public QueueManager SetupSender()
         {
@@ -30,14 +33,30 @@ namespace Rhino.Queues.Tests
                 Directory.Delete(TEST_QUEUE_2, true);
 
             var receiver = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2);
-            receiver.CreateQueues("h");
-            messageEventArgs = null;
+            receiver.CreateQueues("h", "b");
+            ResetEventRecorder();
             return receiver;
+        }
+
+        private void ResetEventRecorder()
+        {
+            messageEventArgs = null;
+            messageEventArgs2 = null;
+            messageEventCount = 0;
+            messageEventCount2 = 0;
         }
 
         void RecordMessageEvent(object s, MessageEventArgs e)
         {
             messageEventArgs = e;
+            
+            messageEventCount++;
+        }
+
+        void RecordMessageEvent2(object s, MessageEventArgs e)
+        {
+            messageEventArgs2 = e;
+            messageEventCount2++;
         }
 
         [Fact]
@@ -182,6 +201,108 @@ namespace Rhino.Queues.Tests
             }
 
             Assert.Null(messageEventArgs);
+        }
+
+        [Fact]
+        public void MessageReceived_and_MessageQueuedForReceive_events_raised_when_message_removed_and_moved()
+        {
+            using (var sender = SetupSender())
+            {
+                using (var receiver = SetupReciever())
+                {
+                    receiver.MessageReceived += RecordMessageEvent;
+                    receiver.MessageQueuedForReceive += RecordMessageEvent2;
+
+                    using (var tx = new TransactionScope())
+                    {
+                        sender.Send(
+                            new Uri("rhino.queues://localhost:23457/h"),
+                            new MessagePayload
+                            {
+                                Data = new byte[] { 1, 2, 4, 5 }
+                            });
+
+                        tx.Complete();
+                    }
+
+                    while (messageEventCount2 == 0)
+                        Thread.Sleep(100);
+
+                    ResetEventRecorder();
+
+                    using (var tx = new TransactionScope())
+                    {
+                        var message = receiver.Receive("h");
+                        receiver.MoveTo("b", message);
+                        tx.Complete();
+                    }
+
+                    Assert.Equal(1, messageEventCount);
+                    Assert.NotNull(messageEventArgs);
+                    Assert.Equal("127.0.0.1", messageEventArgs.Endpoint.Host);
+                    Assert.Equal(23457, messageEventArgs.Endpoint.Port);
+                    Assert.Equal("h", messageEventArgs.Message.Queue);
+                    Assert.Null(messageEventArgs.Message.SubQueue);
+
+                    Assert.Equal(1, messageEventCount2);
+                    Assert.NotNull(messageEventArgs2);
+                    Assert.Equal("127.0.0.1", messageEventArgs2.Endpoint.Host);
+                    Assert.Equal(23457, messageEventArgs2.Endpoint.Port);
+                    Assert.Equal("h", messageEventArgs2.Message.Queue);
+                    Assert.Equal("b", messageEventArgs2.Message.SubQueue);
+                }
+            }
+        }
+
+        [Fact]
+        public void MessageReceived_and_MessageQueuedForReceive_events_raised_when_message_peeked_and_moved()
+        {
+            using (var sender = SetupSender())
+            {
+                using (var receiver = SetupReciever())
+                {
+                    receiver.MessageReceived += RecordMessageEvent;
+                    receiver.MessageQueuedForReceive += RecordMessageEvent2;
+
+                    using (var tx = new TransactionScope())
+                    {
+                        sender.Send(
+                            new Uri("rhino.queues://localhost:23457/h"),
+                            new MessagePayload
+                            {
+                                Data = new byte[] { 1, 2, 4, 5 }
+                            });
+
+                        tx.Complete();
+                    }
+
+                    while (messageEventCount2 == 0)
+                        Thread.Sleep(100);
+
+                    ResetEventRecorder();
+
+                    using (var tx = new TransactionScope())
+                    {
+                        var message = receiver.Peek("h");
+                        receiver.MoveTo("b", message);
+                        tx.Complete();
+                    }
+
+                    Assert.Equal(1, messageEventCount);
+                    Assert.NotNull(messageEventArgs);
+                    Assert.Equal("127.0.0.1", messageEventArgs.Endpoint.Host);
+                    Assert.Equal(23457, messageEventArgs.Endpoint.Port);
+                    Assert.Equal("h", messageEventArgs.Message.Queue);
+                    Assert.Null(messageEventArgs.Message.SubQueue);
+
+                    Assert.Equal(1, messageEventCount2);
+                    Assert.NotNull(messageEventArgs2);
+                    Assert.Equal("127.0.0.1", messageEventArgs2.Endpoint.Host);
+                    Assert.Equal(23457, messageEventArgs2.Endpoint.Port);
+                    Assert.Equal("h", messageEventArgs2.Message.Queue);
+                    Assert.Equal("b", messageEventArgs2.Message.SubQueue);
+                }
+            }
         }
     }
 }
