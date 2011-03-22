@@ -51,7 +51,10 @@ namespace Rhino.Queues
 		public event Action<Endpoint> FailedToSendMessagesTo;
 
         public event Action<object, MessageEventArgs> MessageQueuedForSend;
+
         public event Action<object, MessageEventArgs> MessageSent;
+        public event Action<object, MessageEventArgs> MessageQueuedForReceive;
+        public event Action<object, MessageEventArgs> MessageReceived;
 
 		public QueueManager(IPEndPoint endpoint, string path)
 		{
@@ -384,16 +387,20 @@ namespace Rhino.Queues
 			while (true)
 			{
 				var message = GetMessageFromQueue(queueName, subqueue);
-				if (message != null)
-					return message;
-
-				lock (newMessageArrivedLock)
+                if (message != null)
+                {
+                    OnMessageReceived(message);
+                    return message;
+                }
+			    lock (newMessageArrivedLock)
 				{
 					message = GetMessageFromQueue(queueName, subqueue);
-					if (message != null)
-						return message;
-
-					var sp = Stopwatch.StartNew();
+                    if (message != null)
+                    {
+                        OnMessageReceived(message);
+                        return message;
+                    }
+				    var sp = Stopwatch.StartNew();
 					if (Monitor.Wait(newMessageArrivedLock, remaining) == false)
 						throw new TimeoutException("No message arrived in the specified timeframe " + timeout);
 				    var newRemaining = remaining - sp.Elapsed;
@@ -529,8 +536,7 @@ namespace Rhino.Queues
 				}
 				actions.Commit();
 			});
-			var msgIds = msgs.Select(m => m.Id).ToArray();
-			return new MessageAcceptance(this, bookmarks, msgIds, queueStorage);
+			return new MessageAcceptance(this, bookmarks, msgs, queueStorage);
 		}
 
 		#region Nested type: MessageAcceptance
@@ -538,18 +544,18 @@ namespace Rhino.Queues
 		private class MessageAcceptance : IMessageAcceptance
 		{
 			private readonly IList<MessageBookmark> bookmarks;
-			private readonly IEnumerable<MessageId> messageIds;
+			private readonly IEnumerable<Message> messages;
 			private readonly QueueManager parent;
 			private readonly QueueStorage queueStorage;
 
 			public MessageAcceptance(QueueManager parent,
 				IList<MessageBookmark> bookmarks,
-				IEnumerable<MessageId> messageIds,
+				IEnumerable<Message> messages,
 				QueueStorage queueStorage)
 			{
 				this.parent = parent;
 				this.bookmarks = bookmarks;
-				this.messageIds = messageIds;
+				this.messages = messages;
 				this.queueStorage = queueStorage;
 #pragma warning disable 420
 				Interlocked.Increment(ref parent.currentlyInCriticalReceiveStatus);
@@ -570,15 +576,20 @@ namespace Rhino.Queues
 							actions.GetQueue(bookmark.QueueName)
 								.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
 						}
-						foreach (var id in messageIds)
+						foreach (var msg in messages)
 						{
-							actions.MarkReceived(id);
+							actions.MarkReceived(msg.Id);
 						}
 						actions.Commit();
 					});
-					parent.receivedMsgs.Add(messageIds);
+					parent.receivedMsgs.Add(messages.Select(m => m.Id));
 
-					lock (parent.newMessageArrivedLock)
+                    foreach (var msg in messages)
+                    {
+                        parent.OnMessageQueuedForReceive(msg);
+                    }
+                    
+                    lock (parent.newMessageArrivedLock)
 					{
 						Monitor.PulseAll(parent.newMessageArrivedLock);
 					}
@@ -755,6 +766,28 @@ namespace Rhino.Queues
         public void OnMessageSent(MessageEventArgs messageEventArgs)
         {
             var action = MessageSent;
+            if (action != null) action(this, messageEventArgs);
+        }
+
+        private void OnMessageQueuedForReceive(Message message)
+        {
+            OnMessageQueuedForReceive(new MessageEventArgs(new Endpoint(endpoint.Address.ToString(), endpoint.Port), message));
+        }
+
+        public void OnMessageQueuedForReceive(MessageEventArgs messageEventArgs)
+        {
+            var action = MessageQueuedForReceive;
+            if (action != null) action(this, messageEventArgs);
+        }
+
+        private void OnMessageReceived(Message message)
+        {
+            OnMessageReceived(new MessageEventArgs(new Endpoint(endpoint.Address.ToString(), endpoint.Port), message));
+        }
+
+        public void OnMessageReceived(MessageEventArgs messageEventArgs)
+        {
+            var action = MessageReceived;
             if (action != null) action(this, messageEventArgs);
         }
     }

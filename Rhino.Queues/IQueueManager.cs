@@ -45,6 +45,9 @@ namespace Rhino.Queues
 
         event Action<object, MessageEventArgs> MessageQueuedForSend;
         event Action<object, MessageEventArgs> MessageSent;
+        event Action<object, MessageEventArgs> MessageQueuedForReceive;
+        event Action<object, MessageEventArgs> MessageReceived;
+
         void OnMessageSent(MessageEventArgs messageEventArgs);
     }
 }

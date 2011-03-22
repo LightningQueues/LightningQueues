@@ -61,12 +61,17 @@
     </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
+    <Reference Include="Wintellect.Threading, Version=4.2.3353.29511, Culture=neutral, PublicKeyToken=167f00fdf109b063, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\SharedLibs\Wintellect.Threading.dll</HintPath>
+    </Reference>
     <Reference Include="xunit, Version=1.1.0.1323, Culture=neutral, PublicKeyToken=8d05b1bb7a6fdb6c, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\SharedLibs\xunit.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="RaisingReceivedEvents.cs" />
     <Compile Include="Errors.cs" />
     <Compile Include="FromUsers\FromRene.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
