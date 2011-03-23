@@ -79,13 +79,13 @@ namespace Rhino.Queues.Tests
 
                         tx.Complete();
                     }
-                    Thread.Sleep(1000);
+
+                    while (messageEventCount == 0)
+                        Thread.Sleep(100);
                 }
             }
 
             Assert.NotNull(messageEventArgs);
-            Assert.Equal("127.0.0.1", messageEventArgs.Endpoint.Host);
-            Assert.Equal(23457, messageEventArgs.Endpoint.Port);
             Assert.Equal("h", messageEventArgs.Message.Queue);
         }
 
@@ -106,8 +106,6 @@ namespace Rhino.Queues.Tests
             }
 
             Assert.NotNull(messageEventArgs);
-            Assert.Equal("127.0.0.1", messageEventArgs.Endpoint.Host);
-            Assert.Equal(23457, messageEventArgs.Endpoint.Port);
             Assert.Equal("h", messageEventArgs.Message.Queue);
         }
 
@@ -171,8 +169,6 @@ namespace Rhino.Queues.Tests
             }
 
             Assert.NotNull(messageEventArgs);
-            Assert.Equal("127.0.0.1", messageEventArgs.Endpoint.Host);
-            Assert.Equal(23457, messageEventArgs.Endpoint.Port);
             Assert.Equal("h", messageEventArgs.Message.Queue);
         }
 
@@ -239,15 +235,11 @@ namespace Rhino.Queues.Tests
 
                     Assert.Equal(1, messageEventCount);
                     Assert.NotNull(messageEventArgs);
-                    Assert.Equal("127.0.0.1", messageEventArgs.Endpoint.Host);
-                    Assert.Equal(23457, messageEventArgs.Endpoint.Port);
                     Assert.Equal("h", messageEventArgs.Message.Queue);
                     Assert.Null(messageEventArgs.Message.SubQueue);
 
                     Assert.Equal(1, messageEventCount2);
                     Assert.NotNull(messageEventArgs2);
-                    Assert.Equal("127.0.0.1", messageEventArgs2.Endpoint.Host);
-                    Assert.Equal(23457, messageEventArgs2.Endpoint.Port);
                     Assert.Equal("h", messageEventArgs2.Message.Queue);
                     Assert.Equal("b", messageEventArgs2.Message.SubQueue);
                 }
@@ -290,15 +282,11 @@ namespace Rhino.Queues.Tests
 
                     Assert.Equal(1, messageEventCount);
                     Assert.NotNull(messageEventArgs);
-                    Assert.Equal("127.0.0.1", messageEventArgs.Endpoint.Host);
-                    Assert.Equal(23457, messageEventArgs.Endpoint.Port);
                     Assert.Equal("h", messageEventArgs.Message.Queue);
                     Assert.Null(messageEventArgs.Message.SubQueue);
 
                     Assert.Equal(1, messageEventCount2);
                     Assert.NotNull(messageEventArgs2);
-                    Assert.Equal("127.0.0.1", messageEventArgs2.Endpoint.Host);
-                    Assert.Equal(23457, messageEventArgs2.Endpoint.Port);
                     Assert.Equal("h", messageEventArgs2.Message.Queue);
                     Assert.Equal("b", messageEventArgs2.Message.SubQueue);
                 }
