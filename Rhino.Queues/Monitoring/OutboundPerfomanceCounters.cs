@@ -11,6 +11,7 @@ namespace Rhino.Queues.Monitoring
         public const string UNSENT_COUNTER_NAME = "Unsent Messages";
 
         private readonly ILog logger = LogManager.GetLogger(typeof(OutboundPerfomanceCounters));
+        private readonly string instanceName;
 
         public static IEnumerable<CounterCreationData> SupportedCounters()
         {
@@ -24,6 +25,7 @@ namespace Rhino.Queues.Monitoring
 
         public OutboundPerfomanceCounters(string instanceName)
         {
+            this.instanceName = instanceName;
             unsentMessages = new PerformanceCounter(CATEGORY, UNSENT_COUNTER_NAME, instanceName, false);
         }
 
@@ -31,7 +33,11 @@ namespace Rhino.Queues.Monitoring
         public int UnsentMessages
         {
             get { return (int)unsentMessages.RawValue; }
-            set { unsentMessages.RawValue = value; }
+            set
+            {
+                logger.DebugFormat("Setting UnsentMessages for instance '{0}' to {1}", instanceName, value);
+                unsentMessages.RawValue = value;
+            }
         }
             
     }

@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using log4net;
 
 namespace Rhino.Queues.Monitoring
 {
     public class PerformanceMonitor
     {
         private readonly IQueueManager queueManager;
+
+        private readonly ILog logger = LogManager.GetLogger(typeof(PerformanceMonitor));
 
         public PerformanceMonitor(IQueueManager queueManager)
         {
@@ -17,6 +20,8 @@ namespace Rhino.Queues.Monitoring
 
         private void SyncWithCurrentQueueState()
         {
+            logger.Debug("Begin synchronization of performance counters with queue state.");
+
             foreach (var queueName in queueManager.Queues)
             {
                 var queueCount = queueManager.GetNumberOfMessages(queueName);
@@ -50,6 +55,7 @@ namespace Rhino.Queues.Monitoring
                     outboundCounter.UnsentMessages = counter.Count;
                 }
             }
+            logger.Debug("Synchronization complete.");
         }
 
         private void AttachToEvents()

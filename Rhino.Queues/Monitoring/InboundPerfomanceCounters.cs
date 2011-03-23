@@ -7,6 +7,7 @@ namespace Rhino.Queues.Monitoring
 {
     public class InboundPerfomanceCounters : IInboundPerfomanceCounters
     {
+        private readonly string instanceName;
         public const string CATEGORY = "Rhino-Queues Inbound";
         public const string ARRIVED_COUNTER_NAME = "Arrived Messages";
 
@@ -24,6 +25,7 @@ namespace Rhino.Queues.Monitoring
 
         public InboundPerfomanceCounters(string instanceName)
         {
+            this.instanceName = instanceName;
             arrivedMessages = new PerformanceCounter(CATEGORY, ARRIVED_COUNTER_NAME, instanceName, false);
         }
 
@@ -31,7 +33,11 @@ namespace Rhino.Queues.Monitoring
         public int ArrivedMessages
         {
             get { return (int)arrivedMessages.RawValue; }
-            set { arrivedMessages.RawValue = value; }
+            set
+            {
+                logger.DebugFormat("Setting UnsentMessages for instance '{0}' to {1}", instanceName, value);
+                arrivedMessages.RawValue = value;
+            }
         }
             
     }
