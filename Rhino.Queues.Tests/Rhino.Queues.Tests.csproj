@@ -71,6 +71,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Monitoring\EnablingPerformanceCounters.cs" />
     <Compile Include="Monitoring\RecordPerformanceCounters.cs" />
     <Compile Include="RaisingReceivedEvents.cs" />
     <Compile Include="Errors.cs" />

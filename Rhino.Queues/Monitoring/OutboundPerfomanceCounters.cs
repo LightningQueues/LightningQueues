@@ -1,36 +1,25 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
+using log4net;
 
 namespace Rhino.Queues.Monitoring
 {
-    internal class OutboundPerfomanceCounters : IOutboundPerfomanceCounters
+    public class OutboundPerfomanceCounters : IOutboundPerfomanceCounters
     {
-        private const string CATEGORY = "Rhino-Queues Outbound";
-        private const string UNSENT_COUNTER_NAME = "Unsent Messages";
+        public const string CATEGORY = "Rhino-Queues Outbound";
+        public const string UNSENT_COUNTER_NAME = "Unsent Messages";
 
-        static OutboundPerfomanceCounters()
-        {
-            var nonExistingOutboundCounters = new CounterCreationDataCollection(
-                SupportedCounters()
-                .Where(c => !PerformanceCounterCategory.CounterExists(CATEGORY, c.CounterName))
-                .ToArray());
+        private readonly ILog logger = LogManager.GetLogger(typeof(OutboundPerfomanceCounters));
 
-            PerformanceCounterCategory.Create(
-                CATEGORY,
-                "Provides statistics for Rhino-Queues messages out-bound from the current machine.",
-                PerformanceCounterCategoryType.MultiInstance,
-                nonExistingOutboundCounters);
-        }
-
-        private static IEnumerable<CounterCreationData> SupportedCounters()
+        public static IEnumerable<CounterCreationData> SupportedCounters()
         {
             yield return new CounterCreationData
-                             {
-                                 CounterType = PerformanceCounterType.NumberOfItems32,
-                                 CounterName = UNSENT_COUNTER_NAME,
-                                 CounterHelp = "Indicates the number of messages that are awaiting delivery to a queue.  Any significant number of unsent messages would be indicative of a communication problem with the remote queue or the remote queue being off line.  Enable logging on the local queue to get more detailed diagnostic information."
-                             };
+                {
+                    CounterType = PerformanceCounterType.NumberOfItems32,
+                    CounterName = UNSENT_COUNTER_NAME,
+                    CounterHelp = "Indicates the number of messages that are awaiting delivery to a queue.  Enable logging on the local queue to get more detailed diagnostic information."
+                };
         }
 
         public OutboundPerfomanceCounters(string instanceName)

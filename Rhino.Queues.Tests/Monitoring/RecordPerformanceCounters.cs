@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using Rhino.Mocks;
 using Rhino.Queues.Model;
 using Rhino.Queues.Monitoring;
@@ -15,6 +16,10 @@ namespace Rhino.Queues.Tests.Monitoring
         private void Setup()
         {
             queueManager = MockRepository.GenerateStub<IQueueManager>();
+            queueManager.Stub(qm => qm.Queues).Return(new string[0]);
+            queueManager.Stub(qm => qm.GetMessagesCurrentlySending()).Return(new PersistentMessageToSend[0]);
+            queueManager.Stub(qm => qm.Endpoint).Return(new IPEndPoint(IPAddress.Loopback, 123) );
+
             performanceMonitor = new TestablePerformanceMonitor(queueManager);
         }
 
@@ -42,7 +47,7 @@ namespace Rhino.Queues.Tests.Monitoring
             TestEventUpdatesCorrectInstance(
                 qm => qm.MessageQueuedForReceive += null,  
                 new Message { Queue = "q" }, 
-                "localhost:123/q");
+                "127.0.0.1:123/q");
         }
 
         [Fact]
@@ -50,8 +55,8 @@ namespace Rhino.Queues.Tests.Monitoring
         {
             TestEventUpdatesCorrectInstance(
                 qm => qm.MessageReceived += null,  
-                new Message { Queue = "q" }, 
-                "localhost:123/q");
+                new Message { Queue = "q" },
+                "127.0.0.1:123/q");
         }
 
         private void TestEventUpdatesCorrectInstance(Action<IQueueManager> @event, Message message, string expectedInstanceName)
@@ -98,7 +103,7 @@ namespace Rhino.Queues.Tests.Monitoring
 
             performanceMonitor.InboundPerfomanceCounters.ArrivedMessages = 0;
             
-            var e = new MessageEventArgs(new Endpoint("localhost", 123), new Message { Queue = "q" });
+            var e = new MessageEventArgs(null, new Message { Queue = "q" });
             queueManager.Raise(qm => qm.MessageQueuedForReceive += null, null, e);
 
             Assert.Equal(1, performanceMonitor.InboundPerfomanceCounters.ArrivedMessages);
@@ -111,7 +116,7 @@ namespace Rhino.Queues.Tests.Monitoring
 
             performanceMonitor.InboundPerfomanceCounters.ArrivedMessages = 1;
             
-            var e = new MessageEventArgs(new Endpoint("localhost", 123), new Message { Queue = "q" });
+            var e = new MessageEventArgs(null, new Message { Queue = "q" });
             queueManager.Raise(qm => qm.MessageReceived += null, null, e);
 
             Assert.Equal(0, performanceMonitor.InboundPerfomanceCounters.ArrivedMessages);

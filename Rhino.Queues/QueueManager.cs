@@ -7,6 +7,7 @@ using System.Transactions;
 using log4net;
 using Rhino.Queues.Internal;
 using Rhino.Queues.Model;
+using Rhino.Queues.Monitoring;
 using Rhino.Queues.Protocol;
 using Rhino.Queues.Storage;
 using System.Linq;
@@ -35,13 +36,14 @@ namespace Rhino.Queues
 		private readonly Receiver receiver;
 		private readonly Thread sendingThread;
 		private readonly QueuedMessagesSender queuedMessagesSender;
-		private readonly ILog logger = LogManager.GetLogger(typeof(QueueManager));
-		private volatile bool waitingForAllMessagesToBeSent;
+        private readonly ILog logger = LogManager.GetLogger(typeof(QueueManager));
+        private PerformanceMonitor monitor;
+        private volatile bool waitingForAllMessagesToBeSent;
 
 		private readonly ThreadSafeSet<MessageId> receivedMsgs = new ThreadSafeSet<MessageId>();
 		private bool disposing;
 
-		public int NumberOfReceivedMessagesToKeep { get; set; }
+	    public int NumberOfReceivedMessagesToKeep { get; set; }
 		public int? NumberOfMessagesToKeepInProcessedQueues { get; set; }
 		public int? NumberOfMessagesToKeepOutgoingQueues { get; set; }
 
@@ -159,7 +161,15 @@ namespace Rhino.Queues
 				TransactionManager.RecoveryComplete(queueStorage.Id);
 		}
 
-		public string Path
+        public void EnablePerformanceCounters(bool createCounters)
+        {
+            if (createCounters)
+                new PerformanceCategoryCreator();
+
+            monitor = new PerformanceMonitor(this);
+        }
+        
+        public string Path
 		{
 			get { return path; }
 		}
@@ -243,7 +253,7 @@ namespace Rhino.Queues
 				throw new ObjectDisposedException("QueueManager");
 		}
 
-		public void WaitForAllMessagesToBeSent()
+	    public void WaitForAllMessagesToBeSent()
 		{
 			waitingForAllMessagesToBeSent = true;
 			try
@@ -791,7 +801,7 @@ namespace Rhino.Queues
 
         private void OnMessageQueuedForReceive(Message message)
         {
-            OnMessageQueuedForReceive(new MessageEventArgs(new Endpoint(endpoint.Address.ToString(), endpoint.Port), message));
+            OnMessageQueuedForReceive(new MessageEventArgs(null, message));
         }
 
         public void OnMessageQueuedForReceive(MessageEventArgs messageEventArgs)
@@ -802,7 +812,7 @@ namespace Rhino.Queues
 
         private void OnMessageReceived(Message message)
         {
-            OnMessageReceived(new MessageEventArgs(new Endpoint(endpoint.Address.ToString(), endpoint.Port), message));
+            OnMessageReceived(new MessageEventArgs(null, message));
         }
 
         public void OnMessageReceived(MessageEventArgs messageEventArgs)
