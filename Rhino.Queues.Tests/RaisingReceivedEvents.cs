@@ -59,7 +59,7 @@ namespace Rhino.Queues.Tests
             messageEventCount2++;
         }
 
-        [Fact]
+        [Fact(Timeout=5000)]
         public void MessageQueuedForReceive_EventIsRaised()
         {
             using (var sender = SetupSender())
@@ -89,7 +89,7 @@ namespace Rhino.Queues.Tests
             Assert.Equal("h", messageEventArgs.Message.Queue);
         }
 
-        [Fact]
+        [Fact(Timeout=5000)]
         public void MessageQueuedForReceive_EventIsRaised_DirectEnqueuing()
         {
             using (var receiver = SetupReciever())
@@ -102,16 +102,17 @@ namespace Rhino.Queues.Tests
 
                     tx.Complete();
                 }
-                Thread.Sleep(1000);
+                while (messageEventCount == 0)
+                    Thread.Sleep(100);
             }
 
             Assert.NotNull(messageEventArgs);
             Assert.Equal("h", messageEventArgs.Message.Queue);
         }
 
+        [Fact(Skip="Must be run manually. See Comments")]
         //Unable to find a clean way of causing receive to abort;
         //This test only passes if I deliberately break the acknowledgment sending code in Sender.
-        //[Fact]
         public void MessageQueuedForReceive_EventNotRaised_IfReceiveAborts()
         {
             using (var sender = SetupSender())
@@ -158,7 +159,7 @@ namespace Rhino.Queues.Tests
 
                         tx.Complete();
                     }
-                    Thread.Sleep(1000);
+                    sender.WaitForAllMessagesToBeSent();
 
                     using (var tx = new TransactionScope())
                     {
@@ -199,7 +200,7 @@ namespace Rhino.Queues.Tests
             Assert.Null(messageEventArgs);
         }
 
-        [Fact]
+        [Fact(Timeout = 5000)]
         public void MessageReceived_and_MessageQueuedForReceive_events_raised_when_message_removed_and_moved()
         {
             using (var sender = SetupSender())
@@ -246,7 +247,7 @@ namespace Rhino.Queues.Tests
             }
         }
 
-        [Fact]
+        [Fact(Timeout = 5000)]
         public void MessageReceived_and_MessageQueuedForReceive_events_raised_when_message_peeked_and_moved()
         {
             using (var sender = SetupSender())
