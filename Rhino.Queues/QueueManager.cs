@@ -161,11 +161,8 @@ namespace Rhino.Queues
 				TransactionManager.RecoveryComplete(queueStorage.Id);
 		}
 
-        public void EnablePerformanceCounters(bool createCounters)
+        public void EnablePerformanceCounters()
         {
-            if (createCounters)
-                new PerformanceCategoryCreator();
-
             monitor = new PerformanceMonitor(this);
         }
         

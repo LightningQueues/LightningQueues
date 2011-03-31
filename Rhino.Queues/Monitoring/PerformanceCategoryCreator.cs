@@ -5,7 +5,7 @@ using log4net;
 
 namespace Rhino.Queues.Monitoring
 {
-    class PerformanceCategoryCreator
+    public class PerformanceCategoryCreator
     {
         private readonly ILog logger = LogManager.GetLogger(typeof(PerformanceCategoryCreator));
 
