@@ -10,19 +10,15 @@ namespace Rhino.Queues.Tests
 
 	public class Errors : IDisposable
 	{
-		 private readonly QueueManager sender, receiver;
+        private readonly QueueManager sender;
 
         public Errors()
         {
             if (Directory.Exists("test.esent"))
                 Directory.Delete("test.esent", true);
 
-            if (Directory.Exists("test2.esent"))
-                Directory.Delete("test2.esent", true);
-
             sender = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23456), "test.esent");
-            receiver = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23457), "test2.esent");
-            receiver.CreateQueues("h", "a");
+            sender.Start();
         }
 		[Fact]
 		public void Will_get_notified_when_failed_to_send_to_endpoint()
@@ -53,7 +49,6 @@ namespace Rhino.Queues.Tests
 		public void Dispose()
 		{
 			sender.Dispose();
-			receiver.Dispose();
 		}
 	}
 }

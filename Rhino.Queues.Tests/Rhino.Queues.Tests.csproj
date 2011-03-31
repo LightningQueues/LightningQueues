@@ -77,6 +77,7 @@
     <Compile Include="Protocol\WithDebugging.cs" />
     <Compile Include="FromUsers\QueueIsAsync.cs" />
     <Compile Include="SendingToRhinoQueue.cs" />
+    <Compile Include="StartingRhinoQueues.cs" />
     <Compile Include="Storage\CanUseQueue.cs" />
     <Compile Include="ReceivingFromRhinoQueue.cs" />
     <Compile Include="UsingSubQueues.cs" />

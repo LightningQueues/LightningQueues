@@ -22,6 +22,7 @@ namespace Rhino.Queues.Tests
 
             queueManager = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23456), "test.esent");
             queueManager.CreateQueues("h");
+            queueManager.Start();
         }
 
         #region IDisposable Members

@@ -24,17 +24,18 @@ namespace Rhino.Queues
 		[ThreadStatic]
 		private static Transaction CurrentlyEnslistedTransaction;
 
-		private volatile bool wasDisposed;
+        private volatile bool wasStarted;
+        private volatile bool wasDisposed;
 		private volatile int currentlyInCriticalReceiveStatus;
 		private volatile int currentlyInsideTransaction;
 		private readonly IPEndPoint endpoint;
 		private readonly object newMessageArrivedLock = new object();
 		private readonly string path;
-		private readonly Timer purgeOldDataTimer;
+		private Timer purgeOldDataTimer;
 		private readonly QueueStorage queueStorage;
-		private readonly Receiver receiver;
-		private readonly Thread sendingThread;
-		private readonly QueuedMessagesSender queuedMessagesSender;
+		private Receiver receiver;
+		private Thread sendingThread;
+		private QueuedMessagesSender queuedMessagesSender;
 		private readonly ILog logger = LogManager.GetLogger(typeof(QueueManager));
 		private volatile bool waitingForAllMessagesToBeSent;
 
@@ -70,24 +71,34 @@ namespace Rhino.Queues
 				actions.Commit();
 			});
 
-			receiver = new Receiver(endpoint, AcceptMessages);
-			receiver.Start();
-
 			HandleRecovery();
-
-			queuedMessagesSender = new QueuedMessagesSender(queueStorage, this);
-			sendingThread = new Thread(queuedMessagesSender.Send)
-			{
-				IsBackground = true,
-				Name = "Rhino Queue Sender Thread for " + path
-			};
-			sendingThread.Start();
-			purgeOldDataTimer = new Timer(PurgeOldData, null,
-				TimeSpan.FromMinutes(3),
-				TimeSpan.FromMinutes(3));
 		}
 
-		private void PurgeOldData(object ignored)
+        public void Start()
+        {
+            AssertNotDisposedOrDisposing();
+
+            if(wasStarted)
+                throw new InvalidOperationException("The Start method may not be invoked more than once.");
+            
+            wasStarted = true;
+
+            receiver = new Receiver(endpoint, AcceptMessages);
+            receiver.Start();
+
+            queuedMessagesSender = new QueuedMessagesSender(queueStorage, this);
+            sendingThread = new Thread(queuedMessagesSender.Send)
+            {
+                IsBackground = true,
+                Name = "Rhino Queue Sender Thread for " + path
+            };
+            sendingThread.Start();
+            purgeOldDataTimer = new Timer(PurgeOldData, null,
+                                          TimeSpan.FromMinutes(3),
+                                          TimeSpan.FromMinutes(3));
+        }
+
+        private void PurgeOldData(object ignored)
 		{
 			logger.DebugFormat("Starting to purge old data");
 			try
@@ -202,14 +213,17 @@ namespace Rhino.Queues
 				Monitor.PulseAll(newMessageArrivedLock);
 			}
 
-			purgeOldDataTimer.Dispose();
+            if (wasStarted)
+            {
+                purgeOldDataTimer.Dispose();
 
-			queuedMessagesSender.Stop();
-			sendingThread.Join();
+                queuedMessagesSender.Stop();
+                sendingThread.Join();
 
-			receiver.Dispose();
+                receiver.Dispose();
+            }
 
-			while (currentlyInCriticalReceiveStatus > 0)
+		    while (currentlyInCriticalReceiveStatus > 0)
 			{
 				logger.WarnFormat("Waiting for {0} messages that are currently in critical receive status", currentlyInCriticalReceiveStatus);
 				Thread.Sleep(TimeSpan.FromSeconds(1));
