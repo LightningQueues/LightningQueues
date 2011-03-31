@@ -69,6 +69,7 @@
   <ItemGroup>
     <Compile Include="Errors.cs" />
     <Compile Include="FromUsers\FromRene.cs" />
+    <Compile Include="OperationsOnUnstartedQueues.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Protocol\CanSendAndReceive.cs" />
     <Compile Include="Protocol\RecieverFailure.cs" />
