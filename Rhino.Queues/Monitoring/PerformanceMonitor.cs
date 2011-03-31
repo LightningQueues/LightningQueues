@@ -1,19 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
+using System.Transactions;
 using log4net;
 
 namespace Rhino.Queues.Monitoring
 {
     public class PerformanceMonitor
     {
-        private readonly IQueueManager queueManager;
-
         private readonly ILog logger = LogManager.GetLogger(typeof(PerformanceMonitor));
-
+        
+        private readonly IQueueManager queueManager;
         public PerformanceMonitor(IQueueManager queueManager)
         {
             this.queueManager = queueManager;
+
             AttachToEvents();
             SyncWithCurrentQueueState();
         }
@@ -102,54 +102,62 @@ namespace Rhino.Queues.Monitoring
             }
         }
 
-        private readonly Dictionary<string, IOutboundPerfomanceCounters> outboundCounters = new Dictionary<string, IOutboundPerfomanceCounters>();
         private IOutboundPerfomanceCounters GetOutboundCounters(MessageEventArgs e)
         {
             var instanceName = e.Endpoint.OutboundInstanceName(e.Message);
-
-            IOutboundPerfomanceCounters counter;
-            if (!outboundCounters.TryGetValue(instanceName, out counter))
-            {
-                lock (outboundCounters)
-                {
-                    if (!outboundCounters.TryGetValue(instanceName, out counter))
-                    {
-                        counter = GetOutboundCounters(instanceName);
-                        outboundCounters.Add(instanceName, counter);
-                    }
-                }
-            }
-            return counter;
+            return GetOutboundCounters(instanceName);
         }
 
-        protected virtual IOutboundPerfomanceCounters GetOutboundCounters(string instanceName)
+        private IOutboundPerfomanceCounters GetOutboundCounters(string instanceName)
         {
-            return new OutboundPerfomanceCounters(instanceName);
+            return GetPerformanceCounterProviderForCurrentTransaction().GetOutboundCounters(instanceName);
         }
 
-        private readonly Dictionary<string, IInboundPerfomanceCounters> inboundCounters = new Dictionary<string, IInboundPerfomanceCounters>();
         private IInboundPerfomanceCounters GetInboundCounters(MessageEventArgs e)
         {
             var instanceName = queueManager.InboundInstanceName(e.Message);
-
-            IInboundPerfomanceCounters counter;
-            if (!inboundCounters.TryGetValue(instanceName, out counter))
-            {
-                lock (outboundCounters)
-                {
-                    if (!inboundCounters.TryGetValue(instanceName, out counter))
-                    {
-                        counter = GetInboundCounters(instanceName);
-                        inboundCounters.Add(instanceName, counter);
-                    }
-                }
-            }
-            return counter;
+            return GetInboundCounters(instanceName);
         }
 
-        protected virtual IInboundPerfomanceCounters GetInboundCounters(string instanceName)
+        private IInboundPerfomanceCounters GetInboundCounters(string instanceName)
         {
-            return new InboundPerfomanceCounters(instanceName);
+            return GetPerformanceCounterProviderForCurrentTransaction().GetInboundCounters(instanceName);
+        }
+
+        private readonly Dictionary<Transaction,IPerformanceCounterProvider> transactionalProviders = new Dictionary<Transaction, IPerformanceCounterProvider>();
+        private IPerformanceCounterProvider GetPerformanceCounterProviderForCurrentTransaction()
+        {
+            if(Transaction.Current == null) 
+                return ImmediatelyRecordingProvider;
+
+            IPerformanceCounterProvider provider;
+            if (transactionalProviders.TryGetValue(Transaction.Current, out provider))
+                return provider;
+
+            lock (transactionalProviders)
+            {
+                if (transactionalProviders.TryGetValue(Transaction.Current, out provider))
+                    return provider;
+
+                provider = new TransactionalPerformanceCounterProvider(Transaction.Current, ImmediatelyRecordingProvider);
+
+                transactionalProviders.Add(Transaction.Current, provider);
+                Transaction.Current.TransactionCompleted += (s, e) =>
+                    {
+                        lock (transactionalProviders)
+                        {
+                            transactionalProviders.Remove(e.Transaction);
+                        }
+                    };
+
+                return provider;
+            }
+        }
+
+        private readonly IPerformanceCounterProvider immediatelyRecordingProvider = new ImmediatelyRecordingCounterProvider();
+        protected virtual IPerformanceCounterProvider ImmediatelyRecordingProvider
+        {
+            get { return immediatelyRecordingProvider; }
         }
     }
 }

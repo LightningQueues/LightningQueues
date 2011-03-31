@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net;
+using System.Transactions;
 using Rhino.Mocks;
 using Rhino.Queues.Model;
 using Rhino.Queues.Monitoring;
@@ -24,7 +25,7 @@ namespace Rhino.Queues.Tests.Monitoring
         }
 
         [Fact]
-        public void MessageQueuedForSend_ShouldUpdatetCorrectInstance()
+        public void MessageQueuedForSend_should_updatet_correct_instance()
         {
             TestEventUpdatesCorrectInstance(
                 qm => qm.MessageQueuedForSend += null,  
@@ -33,7 +34,7 @@ namespace Rhino.Queues.Tests.Monitoring
         }
 
         [Fact]
-        public void MessageSent_ShouldUpdatetCorrectInstance()
+        public void MessageSent_should_updatet_correct_instance()
         {
             TestEventUpdatesCorrectInstance(
                 qm => qm.MessageSent += null,  
@@ -42,7 +43,7 @@ namespace Rhino.Queues.Tests.Monitoring
         }
 
         [Fact]
-        public void MessageQueuedForReceive_ShouldUpdatetCorrectInstance()
+        public void MessageQueuedForReceive_should_updatet_correct_instance()
         {
             TestEventUpdatesCorrectInstance(
                 qm => qm.MessageQueuedForReceive += null,  
@@ -51,7 +52,7 @@ namespace Rhino.Queues.Tests.Monitoring
         }
 
         [Fact]
-        public void MessageReceived_ShouldUpdatetCorrectInstance()
+        public void MessageReceived_should_updatet_correct_instance()
         {
             TestEventUpdatesCorrectInstance(
                 qm => qm.MessageReceived += null,  
@@ -71,7 +72,7 @@ namespace Rhino.Queues.Tests.Monitoring
 
 
         [Fact]
-        public void MessageQueuedForSend_ShouldIncrement_UnsentMessages()
+        public void MessageQueuedForSend_without_transaction_should_increment_UnsentMessages()
         {
             Setup();
 
@@ -84,7 +85,59 @@ namespace Rhino.Queues.Tests.Monitoring
         }
 
         [Fact]
-        public void MessageSent_ShouldDecrement_UnsentMessages()
+        public void MessageQueuedForSend_in_committed_transaction_should_increment_UnsentMessages()
+        {
+            Setup();
+
+            performanceMonitor.OutboundPerfomanceCounters.UnsentMessages = 0;
+
+            using (var tx = new TransactionScope())
+            {
+                var e = new MessageEventArgs(new Endpoint("localhost", 123), new Message {Queue = "q"});
+                queueManager.Raise(qm => qm.MessageQueuedForSend += null, null, e);
+
+                tx.Complete();
+            }
+
+            Assert.Equal(1, performanceMonitor.OutboundPerfomanceCounters.UnsentMessages);
+        }
+
+        [Fact]
+        public void MessageQueuedForSend_in_transaction_should_not_increment_UnsentMessages_prior_to_commit()
+        {
+            Setup();
+
+            performanceMonitor.OutboundPerfomanceCounters.UnsentMessages = 0;
+
+            using (var tx = new TransactionScope())
+            {
+                var e = new MessageEventArgs(new Endpoint("localhost", 123), new Message {Queue = "q"});
+                queueManager.Raise(qm => qm.MessageQueuedForSend += null, null, e);
+
+                Assert.Equal(0, performanceMonitor.OutboundPerfomanceCounters.UnsentMessages);
+
+                tx.Complete();
+            }
+        }
+
+        [Fact]
+        public void MessageQueuedForSend_in_failed_transaction_should_not_increment_UnsentMessages()
+        {
+            Setup();
+
+            performanceMonitor.OutboundPerfomanceCounters.UnsentMessages = 0;
+
+            using (new TransactionScope())
+            {
+                var e = new MessageEventArgs(new Endpoint("localhost", 123), new Message {Queue = "q"});
+                queueManager.Raise(qm => qm.MessageQueuedForSend += null, null, e);
+            }
+
+            Assert.Equal(0, performanceMonitor.OutboundPerfomanceCounters.UnsentMessages);
+        }
+
+        [Fact]
+        public void MessageSent_without_transaction_should_decrement_UnsentMessages()
         {
             Setup();
 
@@ -97,7 +150,59 @@ namespace Rhino.Queues.Tests.Monitoring
         }
 
         [Fact]
-        public void MessageQueuedForReceive_ShouldIncrement_ArrivedMessages()
+        public void MessageSent_in_committed_transaction_should_decrement_UnsentMessages()
+        {
+            Setup();
+
+            performanceMonitor.OutboundPerfomanceCounters.UnsentMessages = 1;
+
+            using (var tx = new TransactionScope())
+            {
+                var e = new MessageEventArgs(new Endpoint("localhost", 123), new Message { Queue = "q" });
+                queueManager.Raise(qm => qm.MessageSent += null, null, e); 
+
+                tx.Complete();
+            }
+
+            Assert.Equal(0, performanceMonitor.OutboundPerfomanceCounters.UnsentMessages);
+        }
+
+        [Fact]
+        public void MessageSent_in_transaction_should_not_decrement_UnsentMessages_prior_to_commit()
+        {
+            Setup();
+
+            performanceMonitor.OutboundPerfomanceCounters.UnsentMessages = 1;
+
+            using (var tx = new TransactionScope())
+            {
+                var e = new MessageEventArgs(new Endpoint("localhost", 123), new Message { Queue = "q" });
+                queueManager.Raise(qm => qm.MessageSent += null, null, e);
+
+                Assert.Equal(1, performanceMonitor.OutboundPerfomanceCounters.UnsentMessages);
+
+                tx.Complete();
+            }
+        }
+
+        [Fact]
+        public void MessageSent_in_failed_transaction_should_not_decrement_UnsentMessages()
+        {
+            Setup();
+
+            performanceMonitor.OutboundPerfomanceCounters.UnsentMessages = 1;
+
+            using (new TransactionScope())
+            {
+                var e = new MessageEventArgs(new Endpoint("localhost", 123), new Message { Queue = "q" });
+                queueManager.Raise(qm => qm.MessageSent += null, null, e); 
+            }
+
+            Assert.Equal(1, performanceMonitor.OutboundPerfomanceCounters.UnsentMessages);
+        }
+
+        [Fact]
+        public void MessageQueuedForReceive_without_transaction_should_increment_ArrivedMessages()
         {
             Setup();
 
@@ -110,7 +215,59 @@ namespace Rhino.Queues.Tests.Monitoring
         }
 
         [Fact]
-        public void MessageReceived_ShouldDecrement_ArrivedMessages()
+        public void MessageQueuedForReceive_in_committed_transaction_should_increment_ArrivedMessages()
+        {
+            Setup();
+
+            performanceMonitor.InboundPerfomanceCounters.ArrivedMessages = 0;
+
+            using (var tx = new TransactionScope())
+            {
+                var e = new MessageEventArgs(null, new Message { Queue = "q" });
+                queueManager.Raise(qm => qm.MessageQueuedForReceive += null, null, e);
+                
+                tx.Complete();
+            }
+
+            Assert.Equal(1, performanceMonitor.InboundPerfomanceCounters.ArrivedMessages);
+        }
+
+        [Fact]
+        public void MessageQueuedForReceive_in_transaction_not_should_increment_ArrivedMessages_prior_to_commit()
+        {
+            Setup();
+
+            performanceMonitor.InboundPerfomanceCounters.ArrivedMessages = 0;
+
+            using (var tx = new TransactionScope())
+            {
+                var e = new MessageEventArgs(null, new Message { Queue = "q" });
+                queueManager.Raise(qm => qm.MessageQueuedForReceive += null, null, e);
+                
+                Assert.Equal(0, performanceMonitor.InboundPerfomanceCounters.ArrivedMessages);
+
+                tx.Complete();
+            }
+        }
+
+        [Fact]
+        public void MessageQueuedForReceive_in_failed_transaction_not_should_increment_ArrivedMessages()
+        {
+            Setup();
+
+            performanceMonitor.InboundPerfomanceCounters.ArrivedMessages = 0;
+
+            using (new TransactionScope())
+            {
+                var e = new MessageEventArgs(null, new Message { Queue = "q" });
+                queueManager.Raise(qm => qm.MessageQueuedForReceive += null, null, e);
+            }
+
+            Assert.Equal(0, performanceMonitor.InboundPerfomanceCounters.ArrivedMessages);
+        }
+
+        [Fact]
+        public void MessageReceived_without_transaction_should_decrement_ArrivedMessages()
         {
             Setup();
 
@@ -122,26 +279,92 @@ namespace Rhino.Queues.Tests.Monitoring
             Assert.Equal(0, performanceMonitor.InboundPerfomanceCounters.ArrivedMessages);
         }
 
+        [Fact]
+        public void MessageReceived_in_committed_transaction_should_decrement_ArrivedMessages()
+        {
+            Setup();
+
+            performanceMonitor.InboundPerfomanceCounters.ArrivedMessages = 1;
+
+            using (var tx = new TransactionScope())
+            {
+                var e = new MessageEventArgs(null, new Message { Queue = "q" });
+                queueManager.Raise(qm => qm.MessageReceived += null, null, e);
+                
+                tx.Complete();
+            }
+
+            Assert.Equal(0, performanceMonitor.InboundPerfomanceCounters.ArrivedMessages);
+        }
+
+        [Fact]
+        public void MessageReceived_in_transaction_should_not_decrement_ArrivedMessages_prior_to_commit()
+        {
+            Setup();
+
+            performanceMonitor.InboundPerfomanceCounters.ArrivedMessages = 1;
+
+            using (var tx = new TransactionScope())
+            {
+                var e = new MessageEventArgs(null, new Message { Queue = "q" });
+                queueManager.Raise(qm => qm.MessageReceived += null, null, e);
+
+                Assert.Equal(1, performanceMonitor.InboundPerfomanceCounters.ArrivedMessages);
+                
+                tx.Complete();
+            }
+        }
+
+        [Fact]
+        public void MessageReceived_in_failed_transaction_should_not_decrement_ArrivedMessages()
+        {
+            Setup();
+
+            performanceMonitor.InboundPerfomanceCounters.ArrivedMessages = 1;
+
+            using (new TransactionScope())
+            {
+                var e = new MessageEventArgs(null, new Message { Queue = "q" });
+                queueManager.Raise(qm => qm.MessageReceived += null, null, e);
+            }
+
+            Assert.Equal(1, performanceMonitor.InboundPerfomanceCounters.ArrivedMessages);
+        }
+
         private class TestablePerformanceMonitor : PerformanceMonitor
         {
-            public string InstanceName;
-            public readonly IInboundPerfomanceCounters InboundPerfomanceCounters = MockRepository.GenerateStub<IInboundPerfomanceCounters>();
-            public readonly IOutboundPerfomanceCounters OutboundPerfomanceCounters = MockRepository.GenerateStub<IOutboundPerfomanceCounters>();
-
+            private readonly TestProvider testProvider= new TestProvider();
             public TestablePerformanceMonitor(IQueueManager queueManager) : base(queueManager)
             {
+
             }
 
-            protected override IInboundPerfomanceCounters GetInboundCounters(string instanceName)
+            public string InstanceName { get { return testProvider.InstanceName; } }
+            public IOutboundPerfomanceCounters OutboundPerfomanceCounters { get { return testProvider.OutboundPerfomanceCounters; } }
+            public IInboundPerfomanceCounters InboundPerfomanceCounters { get { return testProvider.InboundPerfomanceCounters; } }
+
+            protected override IPerformanceCounterProvider ImmediatelyRecordingProvider
             {
-                InstanceName = instanceName;
-                return InboundPerfomanceCounters;
+                get { return testProvider; }
             }
 
-            protected override IOutboundPerfomanceCounters GetOutboundCounters(string instanceName)
+            private class TestProvider : IPerformanceCounterProvider
             {
-                InstanceName = instanceName;
-                return OutboundPerfomanceCounters;
+                public string InstanceName;
+                public readonly IInboundPerfomanceCounters InboundPerfomanceCounters = MockRepository.GenerateStub<IInboundPerfomanceCounters>();
+                public readonly IOutboundPerfomanceCounters OutboundPerfomanceCounters = MockRepository.GenerateStub<IOutboundPerfomanceCounters>();
+
+                public IOutboundPerfomanceCounters GetOutboundCounters(string instanceName)
+                {
+                    InstanceName = instanceName;
+                    return OutboundPerfomanceCounters;
+                }
+
+                public IInboundPerfomanceCounters GetInboundCounters(string instanceName)
+                {
+                    InstanceName = instanceName;
+                    return InboundPerfomanceCounters;
+                }
             }
         }
     }
