@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Rhino.Queues.Tests
 {
-    class OperationsOnUnstartedQueues : WithDebugging, IDisposable
+    public class OperationsOnUnstartedQueues : WithDebugging, IDisposable
     {
         private QueueManager sender, receiver;
 

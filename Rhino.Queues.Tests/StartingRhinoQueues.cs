@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Rhino.Queues.Tests
 {
-    class StartingRhinoQueues : WithDebugging, IDisposable
+    public class StartingRhinoQueues : WithDebugging, IDisposable
     {
         private readonly QueueManager queueManager;
 
