@@ -68,7 +68,10 @@ namespace Rhino.Queues.Monitoring
 
             public void CommittTo(IOutboundPerfomanceCounters counters)
             {
-                counters.UnsentMessages += UnsentMessages;
+                lock (counters)
+                {
+                    counters.UnsentMessages += UnsentMessages;
+                }
             }
         }
 
@@ -78,7 +81,10 @@ namespace Rhino.Queues.Monitoring
 
             public void CommittTo(IInboundPerfomanceCounters counters)
             {
-                counters.ArrivedMessages += ArrivedMessages;
+                lock (counters)
+                {
+                    counters.ArrivedMessages += ArrivedMessages;
+                }
             }
         }
     }
