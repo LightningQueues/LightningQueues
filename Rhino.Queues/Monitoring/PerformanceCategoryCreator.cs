@@ -7,6 +7,7 @@ namespace Rhino.Queues.Monitoring
 {
     public class PerformanceCategoryCreator
     {
+        internal const string CANT_CREATE_COUNTER_MSG = "Failed to create performance counter: {0}:{1}.  The most likely cause is that the needed performance counter categories have not been installed on this machine.  Use the Rhino.Queues.Monitoring.PerformanceCategoryCreator class to install the need categories.";
         private readonly ILog logger = LogManager.GetLogger(typeof(PerformanceCategoryCreator));
 
         public PerformanceCategoryCreator()
@@ -19,6 +20,7 @@ namespace Rhino.Queues.Monitoring
             catch (UnauthorizedAccessException ex)
             {
                 logger.Error("Not authorized to create performance counters. User must be an administrator to perform this action.", ex);
+                throw;
             }
         }
 
@@ -44,6 +46,7 @@ namespace Rhino.Queues.Monitoring
             catch (Exception ex)
             {
                 logger.Error("Creation of outbound counters failed.", ex);
+                throw;
             }
         }
 
@@ -69,6 +72,7 @@ namespace Rhino.Queues.Monitoring
             catch (Exception ex)
             {
                 logger.Error("Creation of inbound counters failed.", ex);
+                throw;
             }
         }
     }

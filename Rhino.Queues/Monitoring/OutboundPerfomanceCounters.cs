@@ -26,7 +26,16 @@ namespace Rhino.Queues.Monitoring
         public OutboundPerfomanceCounters(string instanceName)
         {
             this.instanceName = instanceName;
-            unsentMessages = new PerformanceCounter(CATEGORY, UNSENT_COUNTER_NAME, instanceName, false);
+            try
+            {
+                unsentMessages = new PerformanceCounter(CATEGORY, UNSENT_COUNTER_NAME, instanceName, false);
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new ApplicationException(
+                    string.Format( PerformanceCategoryCreator.CANT_CREATE_COUNTER_MSG, CATEGORY, UNSENT_COUNTER_NAME),
+                    ex);
+            }
         }
 
         private readonly PerformanceCounter unsentMessages;

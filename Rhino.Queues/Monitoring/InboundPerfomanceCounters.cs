@@ -26,7 +26,16 @@ namespace Rhino.Queues.Monitoring
         public InboundPerfomanceCounters(string instanceName)
         {
             this.instanceName = instanceName;
-            arrivedMessages = new PerformanceCounter(CATEGORY, ARRIVED_COUNTER_NAME, instanceName, false);
+            try
+            {
+                arrivedMessages = new PerformanceCounter(CATEGORY, ARRIVED_COUNTER_NAME, instanceName, false);
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new ApplicationException(
+                    string.Format(PerformanceCategoryCreator.CANT_CREATE_COUNTER_MSG, CATEGORY, ARRIVED_COUNTER_NAME),
+                    ex);
+            }
         }
 
         private readonly PerformanceCounter arrivedMessages;

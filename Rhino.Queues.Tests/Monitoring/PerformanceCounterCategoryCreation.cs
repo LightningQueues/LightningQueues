@@ -8,7 +8,7 @@ namespace Rhino.Queues.Tests.Monitoring
 {
     class PerformanceCounterCategoryCreation : WithDebugging
     {
-        private void DeletePerformanceCounters()
+        public static void DeletePerformanceCounters()
         {
             if (PerformanceCounterCategory.Exists(OutboundPerfomanceCounters.CATEGORY))
                 PerformanceCounterCategory.Delete(OutboundPerfomanceCounters.CATEGORY);
