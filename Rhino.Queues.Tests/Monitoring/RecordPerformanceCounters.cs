@@ -343,12 +343,12 @@ namespace Rhino.Queues.Tests.Monitoring
             public IOutboundPerfomanceCounters OutboundPerfomanceCounters { get { return testProvider.OutboundPerfomanceCounters; } }
             public IInboundPerfomanceCounters InboundPerfomanceCounters { get { return testProvider.InboundPerfomanceCounters; } }
 
-            protected override IPerformanceCounterProvider ImmediatelyRecordingProvider
+            protected override IPerformanceCountersProvider ImmediatelyRecordingProvider
             {
                 get { return testProvider; }
             }
 
-            private class TestProvider : IPerformanceCounterProvider
+            private class TestProvider : IPerformanceCountersProvider
             {
                 public string InstanceName;
                 public readonly IInboundPerfomanceCounters InboundPerfomanceCounters = MockRepository.GenerateStub<IInboundPerfomanceCounters>();

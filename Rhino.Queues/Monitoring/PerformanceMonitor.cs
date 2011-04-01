@@ -124,25 +124,27 @@ namespace Rhino.Queues.Monitoring
             return GetPerformanceCounterProviderForCurrentTransaction().GetInboundCounters(instanceName);
         }
 
-        private readonly Dictionary<Transaction,IPerformanceCounterProvider> transactionalProviders = new Dictionary<Transaction, IPerformanceCounterProvider>();
-        private IPerformanceCounterProvider GetPerformanceCounterProviderForCurrentTransaction()
+        private readonly Dictionary<Transaction,IPerformanceCountersProvider> transactionalProviders = new Dictionary<Transaction, IPerformanceCountersProvider>();
+        private IPerformanceCountersProvider GetPerformanceCounterProviderForCurrentTransaction()
         {
-            if(Transaction.Current == null) 
+            var transaction = Transaction.Current;
+
+            if(transaction == null) 
                 return ImmediatelyRecordingProvider;
 
-            IPerformanceCounterProvider provider;
-            if (transactionalProviders.TryGetValue(Transaction.Current, out provider))
+            IPerformanceCountersProvider provider;
+            if (transactionalProviders.TryGetValue(transaction, out provider))
                 return provider;
 
             lock (transactionalProviders)
             {
-                if (transactionalProviders.TryGetValue(Transaction.Current, out provider))
+                if (transactionalProviders.TryGetValue(transaction, out provider))
                     return provider;
 
-                provider = new TransactionalPerformanceCounterProvider(Transaction.Current, ImmediatelyRecordingProvider);
+                provider = new TransactionalPerformanceCountersProvider(transaction, ImmediatelyRecordingProvider);
 
-                transactionalProviders.Add(Transaction.Current, provider);
-                Transaction.Current.TransactionCompleted += (s, e) =>
+                transactionalProviders.Add(transaction, provider);
+                transaction.TransactionCompleted += (s, e) =>
                     {
                         lock (transactionalProviders)
                         {
@@ -154,8 +156,8 @@ namespace Rhino.Queues.Monitoring
             }
         }
 
-        private readonly IPerformanceCounterProvider immediatelyRecordingProvider = new ImmediatelyRecordingCounterProvider();
-        protected virtual IPerformanceCounterProvider ImmediatelyRecordingProvider
+        private readonly IPerformanceCountersProvider immediatelyRecordingProvider = new ImmediatelyRecordingCountersProvider();
+        protected virtual IPerformanceCountersProvider ImmediatelyRecordingProvider
         {
             get { return immediatelyRecordingProvider; }
         }

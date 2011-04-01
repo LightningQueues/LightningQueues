@@ -4,13 +4,13 @@ using System.Transactions;
 
 namespace Rhino.Queues.Monitoring
 {
-    public class TransactionalPerformanceCounterProvider : IPerformanceCounterProvider
+    public class TransactionalPerformanceCountersProvider : IPerformanceCountersProvider
     {
-        private readonly IPerformanceCounterProvider providerToCommitTo;
+        private readonly IPerformanceCountersProvider providerToCommitTo;
         private readonly Dictionary<string, TransactionalOutboundPerformanceCounters> outboundCounters = new Dictionary<string, TransactionalOutboundPerformanceCounters>();
         private readonly Dictionary<string, TransactionalInboundPerformanceCounters> inboundCounters = new Dictionary<string, TransactionalInboundPerformanceCounters>();
 
-        public TransactionalPerformanceCounterProvider(Transaction transaction, IPerformanceCounterProvider providerToCommitTo)
+        public TransactionalPerformanceCountersProvider(Transaction transaction, IPerformanceCountersProvider providerToCommitTo)
         {
             this.providerToCommitTo = providerToCommitTo;
             transaction.TransactionCompleted += HandleTransactionCompleted;

@@ -67,8 +67,8 @@
   <ItemGroup>
     <Compile Include="Exceptions\CannotSendWhileWaitingForAllMessagesToBeSentException.cs" />
     <Compile Include="Exceptions\QueueDoesNotExistsException.cs" />
-    <Compile Include="Monitoring\ImmediatelyRecordingCounterProvider.cs" />
-    <Compile Include="Monitoring\IPerformanceCounterProvider.cs" />
+    <Compile Include="Monitoring\ImmediatelyRecordingCountersProvider.cs" />
+    <Compile Include="Monitoring\IPerformanceCountersProvider.cs" />
     <Compile Include="Monitoring\IInboundPerfomanceCounters.cs" />
     <Compile Include="Monitoring\InboundPerfomanceCounters.cs" />
     <Compile Include="Monitoring\InstanceNameUtil.cs" />
@@ -82,7 +82,7 @@
     <Compile Include="MessagePayload.cs" />
     <Compile Include="Model\HistoryMessage.cs" />
     <Compile Include="Model\PersistentMessageToSend.cs" />
-    <Compile Include="Monitoring\TransactionalPerformanceCounterProvider.cs" />
+    <Compile Include="Monitoring\TransactionalPerformanceCountersProvider.cs" />
     <Compile Include="Protocol\Endpoint.cs" />
     <Compile Include="Internal\QueuedMessagesSender.cs" />
     <Compile Include="Model\PersistentMessage.cs" />

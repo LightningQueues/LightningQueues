@@ -2,7 +2,7 @@
 
 namespace Rhino.Queues.Monitoring
 {
-    internal class ImmediatelyRecordingCounterProvider : IPerformanceCounterProvider
+    internal class ImmediatelyRecordingCountersProvider : IPerformanceCountersProvider
     {
         private readonly Dictionary<string, IOutboundPerfomanceCounters> outboundCounters = new Dictionary<string, IOutboundPerfomanceCounters>();
         public IOutboundPerfomanceCounters GetOutboundCounters(string instanceName)
