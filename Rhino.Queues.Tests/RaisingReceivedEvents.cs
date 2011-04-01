@@ -3,6 +3,8 @@ using System.IO;
 using System.Net;
 using System.Threading;
 using System.Transactions;
+using Rhino.Queues.Model;
+using Rhino.Queues.Protocol;
 using Rhino.Queues.Tests.Protocol;
 using Xunit;
 
@@ -110,28 +112,33 @@ namespace Rhino.Queues.Tests
             Assert.Equal("h", messageEventArgs.Message.Queue);
         }
 
-        [Fact(Skip="Must be run manually. See Comments")]
-        //Unable to find a clean way of causing receive to abort;
-        //This test only passes if I deliberately break the acknowledgment sending code in Sender.
+        [Fact]
         public void MessageQueuedForReceive_EventNotRaised_IfReceiveAborts()
         {
-            using (var sender = SetupSender())
+            ManualResetEvent wait = new ManualResetEvent(false);
+        
+            using (var sender = new FakeSender
+                                {
+                                    Destination = new Endpoint("localhost", 23457),
+                                    FailToAcknowledgeReceipt = true,
+                                    Messages = new [] { new Message
+                                        {
+                                            Id = new MessageId{ MessageIdentifier = Guid.NewGuid(), SourceInstanceId = Guid.NewGuid()},
+                                            SentAt = DateTime.Now,
+                                            Queue = "h", 
+                                            Data = new byte[] { 1, 2, 4, 5 }
+                                        } }
+                                })
             {
+
+                sender.SendCompleted += () => wait.Set();
                 using (var receiver = SetupReciever())
                 {
                     receiver.MessageQueuedForReceive += RecordMessageEvent;
+                    
+                    sender.Send();
+                    wait.WaitOne();
 
-                    using (var tx = new TransactionScope())
-                    {
-                        sender.Send(
-                            new Uri("rhino.queues://localhost:23457/h"),
-                            new MessagePayload
-                            {
-                                Data = new byte[] { 1, 2, 4, 5 }
-                            });
-
-                        tx.Complete();
-                    }
                     Thread.Sleep(1000);
                 }
             }
