@@ -9,7 +9,7 @@ using Xunit;
 
 namespace Rhino.Queues.Tests.Monitoring
 {
-    class EnablingPerformanceCounters : WithDebugging
+    public class EnablingPerformanceCounters : WithDebugging
     {
         private const string TEST_QUEUE_1 = "testA.esent";
 

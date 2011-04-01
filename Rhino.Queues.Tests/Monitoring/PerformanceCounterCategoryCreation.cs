@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Rhino.Queues.Tests.Monitoring
 {
-    class PerformanceCounterCategoryCreation : WithDebugging
+    public class PerformanceCounterCategoryCreation : WithDebugging
     {
         public static void DeletePerformanceCounters()
         {

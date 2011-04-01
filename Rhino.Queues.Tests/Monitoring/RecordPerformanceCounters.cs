@@ -9,7 +9,7 @@ using Xunit;
 
 namespace Rhino.Queues.Tests.Monitoring
 {
-    class RecordPerformanceCounters
+    public class RecordPerformanceCounters
     {
         private TestablePerformanceMonitor performanceMonitor;
         private IQueueManager queueManager;

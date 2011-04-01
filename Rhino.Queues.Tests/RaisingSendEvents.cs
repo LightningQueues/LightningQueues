@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Rhino.Queues.Tests
 {
-    class RaisingSendEvents : WithDebugging
+    public class RaisingSendEvents : WithDebugging
     {
         private const string TEST_QUEUE_1 = "testA.esent";
         private const string TEST_QUEUE_2 = "testB.esent";
