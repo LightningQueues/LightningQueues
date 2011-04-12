@@ -33,6 +33,18 @@ namespace Rhino.Queues.Tests.Monitoring
         }
 
         [Fact]
+        public void Enabling_performance_counters_after_queue_has_started_should_throw()
+        {
+            Setup();
+            
+            using (var queueManager = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23456), TEST_QUEUE_1))
+            {
+                queueManager.Start();
+                Assert.Throws<InvalidOperationException>( queueManager.EnablePerformanceCounters );
+            }
+        }
+
+        [Fact]
         public void Enabling_performance_counters_should_syncronize_counters_with_current_queue_state()
         {
             Setup();

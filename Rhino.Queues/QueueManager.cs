@@ -176,6 +176,9 @@ namespace Rhino.Queues
 
         public void EnablePerformanceCounters()
         {
+            if(wasStarted)
+                throw new InvalidOperationException("Performance counters cannot be enabled after the queue has been started.");
+
             monitor = new PerformanceMonitor(this);
         }
         
