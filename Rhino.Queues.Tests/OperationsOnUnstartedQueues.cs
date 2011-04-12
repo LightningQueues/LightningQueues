@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Net;
+using System.Threading;
 using System.Transactions;
 using Rhino.Queues.Tests.Protocol;
 using Xunit;
@@ -28,13 +29,6 @@ namespace Rhino.Queues.Tests
                     new Uri("rhino.queues://localhost:23457/h"),
                     new MessagePayload
                     {
-                        Data = new byte[] { 1, 2, 4, 5 }
-                    });
-
-                sender.Send(
-                    new Uri("rhino.queues://localhost:23457/h"),
-                    new MessagePayload
-                    {
                         Data = new byte[] { 6, 7, 8, 9 }
                     });
 
@@ -43,14 +37,13 @@ namespace Rhino.Queues.Tests
 
             receiver = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23457), "test2.esent");
             receiver.CreateQueues("h", "a");
+
+            var wait = new ManualResetEvent(false);
+            receiver.MessageQueuedForReceive += (s,e) => wait.Set();
+            
             receiver.Start();
 
-            using (var tx = new TransactionScope())
-            {
-                receiver.Receive("h", null, TimeSpan.FromSeconds(5));
-
-                tx.Complete();
-            }
+            wait.WaitOne();
 
             sender.Dispose();
             receiver.Dispose();
@@ -110,7 +103,9 @@ namespace Rhino.Queues.Tests
             SetupReceivedMessages();
 
             var messages = sender.GetAllSentMessages();
-            Assert.Equal(2, messages.Length);
+
+            Assert.Equal(1, messages.Length);
+            Assert.Equal(new byte[] { 6, 7, 8, 9 },  messages[0].Data);
         }
 
         [Fact]
@@ -131,6 +126,7 @@ namespace Rhino.Queues.Tests
             }
 
             var messages = sender.GetMessagesCurrentlySending();
+
             Assert.Equal(1, messages.Length);
             Assert.Equal(new byte[] { 1, 2, 4, 5 }, messages[0].Data);
         }
@@ -155,14 +151,10 @@ namespace Rhino.Queues.Tests
         {
             SetupReceivedMessages();
 
-            using (var tx = new TransactionScope())
-            {
-                var message = receiver.Peek("h", null, TimeSpan.FromSeconds(5));
+            var message = receiver.Peek("h", null, TimeSpan.FromSeconds(5));
                 
-                Assert.Equal(new byte[] { 6, 7, 8, 9 }, message.Data);
+            Assert.Equal(new byte[] { 6, 7, 8, 9 }, message.Data);
 
-                tx.Complete();
-            }
         }
 
         [Fact]
@@ -216,13 +208,8 @@ namespace Rhino.Queues.Tests
         {
             SetupReceivedMessages();
 
-            using (var tx = new TransactionScope())
-            {
-                var numberOfMessagesQueuedForReceive = receiver.GetNumberOfMessages("h");
-                Assert.Equal(1, numberOfMessagesQueuedForReceive);
-
-                tx.Complete();
-            }
+            var numberOfMessagesQueuedForReceive = receiver.GetNumberOfMessages("h");
+            Assert.Equal(1, numberOfMessagesQueuedForReceive);
         }
 
         [Fact]
@@ -230,28 +217,24 @@ namespace Rhino.Queues.Tests
         {
             SetupReceivedMessages();
 
-            using (var tx = new TransactionScope())
-            {
-                var messagesQueuedForReceive = receiver.GetAllMessages("h", null);
-                Assert.Equal(1, messagesQueuedForReceive.Length);
-                Assert.Equal(new byte[]{ 6, 7, 8 ,9}, messagesQueuedForReceive[0].Data);
-
-                tx.Complete();
-            }
+            var messagesQueuedForReceive = receiver.GetAllMessages("h", null);
+            Assert.Equal(1, messagesQueuedForReceive.Length);
+            Assert.Equal(new byte[]{ 6, 7, 8 ,9}, messagesQueuedForReceive[0].Data);
         }
 
         [Fact]
         public void Can_get_processed_messages_without_starting()
         {
             SetupReceivedMessages();
-
             using (var tx = new TransactionScope())
             {
-                var processedMessages = receiver.GetAllProcessedMessages("h");
-                Assert.Equal(1, processedMessages.Length);
-                Assert.Equal(new byte[] { 1, 2, 4, 5 }, processedMessages[0].Data);
+                receiver.Receive("h");
                 tx.Complete();
             }
+
+            var processedMessages = receiver.GetAllProcessedMessages("h");
+            Assert.Equal(1, processedMessages.Length);
+            Assert.Equal(new byte[] { 6, 7, 8, 9 }, processedMessages[0].Data);
         }
 
         [Fact]
