@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Net;
 using System.Transactions;
-using Rhino.Queues.Protocol;
 using Rhino.Queues.Tests.Protocol;
 using Xunit;
 
@@ -21,8 +20,11 @@ namespace Rhino.Queues.Tests
                 Directory.Delete("test2.esent", true);
 
             sender = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23456), "test.esent");
+            sender.Start();
+
             receiver = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23457), "test2.esent");
             receiver.CreateQueues("h", "a");
+            receiver.Start();
         }
 
         [Fact]

@@ -29,6 +29,8 @@ namespace Rhino.Queues.Tests.FromUsers
 				receiver = new QueueManager(new IPEndPoint(IPAddress.Loopback, 4545), "receiver.esent");
 
 				receiver.CreateQueues("uno");
+                receiver.Start();
+
 				tx.Complete();
 			}
 		}
@@ -37,6 +39,7 @@ namespace Rhino.Queues.Tests.FromUsers
 		{
 			using (var sender = new QueueManager(new IPEndPoint(IPAddress.Loopback, 4546), "sender.esent"))
 			{
+                sender.Start();
 				using (var tx = new TransactionScope())
 				{
 					sender.Send(new Uri("rhino.queues://localhost:4545/uno"),

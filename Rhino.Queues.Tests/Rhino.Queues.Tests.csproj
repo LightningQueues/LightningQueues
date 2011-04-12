@@ -78,6 +78,7 @@
     <Compile Include="RaisingReceivedEvents.cs" />
     <Compile Include="Errors.cs" />
     <Compile Include="FromUsers\FromRene.cs" />
+    <Compile Include="OperationsOnUnstartedQueues.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Protocol\CanSendAndReceive.cs" />
     <Compile Include="Protocol\RecieverFailure.cs" />
@@ -87,6 +88,7 @@
     <Compile Include="FromUsers\QueueIsAsync.cs" />
     <Compile Include="RaisingSendEvents.cs" />
     <Compile Include="SendingToRhinoQueue.cs" />
+    <Compile Include="StartingRhinoQueues.cs" />
     <Compile Include="Storage\CanUseQueue.cs" />
     <Compile Include="ReceivingFromRhinoQueue.cs" />
     <Compile Include="UsingSubQueues.cs" />

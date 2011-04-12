@@ -26,6 +26,7 @@ namespace Rhino.Queues.Tests
                 Directory.Delete(TEST_QUEUE_2, true);
 
             var sender = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23456), TEST_QUEUE_1);
+            sender.Start();
             messageEventArgs = null;
             return sender;
         }
@@ -96,6 +97,7 @@ namespace Rhino.Queues.Tests
                 using (var receiver = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2))
                 {
                     receiver.CreateQueues("h");
+                    receiver.Start();
 
                     using (var tx = new TransactionScope())
                     {
@@ -153,6 +155,7 @@ namespace Rhino.Queues.Tests
                 using (var receiver = new RevertingQueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2))
                 {
                     receiver.CreateQueues("h");
+                    receiver.Start();
 
                     using (var tx = new TransactionScope())
                     {

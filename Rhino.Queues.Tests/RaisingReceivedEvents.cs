@@ -26,6 +26,7 @@ namespace Rhino.Queues.Tests
                 Directory.Delete(TEST_QUEUE_1, true);
 
             var sender = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23456), TEST_QUEUE_1);
+            sender.Start();
             return sender;
         }
 
@@ -36,6 +37,7 @@ namespace Rhino.Queues.Tests
 
             var receiver = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2);
             receiver.CreateQueues("h", "b");
+            receiver.Start();
             ResetEventRecorder();
             return receiver;
         }
