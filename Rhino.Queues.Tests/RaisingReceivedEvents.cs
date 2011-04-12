@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Rhino.Queues.Tests
 {
-    public class RaisingReceivedEvents : WithDebugging
+    public class RaisingReceivedEvents : WithDebugging, IDisposable
     {
         private const string TEST_QUEUE_1 = "testA.esent";
         private const string TEST_QUEUE_2 = "testB.esent";
@@ -19,27 +19,39 @@ namespace Rhino.Queues.Tests
         private MessageEventArgs messageEventArgs2;
         private int messageEventCount;
         private int messageEventCount2;
+        private QueueManager lastCreatedSender;
+        private QueueManager lastCreatedReceiver;
 
         public QueueManager SetupSender()
         {
+            //Needed because tests that are terminated by XUnit due to a timeout
+            //are terminated rudely such that using statements do not dispose of their objects.
+            if (lastCreatedSender != null)
+                lastCreatedSender.Dispose();
+
             if (Directory.Exists(TEST_QUEUE_1))
                 Directory.Delete(TEST_QUEUE_1, true);
 
-            var sender = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23456), TEST_QUEUE_1);
-            sender.Start();
-            return sender;
+            lastCreatedSender = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23456), TEST_QUEUE_1);
+            lastCreatedSender.Start();
+            return lastCreatedSender;
         }
 
         public QueueManager SetupReciever()
         {
+            //Needed because tests that are terminated by XUnit due to a timeout
+            //are terminated rudely such that using statements do not dispose of their objects.
+            if (lastCreatedReceiver != null)
+                lastCreatedReceiver.Dispose();
+
             if (Directory.Exists(TEST_QUEUE_2))
                 Directory.Delete(TEST_QUEUE_2, true);
 
-            var receiver = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2);
-            receiver.CreateQueues("h", "b");
-            receiver.Start();
+            lastCreatedReceiver = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2);
+            lastCreatedReceiver.CreateQueues("h", "b");
+            lastCreatedReceiver.Start();
             ResetEventRecorder();
-            return receiver;
+            return lastCreatedReceiver;
         }
 
         private void ResetEventRecorder()
@@ -53,7 +65,7 @@ namespace Rhino.Queues.Tests
         void RecordMessageEvent(object s, MessageEventArgs e)
         {
             messageEventArgs = e;
-            
+
             messageEventCount++;
         }
 
@@ -63,7 +75,7 @@ namespace Rhino.Queues.Tests
             messageEventCount2++;
         }
 
-        [Fact(Timeout=5000)]
+        [Fact(Timeout = 5000)]
         public void MessageQueuedForReceive_EventIsRaised()
         {
             using (var sender = SetupSender())
@@ -93,7 +105,7 @@ namespace Rhino.Queues.Tests
             Assert.Equal("h", messageEventArgs.Message.Queue);
         }
 
-        [Fact(Timeout=5000)]
+        [Fact(Timeout = 5000)]
         public void MessageQueuedForReceive_EventIsRaised_DirectEnqueuing()
         {
             using (var receiver = SetupReciever())
@@ -102,7 +114,7 @@ namespace Rhino.Queues.Tests
 
                 using (var tx = new TransactionScope())
                 {
-                    receiver.EnqueueDirectlyTo("h",null, new MessagePayload{Data = new byte[]{1,2,3}});
+                    receiver.EnqueueDirectlyTo("h", null, new MessagePayload { Data = new byte[] { 1, 2, 3 } });
 
                     tx.Complete();
                 }
@@ -118,26 +130,26 @@ namespace Rhino.Queues.Tests
         public void MessageQueuedForReceive_EventNotRaised_IfReceiveAborts()
         {
             ManualResetEvent wait = new ManualResetEvent(false);
-        
+
             using (var sender = new FakeSender
-                                {
-                                    Destination = new Endpoint("localhost", 23457),
-                                    FailToAcknowledgeReceipt = true,
-                                    Messages = new [] { new Message
+            {
+                Destination = new Endpoint("localhost", 23457),
+                FailToAcknowledgeReceipt = true,
+                Messages = new[] { new Message
                                         {
                                             Id = new MessageId{ MessageIdentifier = Guid.NewGuid(), SourceInstanceId = Guid.NewGuid()},
                                             SentAt = DateTime.Now,
                                             Queue = "h", 
                                             Data = new byte[] { 1, 2, 4, 5 }
                                         } }
-                                })
+            })
             {
 
                 sender.SendCompleted += () => wait.Set();
                 using (var receiver = SetupReciever())
                 {
                     receiver.MessageQueuedForReceive += RecordMessageEvent;
-                    
+
                     sender.Send();
                     wait.WaitOne();
 
@@ -301,6 +313,15 @@ namespace Rhino.Queues.Tests
                     Assert.Equal("b", messageEventArgs2.Message.SubQueue);
                 }
             }
+        }
+
+        public void Dispose()
+        {
+            if (lastCreatedSender != null)
+                lastCreatedSender.Dispose();
+
+            if (lastCreatedReceiver != null)
+                lastCreatedReceiver.Dispose();
         }
     }
 }
