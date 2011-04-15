@@ -23,7 +23,7 @@ namespace Rhino.Queues.Tests.Monitoring
         {
             DeletePerformanceCounters();
 
-            new PerformanceCategoryCreator();
+            PerformanceCategoryCreator.CreateCategories();
 
             Assert.True(PerformanceCounterCategory.Exists(OutboundPerfomanceCounters.CATEGORY));
             Assert.True(PerformanceCounterCategory.Exists(InboundPerfomanceCounters.CATEGORY));
@@ -46,7 +46,7 @@ namespace Rhino.Queues.Tests.Monitoring
             PerformanceCounterCategory.Create(InboundPerfomanceCounters.CATEGORY,"",
                 PerformanceCounterCategoryType.MultiInstance, preExistingCounters);
 
-            new PerformanceCategoryCreator();
+            PerformanceCategoryCreator.CreateCategories();
 
             Assert.False(PerformanceCounterCategory.CounterExists("DeleteMe", OutboundPerfomanceCounters.CATEGORY));
             Assert.False(PerformanceCounterCategory.CounterExists("DeleteMe", InboundPerfomanceCounters.CATEGORY));

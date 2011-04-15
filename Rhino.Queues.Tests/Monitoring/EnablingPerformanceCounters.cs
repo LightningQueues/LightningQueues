@@ -18,7 +18,7 @@ namespace Rhino.Queues.Tests.Monitoring
             if (Directory.Exists(TEST_QUEUE_1))
                 Directory.Delete(TEST_QUEUE_1, true);
 
-            new PerformanceCategoryCreator();
+            PerformanceCategoryCreator.CreateCategories(); 
         }
 
         [Fact]

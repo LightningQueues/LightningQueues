@@ -5,12 +5,12 @@ using log4net;
 
 namespace Rhino.Queues.Monitoring
 {
-    public class PerformanceCategoryCreator
+    public static class PerformanceCategoryCreator
     {
         internal const string CANT_CREATE_COUNTER_MSG = "Failed to create performance counter: {0}:{1}.  The most likely cause is that the needed performance counter categories have not been installed on this machine.  Use the Rhino.Queues.Monitoring.PerformanceCategoryCreator class to install the need categories.";
-        private readonly ILog logger = LogManager.GetLogger(typeof(PerformanceCategoryCreator));
+        private static readonly ILog logger = LogManager.GetLogger(typeof(PerformanceCategoryCreator));
 
-        public PerformanceCategoryCreator()
+        public static void CreateCategories()
         {
             try
             {
@@ -24,7 +24,7 @@ namespace Rhino.Queues.Monitoring
             }
         }
 
-        private void CreateOutboundCategory()
+        private static void CreateOutboundCategory()
         {
             if (PerformanceCounterCategory.Exists(OutboundPerfomanceCounters.CATEGORY))
             {
@@ -50,7 +50,7 @@ namespace Rhino.Queues.Monitoring
             }
         }
 
-        private void CreateInboundCategory()
+        private static void CreateInboundCategory()
         {
             if (PerformanceCounterCategory.Exists(InboundPerfomanceCounters.CATEGORY))
             {
