@@ -98,6 +98,8 @@ namespace Rhino.Queues.Tests
 
                     while (messageEventCount == 0)
                         Thread.Sleep(100);
+
+                    receiver.MessageQueuedForReceive -= RecordMessageEvent;
                 }
             }
 
@@ -120,6 +122,8 @@ namespace Rhino.Queues.Tests
                 }
                 while (messageEventCount == 0)
                     Thread.Sleep(100);
+
+                receiver.MessageQueuedForReceive -= RecordMessageEvent;
             }
 
             Assert.NotNull(messageEventArgs);
@@ -154,6 +158,8 @@ namespace Rhino.Queues.Tests
                     wait.WaitOne();
 
                     Thread.Sleep(1000);
+
+                    receiver.MessageQueuedForReceive -= RecordMessageEvent;
                 }
             }
 
@@ -187,6 +193,8 @@ namespace Rhino.Queues.Tests
                         receiver.Receive("h");
                         tx.Complete();
                     }
+
+                    receiver.MessageReceived -= RecordMessageEvent;
                 }
             }
 
@@ -215,6 +223,8 @@ namespace Rhino.Queues.Tests
                         tx.Complete();
                     }
                     Thread.Sleep(1000);
+
+                    receiver.MessageReceived -= RecordMessageEvent;
                 }
             }
 
@@ -254,6 +264,9 @@ namespace Rhino.Queues.Tests
                         receiver.MoveTo("b", message);
                         tx.Complete();
                     }
+
+                    receiver.MessageReceived -= RecordMessageEvent;
+                    receiver.MessageQueuedForReceive -= RecordMessageEvent;
 
                     Assert.Equal(1, messageEventCount);
                     Assert.NotNull(messageEventArgs);
@@ -301,6 +314,9 @@ namespace Rhino.Queues.Tests
                         receiver.MoveTo("b", message);
                         tx.Complete();
                     }
+
+                    receiver.MessageReceived -= RecordMessageEvent;
+                    receiver.MessageQueuedForReceive -= RecordMessageEvent2;
 
                     Assert.Equal(1, messageEventCount);
                     Assert.NotNull(messageEventArgs);

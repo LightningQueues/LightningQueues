@@ -54,6 +54,8 @@ namespace Rhino.Queues.Tests
 
                     tx.Complete();
                 }
+
+                sender.MessageQueuedForSend -= RecordMessageEvent;
             }
 
             Assert.NotNull(messageEventArgs);
@@ -79,6 +81,8 @@ namespace Rhino.Queues.Tests
                         });
 
                 }
+
+                sender.MessageQueuedForSend -= RecordMessageEvent;
             }
 
             Assert.NotNull(messageEventArgs);
@@ -112,6 +116,8 @@ namespace Rhino.Queues.Tests
                     }
                     sender.WaitForAllMessagesToBeSent();
                 }
+
+                sender.MessageSent -= RecordMessageEvent;
             }
 
             Assert.NotNull(messageEventArgs);
@@ -140,6 +146,8 @@ namespace Rhino.Queues.Tests
                     tx.Complete();
                 }
                 Thread.Sleep(1000);
+
+                sender.MessageSent -= RecordMessageEvent;
             }
 
             Assert.Null(messageEventArgs);
@@ -169,6 +177,8 @@ namespace Rhino.Queues.Tests
                         tx.Complete();
                     }
                     Thread.Sleep(1000);
+
+                    sender.MessageSent -= RecordMessageEvent;
                 }
             }
 

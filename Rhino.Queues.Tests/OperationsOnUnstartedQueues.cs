@@ -39,12 +39,15 @@ namespace Rhino.Queues.Tests
             receiver.CreateQueues("h", "a");
 
             var wait = new ManualResetEvent(false);
-            receiver.MessageQueuedForReceive += (s,e) => wait.Set();
+            Action<object, MessageEventArgs> handler = (s,e) => wait.Set();
+            receiver.MessageQueuedForReceive += handler;
             
             receiver.Start();
 
             wait.WaitOne();
 
+            receiver.MessageQueuedForReceive -= handler;
+            
             sender.Dispose();
             receiver.Dispose();
 
