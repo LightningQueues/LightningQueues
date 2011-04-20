@@ -7,7 +7,8 @@ namespace Rhino.Queues.Monitoring
 {
     public static class PerformanceCategoryCreator
     {
-        internal const string CANT_CREATE_COUNTER_MSG = "Failed to create performance counter: {0}:{1}.  The most likely cause is that the needed performance counter categories have not been installed on this machine.  Use the Rhino.Queues.Monitoring.PerformanceCategoryCreator class to install the need categories.";
+        internal const string CATEGORY_DOES_NOT_EXIST = "The expected performance counter category does not exist: {0}.  The most likely cause is that the needed performance counter categories have not been installed on this machine.  Use the Rhino.Queues.Monitoring.PerformanceCategoryCreator class to install the need categories.";
+        internal const string CANT_CREATE_COUNTER_MSG = "Failed to create performance counter: {0}:{1}.  The most likely cause is that the counter categories installed on this machine are out of date.  Use the Rhino.Queues.Monitoring.PerformanceCategoryCreator class to re-install the categories.";
         private static readonly ILog logger = LogManager.GetLogger(typeof(PerformanceCategoryCreator));
 
         public static void CreateCategories()

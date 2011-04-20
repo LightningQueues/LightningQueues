@@ -343,6 +343,11 @@ namespace Rhino.Queues.Tests.Monitoring
             public IOutboundPerfomanceCounters OutboundPerfomanceCounters { get { return testProvider.OutboundPerfomanceCounters; } }
             public IInboundPerfomanceCounters InboundPerfomanceCounters { get { return testProvider.InboundPerfomanceCounters; } }
 
+            protected override void AssertCountersExist()
+            {
+                //Do nothing as we don't need real counters to exist for our purposes here.
+            }
+
             protected override IPerformanceCountersProvider ImmediatelyRecordingProvider
             {
                 get { return testProvider; }

@@ -15,6 +15,7 @@ namespace Rhino.Queues.Monitoring
         {
             this.queueManager = queueManager;
 
+            AssertCountersExist();
             AttachToEvents();
             SyncWithCurrentQueueState();
         }
@@ -22,6 +23,12 @@ namespace Rhino.Queues.Monitoring
         public void Dispose()
         {
             DetachFromEvents();
+        }
+
+        protected virtual void AssertCountersExist()
+        {
+            OutboundPerfomanceCounters.AssertCountersExist();
+            InboundPerfomanceCounters.AssertCountersExist();
         }
 
         private void SyncWithCurrentQueueState()

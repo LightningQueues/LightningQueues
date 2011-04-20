@@ -23,6 +23,14 @@ namespace Rhino.Queues.Monitoring
                 };
         }
 
+        public static void AssertCountersExist()
+        {
+            if (!PerformanceCounterCategory.Exists(CATEGORY))
+                throw new ApplicationException(
+                    string.Format(PerformanceCategoryCreator.CATEGORY_DOES_NOT_EXIST, CATEGORY));
+
+        }
+
         public InboundPerfomanceCounters(string instanceName)
         {
             this.instanceName = instanceName;
