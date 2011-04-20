@@ -201,7 +201,10 @@ namespace Rhino.Queues
 
 			DisposeResourcesWhoseDisposalCannotFail();
 
-			queueStorage.Dispose();
+            if (monitor != null)
+                monitor.Dispose();
+            
+            queueStorage.Dispose();
 
 			// only after we finish incoming recieves, and finish processing
 			// active transactions can we mark it as disposed

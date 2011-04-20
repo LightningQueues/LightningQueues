@@ -1,11 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Transactions;
 using log4net;
 
 namespace Rhino.Queues.Monitoring
 {
-    public class PerformanceMonitor
+    public class PerformanceMonitor : IDisposable
     {
         private readonly ILog logger = LogManager.GetLogger(typeof(PerformanceMonitor));
         
@@ -16,6 +17,11 @@ namespace Rhino.Queues.Monitoring
 
             AttachToEvents();
             SyncWithCurrentQueueState();
+        }
+
+        public void Dispose()
+        {
+            DetachFromEvents();
         }
 
         private void SyncWithCurrentQueueState()
@@ -64,6 +70,14 @@ namespace Rhino.Queues.Monitoring
             queueManager.MessageSent += OnMessageSent;
             queueManager.MessageQueuedForReceive += OnMessageQueuedForReceive;
             queueManager.MessageReceived += OnMessageReceived;
+        }
+
+        private void DetachFromEvents()
+        {
+            queueManager.MessageQueuedForSend -= OnMessageQueuedForSend;
+            queueManager.MessageSent -= OnMessageSent;
+            queueManager.MessageQueuedForReceive -= OnMessageQueuedForReceive;
+            queueManager.MessageReceived -= OnMessageReceived;
         }
 
         private void OnMessageQueuedForSend(object source, MessageEventArgs e)
