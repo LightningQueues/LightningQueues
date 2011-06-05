@@ -1,4 +1,4 @@
-properties { 
+properties {
   $base_dir  = resolve-path .
   $lib_dir = "$base_dir\SharedLibs"
   $build_dir = "$base_dir\build" 
@@ -9,18 +9,18 @@ properties {
   $tools_dir = "$base_dir\Tools"
   $release_dir = "$base_dir\Release"
   $uploadCategory = "Rhino-Queues"
-  $uploadScript = "C:\Builds\Upload\PublishBuild.build"} 
+  $uploadScript = "C:\Builds\Upload\PublishBuild.build"}
 
 include .\psake_ext.ps1
-	
+
 task default -depends Release
 
-task Clean { 
+task Clean {
   remove-item -force -recurse $buildartifacts_dir -ErrorAction SilentlyContinue 
   remove-item -force -recurse $release_dir -ErrorAction SilentlyContinue 
-} 
+}
 
-task Init -depends Clean { 
+task Init -depends Clean {
 	Generate-Assembly-Info `
 		-file "$base_dir\Rhino.Queues\Properties\AssemblyInfo.cs" `
 		-title "Rhino Queues $version" `
@@ -30,7 +30,7 @@ task Init -depends Clean {
 		-version $version `
 		-copyright "Hibernating Rhinos & Ayende Rahien 2004 - 2009" `
         -clsCompliant "false"
-		
+
 	Generate-Assembly-Info `
 		-file "$base_dir\Rhino.Queues.Tests\Properties\AssemblyInfo.cs" `
 		-title "Rhino Queues $version" `
@@ -40,20 +40,20 @@ task Init -depends Clean {
 		-version $version `
 		-copyright "Hibernating Rhinos & Ayende Rahien 2004 - 2009" `
         -clsCompliant "false"
-		
+
 	new-item $release_dir -itemType directory 
 	new-item $buildartifacts_dir -itemType directory 
-} 
+}
 
 task Compile -depends Init { 
-  exec msbuild "/p:OutDir=""$buildartifacts_dir "" $sln_file"
-} 
+  msbuild $sln_file /p:OutDir=""$buildartifacts_dir""
+}
 
 task Test -depends Compile {
   $old = pwd
   cd $build_dir
-  exec "$tools_dir\xUnit\xunit.console.exe" "$build_dir\Rhino.Queues.Tests.dll"
-  cd $old		
+  & $tools_dir\xUnit\xunit.console.exe "$build_dir\Rhino.Queues.Tests.dll"
+  cd $old
 }
 
 
