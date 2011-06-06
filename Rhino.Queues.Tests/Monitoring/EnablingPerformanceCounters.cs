@@ -28,7 +28,7 @@ namespace Rhino.Queues.Tests.Monitoring
 
             using (var queueManager = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23456), TEST_QUEUE_1))
             {
-                Assert.Throws<ApplicationException>( queueManager.EnablePerformanceCounters );
+                Assert.Throws<ApplicationException>(() => queueManager.EnablePerformanceCounters());
             }
         }
 
@@ -40,7 +40,7 @@ namespace Rhino.Queues.Tests.Monitoring
             using (var queueManager = new QueueManager(new IPEndPoint(IPAddress.Loopback, 23456), TEST_QUEUE_1))
             {
                 queueManager.Start();
-                Assert.Throws<InvalidOperationException>( queueManager.EnablePerformanceCounters );
+                Assert.Throws<InvalidOperationException>(() => queueManager.EnablePerformanceCounters());
             }
         }
 

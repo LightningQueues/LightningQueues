@@ -2,21 +2,23 @@ properties {
   $base_dir  = resolve-path .
   $lib_dir = "$base_dir\SharedLibs"
   $build_dir = "$base_dir\build" 
-  $buildartifacts_dir = "$build_dir\" 
+  $40_build_dir = "$build_dir\4.0\"
+  $35_build_dir = "$build_dir\3.5\"
   $sln_file = "$base_dir\Rhino.Queues.sln" 
-  $version = "1.2.0.0"
-  $humanReadableversion = "1.2"
+  $version = "1.2.1.0"
+  $config = "Release"
   $tools_dir = "$base_dir\Tools"
   $release_dir = "$base_dir\Release"
-  $uploadCategory = "Rhino-Queues"
-  $uploadScript = "C:\Builds\Upload\PublishBuild.build"}
+}
+
+$framework = "4.0"
 
 include .\psake_ext.ps1
 
 task default -depends Release
 
 task Clean {
-  remove-item -force -recurse $buildartifacts_dir -ErrorAction SilentlyContinue 
+  remove-item -force -recurse $build_dir -ErrorAction SilentlyContinue 
   remove-item -force -recurse $release_dir -ErrorAction SilentlyContinue 
 }
 
@@ -42,48 +44,39 @@ task Init -depends Clean {
         -clsCompliant "false"
 
 	new-item $release_dir -itemType directory 
-	new-item $buildartifacts_dir -itemType directory 
+	new-item $build_dir -itemType directory 
 }
 
-task Compile -depends Init { 
-  msbuild $sln_file /p:OutDir=""$buildartifacts_dir""
+task Compile40 -depends Init {
+  msbuild $sln_file /p:"OutDir=$40_build_dir;Configuration=$config;TargetFrameworkVersion=V4.0"
 }
 
-task Test -depends Compile {
+task Compile35 -depends Init {
+  msbuild $sln_file /p:"OutDir=$35_build_dir;Configuration=$config;TargetFrameworkVersion=V3.5"
+}
+
+task Test -depends Compile35, Compile40 {
   $old = pwd
   cd $build_dir
-  & $tools_dir\xUnit\xunit.console.exe "$build_dir\Rhino.Queues.Tests.dll"
+  & $tools_dir\xUnit\xunit.console.exe "$35_build_dir\Rhino.Queues.Tests.dll"
   cd $old
 }
 
 
 task Release -depends Test {
-	& $tools_dir\zip.exe -9 -A -j `
-		$release_dir\Rhino.Queues-$humanReadableversion-Build-$env:ccnetnumericlabel.zip `
-        $build_dir\Rhino.Queues.dll `
-        $build_dir\log4net.dll `
-        $build_dir\Rhino.Queues.xml `
-        $build_dir\Esent.Interop.dll `
-		$build_dir\Esent.Interop.xml `
-        $build_dir\Wintellect.Threading.dll `
-        $build_dir\Wintellect.Threading.xml `
-		license.txt `
-		acknowledgements.txt
-	if ($lastExitCode -ne 0) {
+  cd $build_dir
+  & $tools_dir\7za.exe a $release_dir\Rhino.Queues.zip `
+        *\Rhino.Queues.dll `
+        *\Rhino.Queues.pdb `
+        *\log4net.dll `
+        *\Rhino.Queues.xml `
+        *\Esent.Interop.dll `
+        *\Esent.Interop.xml `
+        *\Wintellect.Threading.dll `
+        *\Wintellect.Threading.xml `
+        license.txt `
+        acknowledgements.txt
+    if ($lastExitCode -ne 0) {
         throw "Error: Failed to execute ZIP command"
     }
-}
-
-task Upload -depend Release {
-	if (Test-Path $uploadScript ) {
-		$log = git log -n 1 --oneline		
-		msbuild $uploadScript /p:Category=$uploadCategory "/p:Comment=$log" "/p:File=$release_dir\Rhino.Queues-$humanReadableversion-Build-$env:ccnetnumericlabel.zip"
-		
-		if ($lastExitCode -ne 0) {
-			throw "Error: Failed to publish build"
-		}
-	}
-	else {
-		Write-Host "could not find upload script $uploadScript, skipping upload"
-	}
 }
