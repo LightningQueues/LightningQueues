@@ -5,7 +5,7 @@ properties {
   $40_build_dir = "$build_dir\4.0\"
   $35_build_dir = "$build_dir\3.5\"
   $sln_file = "$base_dir\Rhino.Queues.sln" 
-  $version = "1.2.1.0"
+  $version = "1.3.0.0"
   $config = "Release"
   $tools_dir = "$base_dir\Tools"
   $release_dir = "$base_dir\Release"
@@ -48,7 +48,7 @@ task Init -depends Clean {
 }
 
 task Compile40 -depends Init {
-  msbuild $sln_file /p:"OutDir=$40_build_dir;Configuration=$config;TargetFrameworkVersion=V4.0"
+  msbuild $sln_file /p:"OutDir=$40_build_dir;Configuration=$config;TargetFrameworkVersion=4.0"
 }
 
 task Compile35 -depends Init {
