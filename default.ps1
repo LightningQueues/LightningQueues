@@ -2,6 +2,7 @@ properties {
   $base_dir  = resolve-path .
   $lib_dir = "$base_dir\SharedLibs"
   $build_dir = "$base_dir\build" 
+  $packageinfo_dir = "$base_dir\packaging"
   $40_build_dir = "$build_dir\4.0\"
   $35_build_dir = "$build_dir\3.5\"
   $sln_file = "$base_dir\Rhino.Queues.sln" 
@@ -15,7 +16,7 @@ $framework = "4.0"
 
 include .\psake_ext.ps1
 
-task default -depends Release
+task default -depends Package
 
 task Clean {
   remove-item -force -recurse $build_dir -ErrorAction SilentlyContinue 
@@ -62,7 +63,6 @@ task Test -depends Compile35, Compile40 {
   cd $old
 }
 
-
 task Release -depends Test {
   cd $build_dir
   & $tools_dir\7za.exe a $release_dir\Rhino.Queues.zip `
@@ -79,4 +79,8 @@ task Release -depends Test {
     if ($lastExitCode -ne 0) {
         throw "Error: Failed to execute ZIP command"
     }
+}
+
+task Package -depends Release {
+  & $tools_dir\NuGet.exe pack $packageinfo_dir\rhino.queues.nuspec -o $release_dir -Version $version -Symbols -BasePath $build_dir
 }
