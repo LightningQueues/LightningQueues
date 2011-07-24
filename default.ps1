@@ -82,5 +82,5 @@ task Release -depends Test {
 }
 
 task Package -depends Release {
-  & $tools_dir\NuGet.exe pack $packageinfo_dir\rhino.queues.nuspec -o $release_dir -Version $version -Symbols -BasePath $build_dir
+  & $tools_dir\NuGet.exe pack $packageinfo_dir\rhino.queues.nuspec -o $release_dir -Version $version -Symbols -BasePath $base_dir
 }
