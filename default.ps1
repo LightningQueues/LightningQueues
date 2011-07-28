@@ -48,15 +48,12 @@ task Init -depends Clean {
 	new-item $build_dir -itemType directory 
 }
 
-task Compile40 -depends Init {
+task Compile -depends Init {
   msbuild $sln_file /p:"OutDir=$40_build_dir;Configuration=$config;TargetFrameworkVersion=4.0"
+  msbuild $sln_file /target:Rebuild /p:"OutDir=$35_build_dir;Configuration=$config;TargetFrameworkVersion=V3.5"
 }
 
-task Compile35 -depends Init {
-  msbuild $sln_file /p:"OutDir=$35_build_dir;Configuration=$config;TargetFrameworkVersion=V3.5"
-}
-
-task Test -depends Compile35, Compile40 {
+task Test -depends Compile {
   $old = pwd
   cd $build_dir
   & $tools_dir\xUnit\xunit.console.exe "$35_build_dir\Rhino.Queues.Tests.dll"
