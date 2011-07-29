@@ -17,9 +17,12 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="build\**\Rhino.Queues.dll" target="lib" />
-    <file src="build\**\Rhino.Queues.pdb" target="lib" />
-    <file src="build\**\Rhino.Queues.xml" target="lib" />
+    <file src="build\3.5\Rhino.Queues.dll" target="lib\3.5" />
+    <file src="build\3.5\Rhino.Queues.pdb" target="lib\3.5" />
+    <file src="build\3.5\Rhino.Queues.xml" target="lib\3.5" />
+    <file src="build\4.0\Rhino.Queues.dll" target="lib\4.0" />
+    <file src="build\4.0\Rhino.Queues.pdb" target="lib\4.0" />
+    <file src="build\4.0\Rhino.Queues.xml" target="lib\4.0" />
     <file src="Rhino.Queues\**\*.cs" target="src\Rhino.Queues" />
   </files>
 </package>
