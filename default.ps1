@@ -56,7 +56,7 @@ task Compile -depends Init {
 task Test -depends Compile {
   $old = pwd
   cd $build_dir
-  & $tools_dir\xUnit\xunit.console.exe "$35_build_dir\Rhino.Queues.Tests.dll"
+  & $tools_dir\xUnit\xunit.console.exe "$35_build_dir\Rhino.Queues.Tests.dll" /noshadow
   cd $old
 }
 
