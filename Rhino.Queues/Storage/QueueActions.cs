@@ -376,7 +376,6 @@ namespace Rhino.Queues.Storage
 
 				var bookmark = new MessageBookmark { QueueName = queueName };
 				Api.JetGetBookmark(session, msgs, bookmark.Bookmark, bookmark.Size, out bookmark.Size);
-				changeNumberOfMessages(-1);
 
 				logger.DebugFormat("Peeking message {2} from '{0}/{1}'",
 								   queueName, subqueue, id);
