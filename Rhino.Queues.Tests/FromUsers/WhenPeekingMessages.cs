@@ -1,11 +1,12 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Net;
 using System.Transactions;
 using Xunit;
 
 namespace Rhino.Queues.Tests.FromUsers
 {
-    public class WhenPeekingMessages
+    public class WhenPeekingMessages : IDisposable
     {
         private readonly QueueManager queueManager;
 
@@ -36,6 +37,11 @@ namespace Rhino.Queues.Tests.FromUsers
             Assert.Equal(new byte[] { 1, 2, 4, 5 }, msg.Data);
             count = queueManager.GetNumberOfMessages("h");
             Assert.Equal(1, count); 
+        }
+
+        public void Dispose()
+        {
+            queueManager.Dispose();
         }
     }
 }
