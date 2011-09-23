@@ -27,6 +27,7 @@ namespace Rhino.Queues
 
         private volatile bool wasStarted;
         private volatile bool wasDisposed;
+        private volatile bool enableEndpointPortAutoSelection;
 		private volatile int currentlyInCriticalReceiveStatus;
 		private volatile int currentlyInsideTransaction;
 		private readonly IPEndPoint endpoint;
@@ -90,10 +91,8 @@ namespace Rhino.Queues
 
             if(wasStarted)
                 throw new InvalidOperationException("The Start method may not be invoked more than once.");
-            
-            wasStarted = true;
 
-            receiver = new Receiver(endpoint, AcceptMessages);
+            receiver = new Receiver(endpoint, enableEndpointPortAutoSelection, AcceptMessages);
             receiver.Start();
 
             queuedMessagesSender = new QueuedMessagesSender(queueStorage, this);
@@ -106,6 +105,8 @@ namespace Rhino.Queues
             purgeOldDataTimer = new Timer(PurgeOldData, null,
                                           TimeSpan.FromMinutes(3),
                                           TimeSpan.FromMinutes(3));
+
+            wasStarted = true;
         }
 
         private void PurgeOldData(object ignored)
@@ -181,7 +182,15 @@ namespace Rhino.Queues
 
             monitor = new PerformanceMonitor(this);
         }
-        
+
+        public void EnableEndpointPortAutoSelection()
+        {
+            if (wasStarted)
+                throw new InvalidOperationException("Endpoint auto-port-selection cannot be enabled after the queue has been started.");
+
+            enableEndpointPortAutoSelection = true;
+        }
+
         public string Path
 		{
 			get { return path; }

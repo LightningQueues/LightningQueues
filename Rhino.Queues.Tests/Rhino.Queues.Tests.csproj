@@ -76,6 +76,7 @@
     <Compile Include="Monitoring\PerformanceCounterCategoryCreation.cs" />
     <Compile Include="Monitoring\EnablingPerformanceCounters.cs" />
     <Compile Include="Monitoring\RecordPerformanceCounters.cs" />
+    <Compile Include="AutoSelectPort.cs" />
     <Compile Include="Protocol\FakeSender.cs" />
     <Compile Include="RaisingReceivedEvents.cs" />
     <Compile Include="Errors.cs" />

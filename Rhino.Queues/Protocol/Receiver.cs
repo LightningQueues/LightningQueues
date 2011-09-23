@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using log4net;
@@ -13,27 +15,80 @@ namespace Rhino.Queues.Protocol
     public class Receiver : IDisposable
     {
         private readonly IPEndPoint endpointToListenTo;
+        private readonly bool enableEndpointPortAutoSelection;
         private readonly Func<Message[], IMessageAcceptance> acceptMessages;
-        private readonly TcpListener listener;
+        private TcpListener listener;
         private readonly ILog logger = LogManager.GetLogger(typeof(Receiver));
 
         public event Action CompletedRecievingMessages;
 
         public Receiver(IPEndPoint endpointToListenTo, Func<Message[], IMessageAcceptance> acceptMessages)
+            :this(endpointToListenTo, false, acceptMessages)
+        { }
+
+        public Receiver(IPEndPoint endpointToListenTo, bool enableEndpointPortAutoSelection, Func<Message[], IMessageAcceptance> acceptMessages)
         {
             this.endpointToListenTo = endpointToListenTo;
+            this.enableEndpointPortAutoSelection = enableEndpointPortAutoSelection;
             this.acceptMessages = acceptMessages;
-            listener = new TcpListener(endpointToListenTo);
         }
 
         public void Start()
         {
             logger.DebugFormat("Starting to listen on {0}", endpointToListenTo);
+            while (endpointToListenTo.Port < 65536)
+            {
+                try
+                {
+                    TryStart(endpointToListenTo);
+                    logger.DebugFormat("Now listen on {0}", endpointToListenTo);
+                    return;
+                }
+                catch(SocketException ex)
+                {
+                    if (enableEndpointPortAutoSelection &&
+                        ex.Message == "Only one usage of each socket address (protocol/network address/port) is normally permitted")
+                    {
+                        endpointToListenTo.Port = SelectAvailablePort();
+                        logger.DebugFormat("Port in use, new enpoint selected: {0}", endpointToListenTo);
+                    }
+                    else
+                        throw;
+                }
+            }
+        }
+
+        private void TryStart(IPEndPoint endpointToListenTo)
+        {
+            listener = new TcpListener(endpointToListenTo);
             listener.Start();
             listener.BeginAcceptTcpClient(BeginAcceptTcpClientCallback, null);
         }
 
-		private void BeginAcceptTcpClientCallback(IAsyncResult result)
+        private static int SelectAvailablePort()
+        {
+            const int START_OF_IANA_PRIVATE_PORT_RANGE = 49152;
+            var ipGlobalProperties = IPGlobalProperties.GetIPGlobalProperties();
+            var tcpListeners = ipGlobalProperties.GetActiveTcpListeners();
+            var tcpConnections = ipGlobalProperties.GetActiveTcpConnections();
+
+            var allInUseTcpPorts = tcpListeners.Select(tcpl => tcpl.Port)
+                .Union(tcpConnections.Select(tcpi => tcpi.LocalEndPoint.Port));
+
+            var orderedListOfPrivateInUseTcpPorts = allInUseTcpPorts
+                .Where(p => p >= START_OF_IANA_PRIVATE_PORT_RANGE)
+                .OrderBy(p => p);
+
+            var candidatePort = START_OF_IANA_PRIVATE_PORT_RANGE;
+            foreach (var usedPort in orderedListOfPrivateInUseTcpPorts)
+            {
+                if (usedPort != candidatePort) break;
+                candidatePort++;
+            }
+            return candidatePort;
+        }
+
+        private void BeginAcceptTcpClientCallback(IAsyncResult result)
 		{
 			TcpClient client;
 			try

@@ -20,6 +20,7 @@ namespace Rhino.Queues
         string[] Queues { get; }
         event Action<Endpoint> FailedToSendMessagesTo;
         void EnablePerformanceCounters();
+        void EnableEndpointPortAutoSelection();
         void WaitForAllMessagesToBeSent();
         IQueue GetQueue(string queue);
         PersistentMessage[] GetAllMessages(string queueName, string subqueue);
