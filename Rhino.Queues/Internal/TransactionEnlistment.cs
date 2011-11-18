@@ -60,7 +60,6 @@ namespace Rhino.Queues.Internal
 			catch (Exception e)
 			{
 				logger.Warn("Failed to commit enlistment " + Id, e);
-				throw;
 			}
 			finally
 			{
@@ -100,7 +99,6 @@ namespace Rhino.Queues.Internal
 			catch (Exception e)
 			{
 				logger.Warn("Failed to rollback enlistment " + Id, e);
-				throw;
 			}
 			finally
 			{
@@ -123,7 +121,6 @@ namespace Rhino.Queues.Internal
 			catch (Exception e)
 			{
 				logger.Warn("Failed to commit enlistment " + Id, e);
-				throw;
 			}
 			finally
 			{
