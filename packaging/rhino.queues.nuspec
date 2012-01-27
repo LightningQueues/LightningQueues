@@ -12,7 +12,7 @@
     <description>HTTP based reliable async queueing system</description>
     <tags>queue persistence rhino esent msmq</tags>
     <dependencies>
-      <dependency id="ManagedEsent" version="1.6" />
+      <dependency id="Rhino.ServiceBus.References"/>
       <dependency id="PowerThreading" version="20101026.0"/>
       <dependency id="log4net"/>
     </dependencies>
