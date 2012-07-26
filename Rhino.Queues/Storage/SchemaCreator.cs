@@ -7,7 +7,7 @@ namespace Rhino.Queues.Storage
     public class SchemaCreator
     {
         private readonly Session session;
-        public const string SchemaVersion = "1.9";
+        public const string SchemaVersion = "1.10";
 
         public SchemaCreator(Session session)
         {
@@ -168,6 +168,18 @@ namespace Rhino.Queues.Storage
 				grbit = ColumndefGrbit.None
             }, null, 0, out columnid);
 
+            Api.JetAddColumn(session, tableid, "deliver_by", new JET_COLUMNDEF
+            {
+                coltyp = JET_coltyp.DateTime,
+                grbit = ColumndefGrbit.ColumnFixed
+            }, null, 0, out columnid);
+
+            Api.JetAddColumn(session, tableid, "max_attempts", new JET_COLUMNDEF
+            {
+                coltyp = JET_coltyp.Long,
+                grbit = ColumndefGrbit.ColumnFixed
+            }, null, 0, out columnid);
+
             var indexDef = "+msg_id\0\0";
             Api.JetCreateIndex(session, tableid, "pk", CreateIndexGrbit.IndexPrimary, indexDef, indexDef.Length,
                                100);
@@ -272,6 +284,18 @@ namespace Rhino.Queues.Storage
                 coltyp = JET_coltyp.LongBinary,
 				// For Win2k3 support, it doesn't support long binary columsn that are not null
 				grbit = ColumndefGrbit.None
+            }, null, 0, out columnid);
+
+            Api.JetAddColumn(session, tableid, "deliver_by", new JET_COLUMNDEF
+            {
+                coltyp = JET_coltyp.DateTime,
+                grbit = ColumndefGrbit.ColumnFixed
+            }, null, 0, out columnid);
+
+            Api.JetAddColumn(session, tableid, "max_attempts", new JET_COLUMNDEF
+            {
+                coltyp = JET_coltyp.Long,
+                grbit = ColumndefGrbit.ColumnFixed
             }, null, 0, out columnid);
 
             var indexDef = "+msg_id\0\0";

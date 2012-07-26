@@ -29,7 +29,6 @@ namespace Rhino.Queues.Storage
 
             while (Api.TryMoveNext(session, outgoing))
             {
-
 				var msgId = new Guid(Api.RetrieveColumn(session, outgoing, ColumnsInformation.OutgoingColumns["msg_id"]));
                 var value = (OutgoingMessageStatus)Api.RetrieveColumnAsInt32(session, outgoing, ColumnsInformation.OutgoingColumns["send_status"]).Value;
                 var timeAsDate = Api.RetrieveColumnAsDouble(session, outgoing, ColumnsInformation.OutgoingColumns["time_to_send"]).Value;
@@ -60,11 +59,38 @@ namespace Rhino.Queues.Storage
 
 				if(queue != rowQueue)
 					continue;
-
-				logger.DebugFormat("Adding message {0} to returned messages", msgId);
-               
+                
                 var bookmark = new MessageBookmark();
                 Api.JetGetBookmark(session, outgoing, bookmark.Bookmark, bookmark.Size, out bookmark.Size);
+
+                // Check if the message has expired, and move it to the outgoing history.
+                var deliverBy = Api.RetrieveColumnAsDouble(session, outgoing, ColumnsInformation.OutgoingColumns["deliver_by"]);
+                if (deliverBy != null)
+                {
+                    var deliverByTime = DateTime.FromOADate(deliverBy.Value);
+                    if (deliverByTime < DateTime.Now)
+                    {
+                        logger.InfoFormat("Outgoing message {0} was not succesfully sent by its delivery time limit {1}", msgId, deliverByTime);
+                        var numOfRetries = Api.RetrieveColumnAsInt32(session, outgoing, ColumnsInformation.OutgoingColumns["number_of_retries"]).Value;
+                        MoveFailedMessageToOutgoingHistory(numOfRetries, msgId);
+                        continue;
+                    }
+                }
+
+                var maxAttempts = Api.RetrieveColumnAsInt32(session, outgoing, ColumnsInformation.OutgoingColumns["max_attempts"]);
+                if (maxAttempts != null)
+                {
+                    var numOfRetries = Api.RetrieveColumnAsInt32(session, outgoing, ColumnsInformation.OutgoingColumns["number_of_retries"]).Value;
+                    if (numOfRetries > maxAttempts)
+                    {
+                        logger.InfoFormat("Outgoing message {0} has reached its max attempts of {1}", msgId, maxAttempts);
+                        MoveFailedMessageToOutgoingHistory(numOfRetries, msgId);
+                        continue;
+                    }
+                }
+
+
+                logger.DebugFormat("Adding message {0} to returned messages", msgId);
                 var headerAsQueryString = Api.RetrieveColumnAsString(session, outgoing, ColumnsInformation.OutgoingColumns["headers"],Encoding.Unicode);
             	messages.Add(new PersistentMessage
                 {
@@ -102,7 +128,7 @@ namespace Rhino.Queues.Storage
         {
             Api.JetGotoBookmark(session, outgoing, bookmark.Bookmark, bookmark.Size);
             var numOfRetries = Api.RetrieveColumnAsInt32(session, outgoing, ColumnsInformation.OutgoingColumns["number_of_retries"]).Value;
-            var msgId = Api.RetrieveColumnAsInt32(session, outgoing, ColumnsInformation.OutgoingColumns["msg_id"]).Value;
+            var msgId = new Guid(Api.RetrieveColumn(session, outgoing, ColumnsInformation.OutgoingColumns["msg_id"]));
 
             if (numOfRetries < 100 && queueDoesNotExistsInDestination == false)
             {
@@ -125,23 +151,7 @@ namespace Rhino.Queues.Storage
             }
             else
             {
-                using (var update = new Update(session, outgoingHistory, JET_prep.Insert))
-                {
-                    foreach (var column in ColumnsInformation.OutgoingColumns.Keys)
-                    {
-                        Api.SetColumn(session, outgoingHistory, ColumnsInformation.OutgoingHistoryColumns[column],
-                            Api.RetrieveColumn(session, outgoing, ColumnsInformation.OutgoingColumns[column])
-                            );
-                    }
-					Api.SetColumn(session, outgoingHistory, ColumnsInformation.OutgoingHistoryColumns["send_status"],
-                        (int)OutgoingMessageStatus.Failed);
-
-                    logger.DebugFormat("Marking outgoing message {0} as permenantly failed after {1} retries",
-                                       msgId, numOfRetries);
-
-                    update.Save();
-                }
-                Api.JetDelete(session, outgoing);
+                MoveFailedMessageToOutgoingHistory(numOfRetries, msgId);
             }
         }
 
@@ -161,13 +171,13 @@ namespace Rhino.Queues.Storage
 
                 update.Save(newBookmark.Bookmark, newBookmark.Size, out newBookmark.Size);
             }
-            var msgId = Api.RetrieveColumnAsInt32(session, outgoing, ColumnsInformation.OutgoingColumns["msg_id"]).Value;
+            var msgId = new Guid(Api.RetrieveColumn(session, outgoing, ColumnsInformation.OutgoingColumns["msg_id"]));
             Api.JetDelete(session, outgoing);
             logger.DebugFormat("Successfully sent output message {0}", msgId);
             return newBookmark;
         }
 
-    	public bool HasMessagesToSend()
+        public bool HasMessagesToSend()
 		{
 			Api.MoveBeforeFirst(session, outgoing);
 			return Api.TryMoveNext(session, outgoing);
@@ -208,7 +218,7 @@ namespace Rhino.Queues.Storage
             foreach (var bookmark in bookmarks)
             {
                 Api.JetGotoBookmark(session, outgoingHistory, bookmark.Bookmark, bookmark.Size);
-                var msgId = Api.RetrieveColumnAsInt32(session, outgoing, ColumnsInformation.OutgoingColumns["msg_id"]).Value;
+                var msgId = new Guid(Api.RetrieveColumn(session, outgoing, ColumnsInformation.OutgoingColumns["msg_id"]));
 
                 using(var update = new  Update(session, outgoing, JET_prep.Insert))
                 {
@@ -229,6 +239,27 @@ namespace Rhino.Queues.Storage
                     update.Save();
                 }
             }
+        }
+
+        private void MoveFailedMessageToOutgoingHistory(int numOfRetries, Guid msgId)
+        {
+            using (var update = new Update(session, outgoingHistory, JET_prep.Insert))
+            {
+                foreach (var column in ColumnsInformation.OutgoingColumns.Keys)
+                {
+                    Api.SetColumn(session, outgoingHistory, ColumnsInformation.OutgoingHistoryColumns[column],
+                        Api.RetrieveColumn(session, outgoing, ColumnsInformation.OutgoingColumns[column])
+                        );
+                }
+                Api.SetColumn(session, outgoingHistory, ColumnsInformation.OutgoingHistoryColumns["send_status"],
+                    (int)OutgoingMessageStatus.Failed);
+
+                logger.DebugFormat("Marking outgoing message {0} as permenantly failed after {1} retries",
+                    msgId, numOfRetries);
+
+                update.Save();
+            }
+            Api.JetDelete(session, outgoing);
         }
     }
 }

@@ -163,6 +163,11 @@ namespace Rhino.Queues.Storage
 				Api.SetColumn(session, outgoing, ColumnsInformation.OutgoingColumns["number_of_retries"], 1);
 				Api.SetColumn(session, outgoing, ColumnsInformation.OutgoingColumns["size_of_data"], payload.Data.Length);
 
+                if (payload.DeliverBy != null)
+                    Api.SetColumn(session, outgoing, ColumnsInformation.OutgoingColumns["deliver_by"], payload.DeliverBy.Value.ToOADate());
+                if (payload.MaxAttempts != null)
+                    Api.SetColumn(session, outgoing, ColumnsInformation.OutgoingColumns["max_attempts"], payload.MaxAttempts.Value);
+
                 update.Save(bookmark.Bookmark, bookmark.Size, out bookmark.Size);
             }
             Api.JetGotoBookmark(session, outgoing, bookmark.Bookmark, bookmark.Size);
@@ -204,7 +209,7 @@ namespace Rhino.Queues.Storage
                     update.Save();
                 }
                 logger.DebugFormat("Marking output message {0} as Ready",
-					Api.RetrieveColumnAsInt32(session, outgoing, ColumnsInformation.OutgoingColumns["msg_id"]).Value);
+					new Guid(Api.RetrieveColumn(session, outgoing, ColumnsInformation.OutgoingColumns["msg_id"])));
             } while (Api.TryMoveNext(session, outgoing));
         }
 
@@ -230,7 +235,7 @@ namespace Rhino.Queues.Storage
         	do
             {
                 logger.DebugFormat("Deleting output message {0}",
-					Api.RetrieveColumnAsInt32(session, outgoing, ColumnsInformation.OutgoingColumns["msg_id"]).Value);
+					new Guid(Api.RetrieveColumn(session, outgoing, ColumnsInformation.OutgoingColumns["msg_id"])));
                 Api.JetDelete(session, outgoing);
             } while (Api.TryMoveNext(session, outgoing));
         }

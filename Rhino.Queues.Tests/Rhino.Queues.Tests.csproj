@@ -94,6 +94,7 @@
     <Compile Include="StartingRhinoQueues.cs" />
     <Compile Include="Storage\CanUseQueue.cs" />
     <Compile Include="ReceivingFromRhinoQueue.cs" />
+    <Compile Include="Storage\DeliveryOptions.cs" />
     <Compile Include="UsingSubQueues.cs" />
   </ItemGroup>
   <ItemGroup>

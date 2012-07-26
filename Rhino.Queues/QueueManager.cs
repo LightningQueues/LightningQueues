@@ -127,7 +127,7 @@ namespace Rhino.Queues
 
 						foreach (var message in messages)
 						{
-							logger.DebugFormat("Purging message {0} from queue {0}/{1}", message.Id, message.Queue, message.SubQueue);
+							logger.DebugFormat("Purging message {0} from queue {1}/{2}", message.Id, message.Queue, message.SubQueue);
 							queueActions.DeleteHistoric(message.Bookmark);
 						}
 					}

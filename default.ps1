@@ -6,7 +6,7 @@ properties {
   $40_build_dir = "$build_dir\4.0\"
   $35_build_dir = "$build_dir\3.5\"
   $sln_file = "$base_dir\Rhino.Queues.sln" 
-  $version = "1.4.2.0"
+  $version = "2.0.0.0"
   $config = "Release"
   $tools_dir = "$base_dir\Tools"
   $release_dir = "$base_dir\Release"
