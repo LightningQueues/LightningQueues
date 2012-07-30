@@ -38,31 +38,6 @@ namespace Rhino.Queues.Storage
                 if (value != OutgoingMessageStatus.Ready)
                     continue;
 
-                if (time > DateTime.Now)
-                    continue;
-
-                var rowEndpoint = new Endpoint(
-                    Api.RetrieveColumnAsString(session, outgoing, ColumnsInformation.OutgoingColumns["address"]),
-                    Api.RetrieveColumnAsInt32(session, outgoing, ColumnsInformation.OutgoingColumns["port"]).Value
-                    );
-
-                if (endPoint == null)
-                    endPoint = rowEndpoint;
-
-                if (endPoint.Equals(rowEndpoint) == false)
-                    continue;
-
-				var rowQueue = Api.RetrieveColumnAsString(session, outgoing, ColumnsInformation.OutgoingColumns["queue"], Encoding.Unicode);
-
-				if (queue == null) 
-					queue = rowQueue;
-
-				if(queue != rowQueue)
-					continue;
-                
-                var bookmark = new MessageBookmark();
-                Api.JetGetBookmark(session, outgoing, bookmark.Bookmark, bookmark.Size, out bookmark.Size);
-
                 // Check if the message has expired, and move it to the outgoing history.
                 var deliverBy = Api.RetrieveColumnAsDouble(session, outgoing, ColumnsInformation.OutgoingColumns["deliver_by"]);
                 if (deliverBy != null)
@@ -89,6 +64,30 @@ namespace Rhino.Queues.Storage
                     }
                 }
 
+                if (time > DateTime.Now)
+                    continue;
+
+                var rowEndpoint = new Endpoint(
+                    Api.RetrieveColumnAsString(session, outgoing, ColumnsInformation.OutgoingColumns["address"]),
+                    Api.RetrieveColumnAsInt32(session, outgoing, ColumnsInformation.OutgoingColumns["port"]).Value
+                    );
+
+                if (endPoint == null)
+                    endPoint = rowEndpoint;
+
+                if (endPoint.Equals(rowEndpoint) == false)
+                    continue;
+
+				var rowQueue = Api.RetrieveColumnAsString(session, outgoing, ColumnsInformation.OutgoingColumns["queue"], Encoding.Unicode);
+
+				if (queue == null) 
+					queue = rowQueue;
+
+				if(queue != rowQueue)
+					continue;
+                
+                var bookmark = new MessageBookmark();
+                Api.JetGetBookmark(session, outgoing, bookmark.Bookmark, bookmark.Size, out bookmark.Size);
 
                 logger.DebugFormat("Adding message {0} to returned messages", msgId);
                 var headerAsQueryString = Api.RetrieveColumnAsString(session, outgoing, ColumnsInformation.OutgoingColumns["headers"],Encoding.Unicode);
