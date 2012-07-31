@@ -21,7 +21,7 @@ namespace Rhino.Queues.Tests.Monitoring
             PerformanceCategoryCreator.CreateCategories(); 
         }
 
-        [Fact]
+        [AdminOnlyFact]
         public void Enabling_performance_counters_without_existing_categories_throws_meaningful_error()
         {
             PerformanceCounterCategoryCreation.DeletePerformanceCounters();
@@ -32,7 +32,7 @@ namespace Rhino.Queues.Tests.Monitoring
             }
         }
 
-        [Fact]
+        [AdminOnlyFact]
         public void Enabling_performance_counters_after_queue_has_started_should_throw()
         {
             Setup();
@@ -44,7 +44,7 @@ namespace Rhino.Queues.Tests.Monitoring
             }
         }
 
-        [Fact]
+        [AdminOnlyFact]
         public void Enabling_performance_counters_should_syncronize_counters_with_current_queue_state()
         {
             Setup();
@@ -58,7 +58,7 @@ namespace Rhino.Queues.Tests.Monitoring
             AssertAllCountersHaveCorrectValues();
         }
 
-        [Fact]
+        [AdminOnlyFact]
         public void After_enabling_performance_counters_changes_to_queue_state_should_be_reflected_in_counters()
         {
             Setup();

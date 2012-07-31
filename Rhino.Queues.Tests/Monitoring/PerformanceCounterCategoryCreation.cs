@@ -18,7 +18,7 @@ namespace Rhino.Queues.Tests.Monitoring
         }
 
 
-        [Fact]
+        [AdminOnlyFact]
         public void Create_performance_counters_categories()
         {
             DeletePerformanceCounters();
@@ -29,7 +29,7 @@ namespace Rhino.Queues.Tests.Monitoring
             Assert.True(PerformanceCounterCategory.Exists(InboundPerfomanceCounters.CATEGORY));
         }
 
-        [Fact]
+        [AdminOnlyFact]
         public void Recreate_existing_categories()
         {
             DeletePerformanceCounters();

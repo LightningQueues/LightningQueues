@@ -72,6 +72,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AdminOnly.cs" />
     <Compile Include="FromUsers\WhenPeekingMessages.cs" />
     <Compile Include="Monitoring\PerformanceCounterCategoryCreation.cs" />
     <Compile Include="Monitoring\EnablingPerformanceCounters.cs" />
