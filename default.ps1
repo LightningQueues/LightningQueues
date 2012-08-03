@@ -65,7 +65,7 @@ task Release -depends Test {
   & $tools_dir\7za.exe a $release_dir\Rhino.Queues.zip `
         *\Rhino.Queues.dll `
         *\Rhino.Queues.pdb `
-        *\log4net.dll `
+        *\Common.Logging.dll `
         *\Rhino.Queues.xml `
         *\Esent.Interop.dll `
         *\Esent.Interop.xml `
