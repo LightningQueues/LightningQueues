@@ -4,10 +4,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using log4net;
-using log4net.Appender;
-using log4net.Core;
-using log4net.Repository.Hierarchy;
+using Common.Logging;
+using Common.Logging.Simple;
 using Rhino.Mocks;
 using Rhino.Queues.Exceptions;
 using Rhino.Queues.Model;
@@ -16,17 +14,16 @@ using Xunit;
 
 namespace Rhino.Queues.Tests.Protocol
 {
-    public class RecieverFailure : WithDebugging, IDisposable
+    public class RecieverFailure
     {
         private readonly ManualResetEvent wait = new ManualResetEvent(false);
         private readonly IPEndPoint endpointToListenTo = new IPEndPoint(IPAddress.Loopback, 23456);
-        private readonly MemoryAppender appender = new MemoryAppender();
-        private readonly Logger logger;
+        private readonly CapturingLoggerFactoryAdapter adapter;
 
         public RecieverFailure()
         {
-            logger = ((Logger)(LogManager.GetLogger(typeof(Receiver)).Logger));
-            logger.AddAppender(appender);
+            adapter = new CapturingLoggerFactoryAdapter();
+            LogManager.Adapter = adapter;
         }
 
         [Fact]
@@ -44,8 +41,8 @@ namespace Rhino.Queues.Tests.Protocol
 
                 wait.WaitOne();
 
-                var warn = (from e in appender.GetEvents()
-                            where e.Level == Level.Warn &&
+                var warn = (from e in adapter.LoggerEvents
+                            where e.Level == LogLevel.Warn &&
                                   e.RenderedMessage.StartsWith("Unable to read length data from")
                             select e).FirstOrDefault();
 
@@ -69,8 +66,8 @@ namespace Rhino.Queues.Tests.Protocol
 
                 wait.WaitOne();
 
-                var warn = (from e in appender.GetEvents()
-                            where e.Level == Level.Warn &&
+                var warn = (from e in adapter.LoggerEvents
+                            where e.Level == LogLevel.Warn &&
                                   e.RenderedMessage.StartsWith("Unable to read length data from")
                             select e).FirstOrDefault();
 
@@ -94,8 +91,8 @@ namespace Rhino.Queues.Tests.Protocol
 
                 wait.WaitOne();
 
-                var warn = (from e in appender.GetEvents()
-                            where e.Level == Level.Warn &&
+                var warn = (from e in adapter.LoggerEvents
+                            where e.Level == LogLevel.Warn &&
                                   e.RenderedMessage.StartsWith("Got invalid length -2")
                             select e).FirstOrDefault();
 
@@ -121,8 +118,8 @@ namespace Rhino.Queues.Tests.Protocol
 
                 wait.WaitOne();
 
-                var warn = (from e in appender.GetEvents()
-                            where e.Level == Level.Warn &&
+                var warn = (from e in adapter.LoggerEvents
+                            where e.Level == LogLevel.Warn &&
                                   e.RenderedMessage.StartsWith("Unable to read message data")
                             select e).FirstOrDefault();
 
@@ -148,8 +145,8 @@ namespace Rhino.Queues.Tests.Protocol
 
                 wait.WaitOne();
 
-                var warn = (from e in appender.GetEvents()
-                            where e.Level == Level.Warn &&
+                var warn = (from e in adapter.LoggerEvents
+                            where e.Level == LogLevel.Warn &&
                                   e.RenderedMessage.StartsWith("Failed to deserialize messages from")
                             select e).FirstOrDefault();
 
@@ -368,11 +365,6 @@ namespace Rhino.Queues.Tests.Protocol
 
                 wait.WaitOne();
             }
-        }
-
-        public void Dispose()
-        {
-            logger.RemoveAppender(appender);
         }
     }
 }

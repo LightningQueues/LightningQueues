@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
-using log4net;
+using Common.Logging;
 using Rhino.Queues.Exceptions;
 using Rhino.Queues.Model;
 using Rhino.Queues.Protocol;

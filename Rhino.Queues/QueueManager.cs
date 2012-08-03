@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Threading;
 using System.Transactions;
-using log4net;
+using Common.Logging;
 using Rhino.Queues.Internal;
 using Rhino.Queues.Model;
 using Rhino.Queues.Monitoring;

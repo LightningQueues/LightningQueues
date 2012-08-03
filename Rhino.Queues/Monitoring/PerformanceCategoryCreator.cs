@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Linq;
-using log4net;
+using Common.Logging;
 
 namespace Rhino.Queues.Monitoring
 {

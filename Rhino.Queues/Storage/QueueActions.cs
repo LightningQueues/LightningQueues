@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Web;
-using log4net;
+using Common.Logging;
 using Microsoft.Isam.Esent.Interop;
 using Rhino.Queues.Model;
 using Rhino.Queues.Protocol;

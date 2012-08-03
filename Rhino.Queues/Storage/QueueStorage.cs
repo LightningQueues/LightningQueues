@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Runtime.ConstrainedExecution;
 using System.Threading;
-using log4net;
+using Common.Logging;
 using Microsoft.Isam.Esent.Interop;
 
 namespace Rhino.Queues.Storage

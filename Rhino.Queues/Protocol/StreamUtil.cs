@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
-using log4net;
+using Common.Logging;
 using Wintellect.Threading.AsyncProgModel;
 
 namespace Rhino.Queues.Protocol

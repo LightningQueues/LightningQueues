@@ -1,6 +1,5 @@
-using log4net.Appender;
-using log4net.Config;
-using log4net.Layout;
+using Common.Logging;
+using Common.Logging.Simple;
 
 namespace Rhino.Queues.Tests.Protocol
 {
@@ -8,10 +7,7 @@ namespace Rhino.Queues.Tests.Protocol
     {
         static WithDebugging()
         {
-            BasicConfigurator.Configure(new DebugAppender
-            {
-                Layout = new SimpleLayout()
-            });
+            LogManager.Adapter = new ConsoleOutLoggerFactoryAdapter();
         }
     }
 }
