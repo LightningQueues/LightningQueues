@@ -83,20 +83,24 @@ namespace Rhino.Queues.Internal
 
         private Action<Exception> OnFailure(Endpoint endpoint, IEnumerable<PersistentMessage> messages)
         {
-            return exception => queueStorage.Send(actions =>
+            return exception =>
             {
-                foreach (var message in messages)
+                queueStorage.Send(actions =>
                 {
-                    actions.MarkOutgoingMessageAsFailedTransmission(message.Bookmark,
-                                                                    exception is QueueDoesNotExistsException);
-                }
+                    foreach (var message in messages)
+                    {
+                        actions.MarkOutgoingMessageAsFailedTransmission(message.Bookmark,
+                                                                        exception is QueueDoesNotExistsException);
+                    }
 
-                actions.Commit();
+                    actions.Commit();
+                    queueManager.FailedToSendTo(endpoint);
+                });
+
 #pragma warning disable 420
                 Interlocked.Decrement(ref currentlySendingCount);
 #pragma warning restore 420
-				queueManager.FailedToSendTo(endpoint);
-            });
+            };
         }
 
         private Func<MessageBookmark[]> OnSuccess(IEnumerable<PersistentMessage> messages)
@@ -113,10 +117,10 @@ namespace Rhino.Queues.Internal
                     }
 
                     actions.Commit();
-#pragma warning disable 420
-                    Interlocked.Decrement(ref currentlySendingCount);
-#pragma warning restore 420
                 });
+#pragma warning disable 420
+                Interlocked.Decrement(ref currentlySendingCount);
+#pragma warning restore 420
                 return newBookmarks.ToArray();
             };
         }
