@@ -51,6 +51,16 @@ namespace Rhino.Queues
 		public int? NumberOfMessagesToKeepInProcessedQueues { get; set; }
 		public int? NumberOfMessagesToKeepOutgoingQueues { get; set; }
 
+	    public int CurrentlySendingCount
+	    {
+            get { return queuedMessagesSender.CurrentlySendingCount; }
+	    }
+
+	    public int CurrentlyConnectingCount
+	    {
+            get { return queuedMessagesSender.CurrentlyConnectingCount; }
+	    }
+
 		public TimeSpan? OldestMessageInProcessedQueues { get; set; }
 		public TimeSpan? OldestMessageInOutgoingQueues { get; set; }
 

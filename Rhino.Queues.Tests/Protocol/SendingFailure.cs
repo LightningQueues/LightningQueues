@@ -31,6 +31,7 @@ namespace Rhino.Queues.Tests.Protocol
                     },
                 },
                 Failure = exception => failureReported = true,
+                FailureToConnect = exception => failureReported = true,
                 Success = () =>
                 {
                     wasSuccessful = true;

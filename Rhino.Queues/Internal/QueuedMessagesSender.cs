@@ -1,3 +1,4 @@
+#pragma warning disable 420
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +16,7 @@ namespace Rhino.Queues.Internal
     	private readonly IQueueManager queueManager;
     	private volatile bool continueSending = true;
         private volatile int currentlySendingCount;
+        private volatile int currentlyConnecting;
 		private object @lock = new object();
 
         public QueuedMessagesSender(QueueStorage queueStorage, IQueueManager queueManager)
@@ -23,13 +25,25 @@ namespace Rhino.Queues.Internal
         	this.queueManager = queueManager;
         }
 
-    	public void Send()
+        public int CurrentlySendingCount
+        {
+            get { return currentlySendingCount; }
+        }
+
+        public int CurrentlyConnectingCount
+        {
+            get { return currentlyConnecting; }
+        }
+
+        public void Send()
         {
             while (continueSending)
             {
                 IList<PersistentMessage> messages = null;
 
-            	if (currentlySendingCount > 5)
+                //normal conditions will be at 5, when there are several unreliable endpoints 
+                //it will grow up to 31 connections all attempting to connect, timeouts can take up to 30 seconds
+            	if ((currentlySendingCount - currentlyConnecting > 5) || currentlyConnecting > 30)
                 {
 					lock (@lock)
 						Monitor.Wait(@lock, TimeSpan.FromSeconds(1));
@@ -51,16 +65,21 @@ namespace Rhino.Queues.Internal
                     continue;
                 }
 
-#pragma warning disable 420
                 Interlocked.Increment(ref currentlySendingCount);
-#pragma warning restore 420
+                Interlocked.Increment(ref currentlyConnecting);
 
                 new Sender
                 {
+                    Connected = () => Interlocked.Decrement(ref currentlyConnecting),
                     Destination = point,
                     Messages = messages.ToArray(),
 					Success = OnSuccess(messages),
 					Failure = OnFailure(point, messages),
+                    FailureToConnect = e =>
+                    {
+                        Interlocked.Decrement(ref currentlyConnecting);
+                        OnFailure(point, messages)(e);
+                    },
 					Revert = OnRevert(point),
                     Commit = OnCommit(point, messages)
                 }.Send();
@@ -97,9 +116,7 @@ namespace Rhino.Queues.Internal
                     queueManager.FailedToSendTo(endpoint);
                 });
 
-#pragma warning disable 420
                 Interlocked.Decrement(ref currentlySendingCount);
-#pragma warning restore 420
             };
         }
 
@@ -118,9 +135,7 @@ namespace Rhino.Queues.Internal
 
                     actions.Commit();
                 });
-#pragma warning disable 420
                 Interlocked.Decrement(ref currentlySendingCount);
-#pragma warning restore 420
                 return newBookmarks.ToArray();
             };
         }
@@ -146,3 +161,4 @@ namespace Rhino.Queues.Internal
         }
     }
 }
+#pragma warning restore 420

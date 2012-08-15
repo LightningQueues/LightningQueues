@@ -46,6 +46,33 @@ namespace Rhino.Queues.Tests
 			Assert.Equal(2200, endPointWeFailedToSendTo.Port);
 		}
 
+        [Fact]
+        public void Will_not_exceed_sending_thresholds()
+        {
+            var wait = new ManualResetEvent(false);
+            int maxNumberOfConnecting = 0;
+			sender.FailedToSendMessagesTo += endpoint =>
+			{
+			    maxNumberOfConnecting = Math.Max(maxNumberOfConnecting, sender.CurrentlyConnectingCount);
+                if(endpoint.Host.Equals("foo50"))
+				    wait.Set();
+			};
+			using(var tx = new TransactionScope())
+			{
+                for (int i = 0; i < 200; ++i)
+                {
+                    sender.Send(new Uri(string.Format("rhino.queues://foo{0}/hello/world", i)), new MessagePayload
+                    {
+                        Data = new byte[] {1}
+                    });
+                }
+			    tx.Complete();
+			}
+
+			wait.WaitOne();
+            Assert.True(maxNumberOfConnecting < 32);
+        }
+
 		public void Dispose()
 		{
 			sender.Dispose();

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Common.Logging;
@@ -19,12 +18,16 @@ namespace Rhino.Queues.Protocol
         public Func<MessageBookmark[]> Success { get; set; }
         public Action<Exception> Failure { get; set; }
         public Action<MessageBookmark[]> Revert { get; set; }
+        public Action Connected { get; set; }
+        public Action<Exception> FailureToConnect { get; set; }
         public Action Commit { get; set; }
         public Endpoint Destination { get; set; }
         public Message[] Messages { get; set; }
 
         public Sender()
         {
+            Connected = () => { };
+            FailureToConnect = e => { };
             Failure = e => { };
             Success = () => null;
             Revert = bookmarks => { };
@@ -68,7 +71,7 @@ namespace Rhino.Queues.Protocol
                     catch (Exception exception)
                     {
                         logger.WarnFormat("Failed to connect to {0} because {1}", Destination, exception);
-                        Failure(exception);
+                        FailureToConnect(exception);
                         yield break;
                     }
 
@@ -77,11 +80,12 @@ namespace Rhino.Queues.Protocol
                     try
                     {
                         client.EndConnect(ae.DequeueAsyncResult());
+                        Connected();
                     }
                     catch (Exception exception)
                     {
                         logger.WarnFormat("Failed to connect to {0} because {1}", Destination, exception);
-                        Failure(exception);
+                        FailureToConnect(exception);
                         yield break;
                     }
 
