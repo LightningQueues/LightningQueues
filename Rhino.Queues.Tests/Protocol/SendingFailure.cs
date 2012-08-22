@@ -43,7 +43,7 @@ namespace Rhino.Queues.Tests.Protocol
         }
 
         [Fact]
-        public void CanHandleItWhenRecieverDoesNotExists()
+        public void CanHandleItWhenReceiverDoesNotExists()
         {
             sender.Send();
             wait.WaitOne();
@@ -53,9 +53,9 @@ namespace Rhino.Queues.Tests.Protocol
         }
 
         [Fact]
-        public void CanHandleItWhenRecieverConnectAndDisconnect()
+        public void CanHandleItWhenReceiverConnectAndDisconnect()
         {
-            new FakeReciever { DisconnectAfterConnect = true }.Start();
+            new FakeReceiver { DisconnectAfterConnect = true }.Start();
 
             sender.Send();
             wait.WaitOne();
@@ -65,9 +65,9 @@ namespace Rhino.Queues.Tests.Protocol
         }
 
         [Fact]
-        public void CanHandleItWhenRecieverDisconnectDuringRecieve()
+        public void CanHandleItWhenReceiverDisconnectDuringRecieve()
         {
-            new FakeReciever { DisconnectDuringMessageSend = true }.Start();
+            new FakeReceiver { DisconnectDuringMessageSend = true }.Start();
 
             sender.Send();
             wait.WaitOne();
@@ -77,9 +77,9 @@ namespace Rhino.Queues.Tests.Protocol
         }
 
         [Fact]
-        public void CanHandleItWhenRecieverDisconnectAfterRecieve()
+        public void CanHandleItWhenReceiverDisconnectAfterRecieve()
         {
-            new FakeReciever { DisconnectAfterMessageSend = true }.Start();
+            new FakeReceiver { DisconnectAfterMessageSend = true }.Start();
 
             sender.Send();
             wait.WaitOne();
@@ -89,9 +89,9 @@ namespace Rhino.Queues.Tests.Protocol
         }
 
         [Fact]
-        public void CanHandleItWhenRecieverSendingBadResponse()
+        public void CanHandleItWhenReceiverSendingBadResponse()
         {
-            new FakeReciever { SendBadResponse = true }.Start();
+            new FakeReceiver { SendBadResponse = true }.Start();
 
             sender.Send();
             wait.WaitOne();
@@ -101,9 +101,9 @@ namespace Rhino.Queues.Tests.Protocol
         }
 
         [Fact]
-        public void CanHandleItWhenRecieverDisconnectAfterSendingRecieved()
+        public void CanHandleItWhenReceiverDisconnectAfterSendingRecieved()
         {
-            new FakeReciever { DisconnectAfterSendingReciept = true }.Start();
+            new FakeReceiver { DisconnectAfterSendingReciept = true }.Start();
 
             sender.Send();
             wait.WaitOne();
@@ -111,7 +111,7 @@ namespace Rhino.Queues.Tests.Protocol
             // this is a scenario where we actually have 
             // a false positive, this is an edge case that
             // we tolerate, since a message is not actually 
-            // lost, but merely undeliverable in the reciever 
+            // lost, but merely undeliverable in the receiver 
             // queue.
 
             Assert.False(failureReported);
@@ -119,15 +119,15 @@ namespace Rhino.Queues.Tests.Protocol
         }
 
         [Fact]
-        public void CanHandleItWhenRecieverSendRevert()
+        public void CanHandleItWhenReceiverSendRevert()
         {
-            new FakeReciever { FailOnAcknowledgement = true }.Start();
+            new FakeReceiver { FailOnAcknowledgement = true }.Start();
 
             sender.Send();
             wait.WaitOne();
 
             // this is a case where we create compensation
-            // for reported failure on the reciever side
+            // for reported failure on the Receiver side
 
             Assert.False(failureReported);
             Assert.True(wasSuccessful);

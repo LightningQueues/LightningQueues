@@ -217,7 +217,7 @@ namespace Rhino.Queues.Storage
             foreach (var bookmark in bookmarks)
             {
                 Api.JetGotoBookmark(session, outgoingHistory, bookmark.Bookmark, bookmark.Size);
-                var msgId = new Guid(Api.RetrieveColumn(session, outgoing, ColumnsInformation.OutgoingColumns["msg_id"]));
+                var msgId = new Guid(Api.RetrieveColumn(session, outgoingHistory, ColumnsInformation.OutgoingColumns["msg_id"]));
 
                 using(var update = new  Update(session, outgoing, JET_prep.Insert))
                 {
@@ -237,6 +237,7 @@ namespace Rhino.Queues.Storage
 
                     update.Save();
                 }
+                Api.JetDelete(session, outgoingHistory);
             }
         }
 

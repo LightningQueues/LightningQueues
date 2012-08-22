@@ -6,7 +6,7 @@ using Rhino.Queues.Protocol;
 
 namespace Rhino.Queues.Tests.Protocol
 {
-    public class FakeReciever
+    public class FakeReceiver
     {
         private readonly TcpListener listener = new TcpListener(new IPEndPoint(IPAddress.Loopback, 23456));
 

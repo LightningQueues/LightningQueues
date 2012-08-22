@@ -86,7 +86,7 @@
     <Compile Include="Protocol\CanSendAndReceive.cs" />
     <Compile Include="Protocol\RecieverFailure.cs" />
     <Compile Include="Protocol\SendingFailure.cs" />
-    <Compile Include="Protocol\FakeReciever.cs" />
+    <Compile Include="Protocol\FakeReceiver.cs" />
     <Compile Include="Protocol\WithDebugging.cs" />
     <Compile Include="FromUsers\QueueIsAsync.cs" />
     <Compile Include="RaisingSendEvents.cs" />
@@ -95,6 +95,7 @@
     <Compile Include="Storage\CanUseQueue.cs" />
     <Compile Include="ReceivingFromRhinoQueue.cs" />
     <Compile Include="Storage\DeliveryOptions.cs" />
+    <Compile Include="Storage\RevertBackToSend.cs" />
     <Compile Include="UsingSubQueues.cs" />
   </ItemGroup>
   <ItemGroup>
