@@ -104,19 +104,24 @@ namespace Rhino.Queues.Internal
         {
             return exception =>
             {
-                queueStorage.Send(actions =>
+                try
                 {
-                    foreach (var message in messages)
-                    {
-                        actions.MarkOutgoingMessageAsFailedTransmission(message.Bookmark,
-                                                                        exception is QueueDoesNotExistsException);
-                    }
+                    queueStorage.Send(actions =>
+                        {
+                            foreach (var message in messages)
+                            {
+                                actions.MarkOutgoingMessageAsFailedTransmission(message.Bookmark,
+                                                                                exception is QueueDoesNotExistsException);
+                            }
 
-                    actions.Commit();
-                    queueManager.FailedToSendTo(endpoint);
-                });
-
-                Interlocked.Decrement(ref currentlySendingCount);
+                            actions.Commit();
+                            queueManager.FailedToSendTo(endpoint);
+                        });
+                }
+                finally
+                {
+                    Interlocked.Decrement(ref currentlySendingCount);
+                }
             };
         }
 
@@ -124,19 +129,25 @@ namespace Rhino.Queues.Internal
         {
             return () =>
             {
-                var newBookmarks = new List<MessageBookmark>();
-                queueStorage.Send(actions =>
+                try
                 {
-                    foreach (var message in messages)
+                    var newBookmarks = new List<MessageBookmark>();
+                    queueStorage.Send(actions =>
                     {
-                        var bookmark = actions.MarkOutgoingMessageAsSuccessfullySent(message.Bookmark);
-                        newBookmarks.Add(bookmark);
-                    }
+                        foreach (var message in messages)
+                        {
+                            var bookmark = actions.MarkOutgoingMessageAsSuccessfullySent(message.Bookmark);
+                            newBookmarks.Add(bookmark);
+                        }
 
-                    actions.Commit();
-                });
-                Interlocked.Decrement(ref currentlySendingCount);
-                return newBookmarks.ToArray();
+                        actions.Commit();
+                    });
+                    return newBookmarks.ToArray();
+                }
+                finally
+                {
+                    Interlocked.Decrement(ref currentlySendingCount);
+                }
             };
         }
 
