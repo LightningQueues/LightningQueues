@@ -112,53 +112,21 @@ namespace Rhino.Queues
                 Name = "Rhino Queue Sender Thread for " + path
             };
             sendingThread.Start();
-            purgeOldDataTimer = new Timer(PurgeOldData, null,
+            purgeOldDataTimer = new Timer(_ => PurgeOldData(), null,
                                           TimeSpan.FromMinutes(3),
                                           TimeSpan.FromMinutes(3));
 
             wasStarted = true;
         }
 
-        private void PurgeOldData(object ignored)
+        public void PurgeOldData()
 		{
 			logger.DebugFormat("Starting to purge old data");
 			try
 			{
-				queueStorage.Global(actions =>
-				{
-					foreach (var queue in Queues)
-					{
-						var queueActions = actions.GetQueue(queue);
-						var messages = queueActions.GetAllProcessedMessages();
-						if (NumberOfMessagesToKeepInProcessedQueues != null)
-							messages = messages.Skip(NumberOfMessagesToKeepInProcessedQueues.Value);
-						if (OldestMessageInProcessedQueues != null)
-							messages = messages.Where(x => (DateTime.Now - x.SentAt) > OldestMessageInProcessedQueues.Value);
-
-						foreach (var message in messages)
-						{
-							logger.DebugFormat("Purging message {0} from queue {1}/{2}", message.Id, message.Queue, message.SubQueue);
-							queueActions.DeleteHistoric(message.Bookmark);
-						}
-					}
-					var sentMessages = actions.GetSentMessages();
-
-					if (NumberOfMessagesToKeepOutgoingQueues != null)
-						sentMessages = sentMessages.Skip(NumberOfMessagesToKeepOutgoingQueues.Value);
-					if (OldestMessageInOutgoingQueues != null)
-						sentMessages = sentMessages.Where(x => (DateTime.Now - x.SentAt) > OldestMessageInOutgoingQueues.Value);
-
-					foreach (var sentMessage in sentMessages)
-					{
-						logger.DebugFormat("Purging sent message {0} to {1}/{2}/{3}", sentMessage.Id, sentMessage.Endpoint,
-										   sentMessage.Queue, sentMessage.SubQueue);
-						actions.DeleteMessageToSendHistoric(sentMessage.Bookmark);
-					}
-
-					receivedMsgs.Remove(actions.DeleteOldestReceivedMessages(NumberOfReceivedMessagesToKeep));
-
-					actions.Commit();
-				});
+                PurgeProcessedMessages();
+                PurgeOutgoingHistory();
+                PurgeOldestReceivedMessages();
 			}
 			catch (Exception exception)
 			{
@@ -166,7 +134,62 @@ namespace Rhino.Queues
 			}
 		}
 
-		private void HandleRecovery()
+        private void PurgeProcessedMessages()
+        {
+            foreach (string queue in Queues)
+            {
+                queueStorage.Global(actions =>
+                {
+                    var queueActions = actions.GetQueue(queue);
+                    var messages = queueActions.GetAllProcessedMessages();
+                    if (NumberOfMessagesToKeepInProcessedQueues != null)
+                        messages = messages.Skip(NumberOfMessagesToKeepInProcessedQueues.Value);
+                    if (OldestMessageInProcessedQueues != null)
+                        messages = messages.Where(x => (DateTime.Now - x.SentAt) > OldestMessageInProcessedQueues.Value);
+
+                    foreach (var message in messages)
+                    {
+                        logger.DebugFormat("Purging message {0} from queue {1}/{2}", message.Id, message.Queue, message.SubQueue);
+                        queueActions.DeleteHistoric(message.Bookmark);
+                    }
+
+                    actions.Commit();
+                });
+            }
+        }
+
+        private void PurgeOutgoingHistory()
+        {
+            queueStorage.Global(actions =>
+            {
+                var sentMessages = actions.GetSentMessages();
+
+                if (NumberOfMessagesToKeepOutgoingQueues != null)
+                    sentMessages = sentMessages.Skip(NumberOfMessagesToKeepOutgoingQueues.Value);
+                if (OldestMessageInOutgoingQueues != null)
+                    sentMessages = sentMessages.Where(x => (DateTime.Now - x.SentAt) > OldestMessageInOutgoingQueues.Value);
+
+                foreach (var sentMessage in sentMessages)
+                {
+                    logger.DebugFormat("Purging sent message {0} to {1}/{2}/{3}", sentMessage.Id, sentMessage.Endpoint,
+                                       sentMessage.Queue, sentMessage.SubQueue);
+                    actions.DeleteMessageToSendHistoric(sentMessage.Bookmark);
+                }
+
+                actions.Commit();
+            });
+        }
+
+        private void PurgeOldestReceivedMessages()
+        {
+            queueStorage.Global(actions =>
+            {
+                receivedMsgs.Remove(actions.DeleteOldestReceivedMessages(NumberOfReceivedMessagesToKeep));
+                actions.Commit();
+            });
+        }
+
+	    private void HandleRecovery()
 		{
 			var recoveryRequired = false;
 			queueStorage.Global(actions =>
