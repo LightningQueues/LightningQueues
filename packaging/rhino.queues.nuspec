@@ -2,7 +2,7 @@
 <package xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
     <id>Rhino.Queues</id>
-    <version>0.0.0</version>
+    <version>$version$</version>
     <authors>Ayende Rahien, Corey Kaylor</authors>
     <owners>Corey Kaylor</owners>
     <licenseUrl>https://raw.github.com/hibernating-rhinos/rhino-queues/master/license.txt</licenseUrl>
@@ -12,7 +12,7 @@
     <description>HTTP based reliable async queueing system</description>
     <tags>queue persistence rhino esent msmq</tags>
     <dependencies>
-      <dependency id="Rhino.ServiceBus.References"/>
+      <dependency id="Rhino.ServiceBus.References" version="3.0.0.0"/>
       <dependency id="PowerThreading" version="20101026.0"/>
       <dependency id="Common.Logging" version="2.1.1"/>
     </dependencies>
