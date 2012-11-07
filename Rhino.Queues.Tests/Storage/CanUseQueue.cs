@@ -77,7 +77,7 @@ namespace Rhino.Queues.Tests.Storage
 				
 				qf.Global(actions =>
 				{
-					actions.DeleteOldestReceivedMessages(6).ToArray();//consume & activate
+					actions.DeleteOldestReceivedMessageIds(6, 10).ToArray();//consume & activate
 
 					actions.Commit();
 				});
@@ -115,7 +115,7 @@ namespace Rhino.Queues.Tests.Storage
 
 				qf.Global(actions =>
 				{
-					actions.DeleteOldestReceivedMessages(10).ToArray();//consume & activate
+					actions.DeleteOldestReceivedMessageIds(10, 10).ToArray();//consume & activate
 
 					actions.Commit();
 				});

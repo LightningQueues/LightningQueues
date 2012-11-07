@@ -423,7 +423,7 @@ namespace Rhino.Queues.Storage
 			}
 		}
 
-		public IEnumerable<MessageId> DeleteOldestReceivedMessages(int numberOfItemsToKeep)
+		public IEnumerable<MessageId> DeleteOldestReceivedMessageIds(int numberOfItemsToKeep, int numberOfItemsToDelete)
 		{
 			Api.MoveAfterLast(session, recveivedMsgs);
 			try
@@ -436,7 +436,7 @@ namespace Rhino.Queues.Storage
 					yield break;
 				throw;
 			}
-			while(Api.TryMovePrevious(session, recveivedMsgs))
+			while(Api.TryMovePrevious(session, recveivedMsgs) && numberOfItemsToDelete-- > 0)
 			{
 				yield return new MessageId
 				{

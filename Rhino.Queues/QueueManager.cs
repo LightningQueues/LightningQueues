@@ -126,7 +126,7 @@ namespace Rhino.Queues
 			{
                 PurgeProcessedMessages();
                 PurgeOutgoingHistory();
-                PurgeOldestReceivedMessages();
+                PurgeOldestReceivedMessageIds();
 			}
 			catch (Exception exception)
 			{
@@ -180,13 +180,18 @@ namespace Rhino.Queues
             });
         }
 
-        private void PurgeOldestReceivedMessages()
+        private void PurgeOldestReceivedMessageIds()
         {
-            queueStorage.Global(actions =>
+            List<MessageId> deletedMessageIds = null;
+            do
             {
-                receivedMsgs.Remove(actions.DeleteOldestReceivedMessages(NumberOfReceivedMessagesToKeep));
-                actions.Commit();
-            });
+                queueStorage.Global(actions =>
+                {
+                    deletedMessageIds = actions.DeleteOldestReceivedMessageIds(NumberOfReceivedMessagesToKeep, 10).ToList();
+                    actions.Commit();
+                });
+                receivedMsgs.Remove(deletedMessageIds);
+            } while (deletedMessageIds.Count > 0);
         }
 
 	    private void HandleRecovery()
