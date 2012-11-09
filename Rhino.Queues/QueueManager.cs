@@ -121,7 +121,7 @@ namespace Rhino.Queues
 
         public void PurgeOldData()
 		{
-			logger.DebugFormat("Starting to purge old data");
+			logger.Info("Starting to purge old data");
 			try
 			{
                 PurgeProcessedMessages();
@@ -182,6 +182,7 @@ namespace Rhino.Queues
 
         private void PurgeOldestReceivedMessageIds()
         {
+            int totalCount = 0;
             List<MessageId> deletedMessageIds = null;
             do
             {
@@ -191,7 +192,10 @@ namespace Rhino.Queues
                     actions.Commit();
                 });
                 receivedMsgs.Remove(deletedMessageIds);
+                totalCount += deletedMessageIds.Count;
             } while (deletedMessageIds.Count > 0);
+
+            logger.InfoFormat("Purged {0} message ids", totalCount);
         }
 
 	    private void HandleRecovery()
