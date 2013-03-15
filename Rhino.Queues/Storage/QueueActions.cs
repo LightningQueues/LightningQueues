@@ -269,10 +269,11 @@ namespace Rhino.Queues.Storage
 			} while (Api.TryMoveNext(session, msgs));
 		}
 
-		public IEnumerable<HistoryMessage> GetAllProcessedMessages()
+        public IEnumerable<HistoryMessage> GetAllProcessedMessages(int? batchSize = null)
 		{
-			Api.MoveBeforeFirst(session, msgsHistory);
-			while (Api.TryMoveNext(session, msgsHistory))
+            int count = 0;
+            Api.MoveBeforeFirst(session, msgsHistory);
+            while (Api.TryMoveNext(session, msgsHistory) && count++ != batchSize)
 			{
 				var bookmark = new MessageBookmark { QueueName = queueName };
 				Api.JetGetBookmark(session, msgsHistory, bookmark.Bookmark, bookmark.Size, out bookmark.Size);
@@ -461,5 +462,24 @@ namespace Rhino.Queues.Storage
 			Api.JetGotoBookmark(session, msgsHistory, bookmark.Bookmark, bookmark.Size);
 			Api.JetDelete(session, msgsHistory);
 		}
+
+        public MessageBookmark GetMessageHistoryBookmarkAtPosition(int positionFromNewestProcessedMessage)
+        {
+            Api.MoveAfterLast(session, msgsHistory);
+            try
+            {
+                Api.JetMove(session, msgsHistory, -positionFromNewestProcessedMessage, MoveGrbit.None);
+            }
+            catch (EsentErrorException e)
+            {
+                if (e.Error == JET_err.NoCurrentRecord)
+                    return null;
+                throw;
+            }
+
+            var bookmark = new MessageBookmark();
+            Api.JetGetBookmark(session, msgsHistory, bookmark.Bookmark, bookmark.Size, out bookmark.Size);
+            return bookmark;
+        }
 	}
 }

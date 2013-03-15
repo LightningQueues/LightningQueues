@@ -100,6 +100,7 @@
     <Compile Include="Protocol\StreamUtil.cs" />
     <Compile Include="Queue.cs" />
     <Compile Include="QueueManager.cs" />
+    <Compile Include="QueueManagerConfiguration.cs" />
     <Compile Include="Storage\AbstractActions.cs" />
     <Compile Include="Storage\ColumnsInformation.cs" />
     <Compile Include="Storage\EsentExtension.cs" />

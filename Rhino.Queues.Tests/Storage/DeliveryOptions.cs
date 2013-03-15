@@ -2,7 +2,6 @@
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using Rhino.Queues.Model;
 using Rhino.Queues.Protocol;
 using Rhino.Queues.Storage;
@@ -15,7 +14,7 @@ namespace Rhino.Queues.Tests.Storage
         [Fact]
         public void MovesExpiredMessageToOutgoingHistory()
         {
-            using (var qf = new QueueStorage("test.esent"))
+            using (var qf = new QueueStorage("test.esent", new QueueManagerConfiguration()))
             {
                 qf.Initialize();
 
@@ -63,7 +62,7 @@ namespace Rhino.Queues.Tests.Storage
         public void MovesMessageToOutgoingHistoryAfterMaxAttempts()
         {
             Directory.Delete("test.esent", true);
-            using (var qf = new QueueStorage("test.esent"))
+            using (var qf = new QueueStorage("test.esent", new QueueManagerConfiguration()))
             {
                 qf.Initialize();
                 qf.Global(actions =>

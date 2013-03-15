@@ -13,14 +13,16 @@ namespace Rhino.Queues.Storage
 
 	public class GlobalActions : AbstractActions
     {
-        private readonly ILog logger = LogManager.GetLogger(typeof(GlobalActions));
+	    private readonly QueueManagerConfiguration configuration;
+	    private readonly ILog logger = LogManager.GetLogger(typeof(GlobalActions));
 
-        public GlobalActions(JET_INSTANCE instance, ColumnsInformation columnsInformation,string database, Guid instanceId)
+        public GlobalActions(JET_INSTANCE instance, ColumnsInformation columnsInformation, string database, Guid instanceId, QueueManagerConfiguration configuration)
 			: base(instance, columnsInformation, database, instanceId)
         {
+            this.configuration = configuration;
         }
 
-        public void CreateQueueIfDoesNotExists(string queueName)
+	    public void CreateQueueIfDoesNotExists(string queueName)
         {
             Api.MakeKey(session, queues, queueName, Encoding.Unicode, MakeKeyGrbit.NewKey);
             if (Api.TrySeek(session, queues, SeekGrbit.SeekEQ))
@@ -133,7 +135,8 @@ namespace Rhino.Queues.Storage
                         actions.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
                         break;
                     default:
-                        actions.MoveToHistory(bookmark);
+                        if (configuration.EnableProcessedMessageHistory)
+                            actions.MoveToHistory(bookmark);
                         break;
                 }
                     
@@ -346,11 +349,31 @@ namespace Rhino.Queues.Storage
             return names.ToArray();
         }
 
-        public IEnumerable<PersistentMessageToSend> GetSentMessages()
+	    public MessageBookmark GetSentMessageBookmarkAtPosition(int positionFromNewestSentMessage)
+	    {
+	        Api.MoveAfterLast(session, outgoingHistory);
+            try
+			{
+                Api.JetMove(session, outgoingHistory, -positionFromNewestSentMessage, MoveGrbit.None);
+			}
+			catch (EsentErrorException e)
+			{
+			    if (e.Error == JET_err.NoCurrentRecord)
+			        return null;
+				throw;
+			}
+
+            var bookmark = new MessageBookmark();
+            Api.JetGetBookmark(session, outgoingHistory, bookmark.Bookmark, bookmark.Size, out bookmark.Size);
+	        return bookmark;
+	    }
+
+	    public IEnumerable<PersistentMessageToSend> GetSentMessages(int? batchSize = null)
         {
             Api.MoveBeforeFirst(session, outgoingHistory);
 
-            while (Api.TryMoveNext(session, outgoingHistory))
+            int count = 0;
+            while (Api.TryMoveNext(session, outgoingHistory) && count++ != batchSize)
             {
                 var address = Api.RetrieveColumnAsString(session, outgoingHistory, ColumnsInformation.OutgoingHistoryColumns["address"]);
                 var port = Api.RetrieveColumnAsInt32(session, outgoingHistory, ColumnsInformation.OutgoingHistoryColumns["port"]).Value;
@@ -374,7 +397,6 @@ namespace Rhino.Queues.Storage
                     Bookmark = bookmark
                 };
             }
-
         }
 
         public void DeleteMessageToSendHistoric(MessageBookmark bookmark)

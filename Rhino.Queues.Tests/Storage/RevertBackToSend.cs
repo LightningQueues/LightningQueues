@@ -18,7 +18,7 @@ namespace Rhino.Queues.Tests.Storage
         [Fact]
         public void MovesMessageToOutgoingFromHistory()
         {
-            using (var qf = new QueueStorage("test.esent"))
+            using (var qf = new QueueStorage("test.esent", new QueueManagerConfiguration()))
             {
                 qf.Initialize();
                 qf.Global(actions =>

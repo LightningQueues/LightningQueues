@@ -19,16 +19,16 @@ namespace Rhino.Queues.Tests.Storage
         [Fact]
         public void CanCreateNewQueueFactory()
         {
-            using (var qf = new QueueStorage("test.esent"))
+            using (var qf = CreateQueueStorage())
             {
                 qf.Initialize();
             }
         }
 
-		[Fact]
+	    [Fact]
 		public void CanRegisterReceivedMessageIds()
 		{
-			using (var qf = new QueueStorage("test.esent"))
+			using (var qf = CreateQueueStorage())
 			{
 				qf.Initialize();
 
@@ -53,7 +53,7 @@ namespace Rhino.Queues.Tests.Storage
 		[Fact]
 		public void CanDeleteOldEntries()
 		{
-			using (var qf = new QueueStorage("test.esent"))
+			using (var qf = CreateQueueStorage())
 			{
 				qf.Initialize();
 
@@ -96,7 +96,7 @@ namespace Rhino.Queues.Tests.Storage
 		[Fact]
 		public void CallingDeleteOldEntriesIsSafeIfThereAreNotEnoughEntries()
 		{
-			using (var qf = new QueueStorage("test.esent"))
+			using (var qf = CreateQueueStorage())
 			{
 				qf.Initialize();
 
@@ -136,7 +136,7 @@ namespace Rhino.Queues.Tests.Storage
         [Fact]
         public void CanPutSingleMessageInQueue()
         {
-            using (var qf = new QueueStorage("test.esent"))
+            using (var qf = CreateQueueStorage())
             {
                 qf.Initialize();
 
@@ -184,7 +184,7 @@ namespace Rhino.Queues.Tests.Storage
         [Fact]
         public void WillGetMessagesBackInOrder()
         {
-            using (var qf = new QueueStorage("test.esent"))
+            using (var qf = CreateQueueStorage())
             {
                 qf.Initialize();
 
@@ -246,7 +246,7 @@ namespace Rhino.Queues.Tests.Storage
         [Fact]
         public void WillNotGiveMessageToTwoClient()
         {
-            using (var qf = new QueueStorage("test.esent"))
+            using (var qf = CreateQueueStorage())
             {
                 qf.Initialize();
 
@@ -300,7 +300,7 @@ namespace Rhino.Queues.Tests.Storage
         [Fact]
         public void WillGiveNullWhenNoItemsAreInQueue()
         {
-            using (var qf = new QueueStorage("test.esent"))
+            using (var qf = CreateQueueStorage())
             {
                 qf.Initialize();
                
@@ -317,6 +317,11 @@ namespace Rhino.Queues.Tests.Storage
                     actions.Commit();
                 });
             }
+        }
+
+        private static QueueStorage CreateQueueStorage()
+        {
+            return new QueueStorage("test.esent", new QueueManagerConfiguration());
         }
     }
 }

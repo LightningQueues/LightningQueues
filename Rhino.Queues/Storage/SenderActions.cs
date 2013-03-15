@@ -12,12 +12,14 @@ namespace Rhino.Queues.Storage
 {
     public class SenderActions : AbstractActions
     {
+        private readonly QueueManagerConfiguration configuration;
         private readonly ILog logger = LogManager.GetLogger(typeof (SenderActions));
 
-		public SenderActions(JET_INSTANCE instance, ColumnsInformation columnsInformation, string database, Guid instanceId)
+		public SenderActions(JET_INSTANCE instance, ColumnsInformation columnsInformation, string database, Guid instanceId, QueueManagerConfiguration configuration)
             : base(instance, columnsInformation, database, instanceId)
-        {
-        }
+		{
+		    this.configuration = configuration;
+		}
 
         public IList<PersistentMessage> GetMessagesToSendAndMarkThemAsInFlight(int maxNumberOfMessage, int maxSizeOfMessagesInTotal, out Endpoint endPoint)
         {
@@ -243,21 +245,24 @@ namespace Rhino.Queues.Storage
 
         private void MoveFailedMessageToOutgoingHistory(int numOfRetries, Guid msgId)
         {
-            using (var update = new Update(session, outgoingHistory, JET_prep.Insert))
+            if (configuration.EnableOutgoingMessageHistory)
             {
-                foreach (var column in ColumnsInformation.OutgoingColumns.Keys)
+                using (var update = new Update(session, outgoingHistory, JET_prep.Insert))
                 {
-                    Api.SetColumn(session, outgoingHistory, ColumnsInformation.OutgoingHistoryColumns[column],
-                        Api.RetrieveColumn(session, outgoing, ColumnsInformation.OutgoingColumns[column])
-                        );
-                }
-                Api.SetColumn(session, outgoingHistory, ColumnsInformation.OutgoingHistoryColumns["send_status"],
-                    (int)OutgoingMessageStatus.Failed);
+                    foreach (var column in ColumnsInformation.OutgoingColumns.Keys)
+                    {
+                        Api.SetColumn(session, outgoingHistory, ColumnsInformation.OutgoingHistoryColumns[column],
+                            Api.RetrieveColumn(session, outgoing, ColumnsInformation.OutgoingColumns[column])
+                            );
+                    }
+                    Api.SetColumn(session, outgoingHistory, ColumnsInformation.OutgoingHistoryColumns["send_status"],
+                        (int)OutgoingMessageStatus.Failed);
 
-                logger.DebugFormat("Marking outgoing message {0} as permenantly failed after {1} retries",
-                    msgId, numOfRetries);
+                    logger.DebugFormat("Marking outgoing message {0} as permenantly failed after {1} retries",
+                        msgId, numOfRetries);
 
-                update.Save();
+                    update.Save();
+                } 
             }
             Api.JetDelete(session, outgoing);
         }

@@ -5,16 +5,9 @@ using Rhino.Queues.Protocol;
 
 namespace Rhino.Queues
 {
-    /// <summary>
-    /// 
-    /// </summary>
     public interface IQueueManager : IDisposable
     {
-        int NumberOfReceivedMessagesToKeep { get; set; }
-        int? NumberOfMessagesToKeepInProcessedQueues { get; set; }
-        int? NumberOfMessagesToKeepOutgoingQueues { get; set; }
-        TimeSpan? OldestMessageInProcessedQueues { get; set; }
-        TimeSpan? OldestMessageInOutgoingQueues { get; set; }
+        QueueManagerConfiguration Configuration { get; set; }
         string Path { get; }
         IPEndPoint Endpoint { get; }
         string[] Queues { get; }

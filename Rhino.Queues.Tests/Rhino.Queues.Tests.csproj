@@ -78,6 +78,7 @@
     <Compile Include="Monitoring\RecordPerformanceCounters.cs" />
     <Compile Include="AutoSelectPort.cs" />
     <Compile Include="Protocol\FakeSender.cs" />
+    <Compile Include="PurgingQueues.cs" />
     <Compile Include="RaisingReceivedEvents.cs" />
     <Compile Include="Errors.cs" />
     <Compile Include="FromUsers\FromRene.cs" />

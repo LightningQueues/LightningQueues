@@ -11,18 +11,20 @@ namespace Rhino.Queues.Storage
 	{
 		private readonly ILog log = LogManager.GetLogger(typeof(QueueStorage));
 		private JET_INSTANCE instance;
-		private readonly string database;
-		private readonly string path;
-		private ColumnsInformation columnsInformation;
+	    private readonly string database;
+	    private readonly string path;
+	    private ColumnsInformation columnsInformation;
+	    private readonly QueueManagerConfiguration configuration;
 
-		private readonly ReaderWriterLockSlim usageLock = new ReaderWriterLockSlim();
+	    private readonly ReaderWriterLockSlim usageLock = new ReaderWriterLockSlim();
 
 		public Guid Id { get; private set; }
 
-		public QueueStorage(string database)
+		public QueueStorage(string database, QueueManagerConfiguration configuration)
 		{
-			this.database = database;
-			path = database;
+		    this.configuration = configuration;
+		    this.database = database;
+		    path = database;
 			if (Path.IsPathRooted(database) == false)
 				path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, database);
 			this.database = Path.Combine(path, Path.GetFileName(database));
@@ -250,7 +252,7 @@ namespace Rhino.Queues.Storage
 			{
 				if (shouldTakeLock)
 					usageLock.EnterReadLock();
-				using (var qa = new GlobalActions(instance, columnsInformation, database, Id))
+				using (var qa = new GlobalActions(instance, columnsInformation, database, Id, configuration))
 				{
 					action(qa);
 				}
@@ -269,7 +271,7 @@ namespace Rhino.Queues.Storage
 			{
 				if (shouldTakeLock)
 					usageLock.EnterReadLock();
-				using (var qa = new SenderActions(instance, columnsInformation, database, Id))
+				using (var qa = new SenderActions(instance, columnsInformation, database, Id, configuration))
 				{
 					action(qa);
 				}
