@@ -1,7 +1,7 @@
 properties {
   $base_dir  = resolve-path .
-  $lib_dir = "$base_dir\SharedLibs"
   $build_dir = "$base_dir\build" 
+  $packages_dir = "$base_dir\packages" 
   $packageinfo_dir = "$base_dir\packaging"
   $40_build_dir = "$build_dir\4.0\"
   $35_build_dir = "$build_dir\3.5\"
@@ -21,9 +21,14 @@ task default -depends Package
 task Clean {
   remove-item -force -recurse $build_dir -ErrorAction SilentlyContinue 
   remove-item -force -recurse $release_dir -ErrorAction SilentlyContinue 
+  remove-item -force -recurse $packages_dir -ErrorAction SilentlyContinue 
 }
 
-task Init -depends Clean {
+task Restore -depends Clean {
+  & $tools_dir\ripple\ripple.exe restore
+}
+
+task Init -depends Restore {
 	Generate-Assembly-Info `
 		-file "$base_dir\Rhino.Queues\Properties\AssemblyInfo.cs" `
 		-title "Rhino Queues $version" `
@@ -56,13 +61,13 @@ task Compile -depends Init {
 task Test -depends Compile {
   $old = pwd
   cd $build_dir
-  & $tools_dir\xUnit\xunit.console.exe "$35_build_dir\Rhino.Queues.Tests.dll" /noshadow
+  & $packages_dir\xunit.runners\tools\xunit.console.exe "$35_build_dir\Rhino.Queues.Tests.dll" /noshadow
   cd $old
 }
 
 task Release -depends Test {
   cd $build_dir
-  & $tools_dir\7za.exe a $release_dir\Rhino.Queues.zip `
+  & $packages_dir\7Zip.Sfx\tools\7za.exe a $release_dir\Rhino.Queues.zip `
         *\Rhino.Queues.dll `
         *\Rhino.Queues.pdb `
         *\Common.Logging.dll `
@@ -79,5 +84,5 @@ task Release -depends Test {
 }
 
 task Package -depends Release {
-  & $tools_dir\NuGet.exe pack $packageinfo_dir\rhino.queues.nuspec -o $release_dir -Version $version -Symbols -BasePath $base_dir
+  & $tools_dir\ripple\ripple.exe local-nuget -d $release_dir -v $version -c -u
 }

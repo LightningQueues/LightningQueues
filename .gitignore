@@ -2,6 +2,8 @@
 [Dd]ebug/
 [Rr]elease/
 build/
+packages/
+logs/
 [Bb]in/
 [Oo]bj/
 *.suo
