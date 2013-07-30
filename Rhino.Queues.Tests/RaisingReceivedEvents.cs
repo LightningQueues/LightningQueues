@@ -75,7 +75,7 @@ namespace Rhino.Queues.Tests
             messageEventCount2++;
         }
 
-        [Fact(Timeout = 5000)]
+        [Fact(Timeout = 15000)]
         public void MessageQueuedForReceive_EventIsRaised()
         {
             using (var sender = SetupSender())
@@ -107,7 +107,7 @@ namespace Rhino.Queues.Tests
             Assert.Equal("h", messageEventArgs.Message.Queue);
         }
 
-        [Fact(Timeout = 5000)]
+        [Fact(Timeout = 15000)]
         public void MessageQueuedForReceive_EventIsRaised_DirectEnqueuing()
         {
             using (var receiver = SetupReciever())
@@ -231,7 +231,7 @@ namespace Rhino.Queues.Tests
             Assert.Null(messageEventArgs);
         }
 
-        [Fact(Timeout = 5000)]
+        [Fact(Timeout = 15000)]
         public void MessageReceived_and_MessageQueuedForReceive_events_raised_when_message_removed_and_moved()
         {
             using (var sender = SetupSender())
@@ -281,7 +281,7 @@ namespace Rhino.Queues.Tests
             }
         }
 
-        [Fact(Timeout = 5000)]
+        [Fact(Timeout = 15000)]
         public void MessageReceived_and_MessageQueuedForReceive_events_raised_when_message_peeked_and_moved()
         {
             using (var sender = SetupSender())
