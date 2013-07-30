@@ -18,7 +18,7 @@ namespace Rhino.Queues
     using Exceptions;
     using Utils;
 
-    public class QueueManager : IQueueManager
+    public class QueueManager : IQueueManager, ITransactionalQueueManager
     {
         [ThreadStatic]
         private static TransactionEnlistment Enlistment;
@@ -277,6 +277,11 @@ namespace Rhino.Queues
                 TransactionManager.RecoveryComplete(queueStorage.Id);
         }
 
+        public ITransactionalScope BeginTransactionalScope()
+        {
+            return new TransactionalScope(this, new QueueTransaction(queueStorage, OnTransactionComplete, AssertNotDisposed));
+        }
+
         public void EnablePerformanceCounters()
         {
             if (wasStarted)
@@ -369,6 +374,15 @@ namespace Rhino.Queues
         }
 
         #endregion
+
+        private void OnTransactionComplete()
+        {
+            lock (newMessageArrivedLock)
+            {
+                Monitor.PulseAll(newMessageArrivedLock);
+            }
+            Interlocked.Decrement(ref currentlyInsideTransaction);
+        }
 
         private void AssertNotDisposed()
         {
@@ -521,32 +535,9 @@ namespace Rhino.Queues
 
         public Message Receive(string queueName, string subqueue, TimeSpan timeout)
         {
-            EnsureEnslistment();
+            EnsureEnlistment();
 
-            var remaining = timeout;
-            while (true)
-            {
-                var message = GetMessageFromQueue(queueName, subqueue);
-                if (message != null)
-                {
-                    OnMessageReceived(message);
-                    return message;
-                }
-                lock (newMessageArrivedLock)
-                {
-                    message = GetMessageFromQueue(queueName, subqueue);
-                    if (message != null)
-                    {
-                        OnMessageReceived(message);
-                        return message;
-                    }
-                    var sp = Stopwatch.StartNew();
-                    if (Monitor.Wait(newMessageArrivedLock, remaining) == false)
-                        throw new TimeoutException("No message arrived in the specified timeframe " + timeout);
-                    var newRemaining = remaining - sp.Elapsed;
-                    remaining = newRemaining >= TimeSpan.Zero ? newRemaining : TimeSpan.Zero;
-                }
-            }
+            return Receive(Enlistment, queueName, subqueue, timeout);
         }
 
         public MessageId Send(Uri uri, MessagePayload payload)
@@ -554,50 +545,12 @@ namespace Rhino.Queues
             if (waitingForAllMessagesToBeSent)
                 throw new CannotSendWhileWaitingForAllMessagesToBeSentException("Currently waiting for all messages to be sent, so we cannot send. You probably have a race condition in your application.");
 
-            EnsureEnslistment();
-            var parts = uri.AbsolutePath.Substring(1).Split('/');
-            var queue = parts[0];
-            string subqueue = null;
-            if (parts.Length > 1)
-            {
-                subqueue = string.Join("/", parts.Skip(1).ToArray());
-            }
+            EnsureEnlistment();
 
-            Guid msgId = Guid.Empty;
-
-            var port = uri.Port;
-            if (port == -1)
-                port = 2200;
-            var destination = new Endpoint(uri.Host, port);
-
-            queueStorage.Global(actions =>
-            {
-                msgId = actions.RegisterToSend(destination, queue,
-                                               subqueue, payload, Enlistment.Id);
-
-                actions.Commit();
-            });
-
-            var messageId = new MessageId
-                                {
-                                    SourceInstanceId = queueStorage.Id,
-                                    MessageIdentifier = msgId
-                                };
-            var message = new Message
-            {
-                Id = messageId,
-                Data = payload.Data,
-                Headers = payload.Headers,
-                Queue = queue,
-                SubQueue = subqueue
-            };
-
-            OnMessageQueuedForSend(new MessageEventArgs(destination, message));
-
-            return messageId;
+            return Send(Enlistment, uri, payload);
         }
 
-        private void EnsureEnslistment()
+        private void EnsureEnlistment()
         {
             AssertNotDisposedOrDisposing();
 
@@ -606,20 +559,13 @@ namespace Rhino.Queues
 
             if (CurrentlyEnslistedTransaction == Transaction.Current)
                 return;
-            // need to change the enslitment
+            // need to change the enlistment
             Interlocked.Increment(ref currentlyInsideTransaction);
-            Enlistment = new TransactionEnlistment(queueStorage, () =>
-            {
-                lock (newMessageArrivedLock)
-                {
-                    Monitor.PulseAll(newMessageArrivedLock);
-                }
-                Interlocked.Decrement(ref currentlyInsideTransaction);
-            }, AssertNotDisposed);
+            Enlistment = new TransactionEnlistment(queueStorage, OnTransactionComplete, AssertNotDisposed);
             CurrentlyEnslistedTransaction = Transaction.Current;
         }
 
-        private PersistentMessage GetMessageFromQueue(string queueName, string subqueue)
+        private PersistentMessage GetMessageFromQueue(ITransaction transaction, string queueName, string subqueue)
         {
             AssertNotDisposedOrDisposing();
             PersistentMessage message = null;
@@ -630,7 +576,7 @@ namespace Rhino.Queues
                 if (message != null)
                 {
                     actions.RegisterUpdateToReverse(
-                        Enlistment.Id,
+                        transaction.Id,
                         message.Bookmark,
                         MessageStatus.ReadyToDeliver,
                         subqueue);
@@ -795,7 +741,7 @@ namespace Rhino.Queues
         public void MoveTo(string subqueue, Message message)
         {
             AssertNotDisposedOrDisposing();
-            EnsureEnslistment();
+            EnsureEnlistment();
 
             queueStorage.Global(actions =>
             {
@@ -826,7 +772,7 @@ namespace Rhino.Queues
 
         public void EnqueueDirectlyTo(string queue, string subqueue, MessagePayload payload)
         {
-            EnsureEnslistment();
+            EnsureEnlistment();
 
             var message = new PersistentMessage
             {
@@ -939,6 +885,96 @@ namespace Rhino.Queues
         {
             var action = MessageReceived;
             if (action != null) action(this, messageEventArgs);
+        }
+
+        public Message Receive(ITransaction transaction, string queueName)
+        {
+            return Receive(transaction, queueName, null, TimeSpan.FromDays(1));
+        }
+
+        public Message Receive(ITransaction transaction, string queueName, TimeSpan timeout)
+        {
+            return Receive(transaction, queueName, null, timeout);
+        }
+
+        public Message Receive(ITransaction transaction, string queueName, string subqueue)
+        {
+            return Receive(transaction, queueName, subqueue, TimeSpan.FromDays(1));
+        }
+
+        public Message Receive(ITransaction transaction, string queueName, string subqueue, TimeSpan timeout)
+        {
+            var remaining = timeout;
+            while (true)
+            {
+                var message = GetMessageFromQueue(transaction, queueName, subqueue);
+                if (message != null)
+                {
+                    OnMessageReceived(message);
+                    return message;
+                }
+                lock (newMessageArrivedLock)
+                {
+                    message = GetMessageFromQueue(transaction, queueName, subqueue);
+                    if (message != null)
+                    {
+                        OnMessageReceived(message);
+                        return message;
+                    }
+                    var sp = Stopwatch.StartNew();
+                    if (Monitor.Wait(newMessageArrivedLock, remaining) == false)
+                        throw new TimeoutException("No message arrived in the specified timeframe " + timeout);
+                    var newRemaining = remaining - sp.Elapsed;
+                    remaining = newRemaining >= TimeSpan.Zero ? newRemaining : TimeSpan.Zero;
+                }
+            }
+        }
+
+        public MessageId Send(ITransaction transaction, Uri uri, MessagePayload payload)
+        {
+            if (waitingForAllMessagesToBeSent)
+                throw new CannotSendWhileWaitingForAllMessagesToBeSentException("Currently waiting for all messages to be sent, so we cannot send. You probably have a race condition in your application.");
+
+            var parts = uri.AbsolutePath.Substring(1).Split('/');
+            var queue = parts[0];
+            string subqueue = null;
+            if (parts.Length > 1)
+            {
+                subqueue = string.Join("/", parts.Skip(1).ToArray());
+            }
+
+            Guid msgId = Guid.Empty;
+
+            var port = uri.Port;
+            if (port == -1)
+                port = 2200;
+            var destination = new Endpoint(uri.Host, port);
+
+            queueStorage.Global(actions =>
+            {
+                msgId = actions.RegisterToSend(destination, queue,
+                                               subqueue, payload, transaction.Id);
+
+                actions.Commit();
+            });
+
+            var messageId = new MessageId
+                                {
+                                    SourceInstanceId = queueStorage.Id,
+                                    MessageIdentifier = msgId
+                                };
+            var message = new Message
+            {
+                Id = messageId,
+                Data = payload.Data,
+                Headers = payload.Headers,
+                Queue = queue,
+                SubQueue = subqueue
+            };
+
+            OnMessageQueuedForSend(new MessageEventArgs(destination, message));
+
+            return messageId;
         }
     }
 }

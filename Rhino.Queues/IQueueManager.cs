@@ -12,6 +12,7 @@ namespace Rhino.Queues
         IPEndPoint Endpoint { get; }
         string[] Queues { get; }
         event Action<Endpoint> FailedToSendMessagesTo;
+        ITransactionalScope BeginTransactionalScope();
         void EnablePerformanceCounters();
         void EnableEndpointPortAutoSelection();
         void WaitForAllMessagesToBeSent();

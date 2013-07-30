@@ -62,6 +62,10 @@
   <ItemGroup>
     <Compile Include="Exceptions\CannotSendWhileWaitingForAllMessagesToBeSentException.cs" />
     <Compile Include="Exceptions\QueueDoesNotExistsException.cs" />
+    <Compile Include="Internal\ITransaction.cs" />
+    <Compile Include="Internal\QueueTransaction.cs" />
+    <Compile Include="ITransactionalScope.cs" />
+    <Compile Include="ITransactionalQueueManager.cs" />
     <Compile Include="Monitoring\ImmediatelyRecordingCountersProvider.cs" />
     <Compile Include="Monitoring\IPerformanceCountersProvider.cs" />
     <Compile Include="Monitoring\IInboundPerfomanceCounters.cs" />
@@ -106,6 +110,7 @@
     <Compile Include="Storage\SchemaCreator.cs" />
     <Compile Include="Storage\SenderActions.cs" />
     <Compile Include="Internal\TransactionEnlistment.cs" />
+    <Compile Include="TransactionalScope.cs" />
     <Compile Include="Utils\GuidCombGenerator.cs" />
     <Compile Include="Utils\MonoHttpEncoder.cs" />
     <Compile Include="Utils\MonoHttpUtility.cs" />

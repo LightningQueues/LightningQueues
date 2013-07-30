@@ -6,17 +6,16 @@ using Transaction = System.Transactions.Transaction;
 
 namespace Rhino.Queues.Internal
 {
-	public class TransactionEnlistment : ISinglePhaseNotification
+	public class TransactionEnlistment : QueueTransaction, ISinglePhaseNotification
 	{
 		private readonly QueueStorage queueStorage;
-		private readonly Action onCompelete;
 		private readonly Action assertNotDisposed;
 		private readonly ILog logger = LogManager.GetLogger(typeof(TransactionEnlistment));
 
-		public TransactionEnlistment(QueueStorage queueStorage, Action onCompelete, Action assertNotDisposed)
+		public TransactionEnlistment(QueueStorage queueStorage, Action onComplete, Action assertNotDisposed)
+            : base(queueStorage, assertNotDisposed, onComplete)
 		{
 			this.queueStorage = queueStorage;
-			this.onCompelete = onCompelete;
 			this.assertNotDisposed = assertNotDisposed;
 
 			var transaction = Transaction.Current;
@@ -26,14 +25,7 @@ namespace Rhino.Queues.Internal
 										  this,
 										  EnlistmentOptions.None);
 			}
-			Id = Guid.NewGuid();
 			logger.DebugFormat("Enlisting in the current transaction with enlistment id: {0}", Id);
-		}
-
-		public Guid Id
-		{
-			get;
-			private set;
 		}
 
 		public void Prepare(PreparingEnlistment preparingEnlistment)
@@ -54,55 +46,25 @@ namespace Rhino.Queues.Internal
 		{
 			try
 			{
-				PerformActualCommit();
+                Commit();
 				enlistment.Done();
 			}
-			catch (Exception e)
+			catch (Exception)
 			{
-				logger.Warn("Failed to commit enlistment " + Id, e);
+                //on a callback thread, can't throw
 			}
-			finally
-			{
-				onCompelete();
-			}
-		}
-
-		private void PerformActualCommit()
-		{
-			assertNotDisposed();
-			logger.DebugFormat("Committing enlistment with id: {0}", Id);
-			queueStorage.Global(actions =>
-			{
-				actions.RemoveReversalsMoveCompletedMessagesAndFinishSubQueueMove(Id);
-				actions.MarkAsReadyToSend(Id);
-				actions.DeleteRecoveryInformation(Id);
-				actions.Commit();
-			});
-			logger.DebugFormat("Commited enlistment with id: {0}", Id);
 		}
 
 		public void Rollback(Enlistment enlistment)
 		{
 			try
 			{
-				assertNotDisposed();
-				logger.DebugFormat("Rolling back enlistment with id: {0}", Id);
-				queueStorage.Global(actions =>
-				{
-					actions.ReverseAllFrom(Id);
-					actions.DeleteMessageToSend(Id);
-					actions.Commit();
-				});
+                Rollback();
 				enlistment.Done();
-				logger.DebugFormat("Rolledback enlistment with id: {0}", Id);
 			}
-			catch (Exception e)
+			catch (Exception)
 			{
-				logger.Warn("Failed to rollback enlistment " + Id, e);
-			}
-			finally
-			{
-				onCompelete();
+                //on a callback thread, can't throw
 			}
 		}
 
@@ -115,16 +77,12 @@ namespace Rhino.Queues.Internal
 		{
 			try
 			{
-				PerformActualCommit();
+                Commit();
 				singlePhaseEnlistment.Done();
 			}
-			catch (Exception e)
+			catch (Exception)
 			{
-				logger.Warn("Failed to commit enlistment " + Id, e);
-			}
-			finally
-			{
-				onCompelete();
+                //on a callback thread, can't throw
 			}
 		}
 	}

@@ -77,6 +77,7 @@
     <Compile Include="Monitoring\EnablingPerformanceCounters.cs" />
     <Compile Include="Monitoring\RecordPerformanceCounters.cs" />
     <Compile Include="AutoSelectPort.cs" />
+    <Compile Include="ObjectMother.cs" />
     <Compile Include="Protocol\FakeSender.cs" />
     <Compile Include="PurgingQueues.cs" />
     <Compile Include="RaisingReceivedEvents.cs" />
@@ -98,6 +99,7 @@
     <Compile Include="Storage\DeliveryOptions.cs" />
     <Compile Include="Storage\RevertBackToSend.cs" />
     <Compile Include="UsingSubQueues.cs" />
+    <Compile Include="UsingTransactionalScope.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\ayende-open-source.snk">
