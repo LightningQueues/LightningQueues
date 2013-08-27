@@ -1,6 +1,4 @@
 using System;
-using System.IO;
-using System.Net;
 using System.Transactions;
 using FubuTestingSupport;
 using NUnit.Framework;

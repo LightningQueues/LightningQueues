@@ -134,18 +134,25 @@ namespace LightningQueues.Tests
         {
             ManualResetEvent wait = new ManualResetEvent(false);
 
-            using (var sender = new FakeSender(ObjectMother.Logger())
+            var sender = new FakeSender(ObjectMother.Logger())
             {
                 Destination = new Endpoint("localhost", 23457),
-                FailToAcknowledgeReceipt = true,
-                Messages = new[] { new Message
-                                        {
-                                            Id = new MessageId{ MessageIdentifier = Guid.NewGuid(), SourceInstanceId = Guid.NewGuid()},
-                                            SentAt = DateTime.Now,
-                                            Queue = "h", 
-                                            Data = new byte[] { 1, 2, 4, 5 }
-                                        } }
-            })
+                Messages = new[]
+                        {
+                            new Message
+                                {
+                                    Id =
+                                        new MessageId
+                                            {
+                                                MessageIdentifier = Guid.NewGuid(),
+                                                SourceInstanceId = Guid.NewGuid()
+                                            },
+                                    SentAt = DateTime.Now,
+                                    Queue = "h",
+                                    Data = new byte[] {1, 2, 4, 5}
+                                }
+                        }
+            };
             {
 
                 sender.SendCompleted += () => wait.Set();
@@ -154,7 +161,7 @@ namespace LightningQueues.Tests
                     receiver.MessageQueuedForReceive += RecordMessageEvent;
 
                     sender.Send();
-                    wait.WaitOne();
+                    wait.WaitOne(TimeSpan.FromSeconds(1));
 
                     Thread.Sleep(1000);
 
@@ -162,7 +169,7 @@ namespace LightningQueues.Tests
                 }
             }
 
-            Assert.Null(messageEventArgs);
+            messageEventArgs.ShouldBeNull();
         }
 
         [Test]

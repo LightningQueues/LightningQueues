@@ -1,0 +1,251 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{C3866986-4983-4479-A641-0347A2DFFF28}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>LightningQueues</RootNamespace>
+    <AssemblyName>LightningQueues</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>bin\Debug\LightningQueues.XML</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>bin\Release\LightningQueues.XML</DocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Esent.Interop">
+      <HintPath>..\packages\ManagedEsent\lib\net40\Esent.Interop.dll</HintPath>
+    </Reference>
+    <Reference Include="FubuCore">
+      <HintPath>..\packages\FubuCore\lib\FubuCore.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.Transactions" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\LightningQueues\Exceptions\CannotSendWhileWaitingForAllMessagesToBeSentException.cs">
+      <Link>Exceptions\CannotSendWhileWaitingForAllMessagesToBeSentException.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Exceptions\InvalidAcknowledgementException.cs">
+      <Link>Exceptions\InvalidAcknowledgementException.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Exceptions\InvalidLengthException.cs">
+      <Link>Exceptions\InvalidLengthException.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Exceptions\QueueDoesNotExistsException.cs">
+      <Link>Exceptions\QueueDoesNotExistsException.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Exceptions\RevertSendException.cs">
+      <Link>Exceptions\RevertSendException.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Exceptions\UnexpectedReceivedMessageFormatException.cs">
+      <Link>Exceptions\UnexpectedReceivedMessageFormatException.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Internal\ITransaction.cs">
+      <Link>Internal\ITransaction.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Internal\QueuedMessagesSender.cs">
+      <Link>Internal\QueuedMessagesSender.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Internal\QueueTransaction.cs">
+      <Link>Internal\QueueTransaction.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Internal\TransactionEnlistment.cs">
+      <Link>Internal\TransactionEnlistment.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\IQueue.cs">
+      <Link>IQueue.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\IQueueManager.cs">
+      <Link>IQueueManager.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\ITransactionalQueueManager.cs">
+      <Link>ITransactionalQueueManager.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\ITransactionalScope.cs">
+      <Link>ITransactionalScope.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\MessageEventArgs.cs">
+      <Link>MessageEventArgs.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\MessagePayload.cs">
+      <Link>MessagePayload.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Model\HistoryMessage.cs">
+      <Link>Model\HistoryMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Model\Message.cs">
+      <Link>Model\Message.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Model\MessageId.cs">
+      <Link>Model\MessageId.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Model\PersistentMessage.cs">
+      <Link>Model\PersistentMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Model\PersistentMessageToSend.cs">
+      <Link>Model\PersistentMessageToSend.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\Chunks\Chunk.cs">
+      <Link>Protocol\Chunks\Chunk.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\Chunks\ReadAcknowledgement.cs">
+      <Link>Protocol\Chunks\ReadAcknowledgement.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\Chunks\ReadLength.cs">
+      <Link>Protocol\Chunks\ReadLength.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\Chunks\ReadMessage.cs">
+      <Link>Protocol\Chunks\ReadMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\Chunks\ReadReceived.cs">
+      <Link>Protocol\Chunks\ReadReceived.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\Chunks\ReadRevert.cs">
+      <Link>Protocol\Chunks\ReadRevert.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\Chunks\WriteAcknowledgement.cs">
+      <Link>Protocol\Chunks\WriteAcknowledgement.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\Chunks\WriteLength.cs">
+      <Link>Protocol\Chunks\WriteLength.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\Chunks\WriteMessage.cs">
+      <Link>Protocol\Chunks\WriteMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\Chunks\WriteProcessingError.cs">
+      <Link>Protocol\Chunks\WriteProcessingError.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\Chunks\WriteReceived.cs">
+      <Link>Protocol\Chunks\WriteReceived.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\Chunks\WriteRevert.cs">
+      <Link>Protocol\Chunks\WriteRevert.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\Chunks\WriteSerializationError.cs">
+      <Link>Protocol\Chunks\WriteSerializationError.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\Endpoint.cs">
+      <Link>Protocol\Endpoint.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\IMessageAcceptance.cs">
+      <Link>Protocol\IMessageAcceptance.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\PortFinder.cs">
+      <Link>Protocol\PortFinder.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\ProtocolConstants.cs">
+      <Link>Protocol\ProtocolConstants.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\Receiver.cs">
+      <Link>Protocol\Receiver.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\ReceivingProtocolCoordinator.cs">
+      <Link>Protocol\ReceivingProtocolCoordinator.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\Sender.cs">
+      <Link>Protocol\Sender.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\SerializationExtensions.cs">
+      <Link>Protocol\SerializationExtensions.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Protocol\StreamExtensions.cs">
+      <Link>Protocol\StreamExtensions.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Queue.cs">
+      <Link>Queue.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\QueueManager.cs">
+      <Link>QueueManager.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\QueueManagerConfiguration.cs">
+      <Link>QueueManagerConfiguration.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Storage\AbstractActions.cs">
+      <Link>Storage\AbstractActions.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Storage\ColumnsInformation.cs">
+      <Link>Storage\ColumnsInformation.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Storage\EsentExtension.cs">
+      <Link>Storage\EsentExtension.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Storage\GlobalActions.cs">
+      <Link>Storage\GlobalActions.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Storage\MessageBookmark.cs">
+      <Link>Storage\MessageBookmark.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Storage\MessageStatus.cs">
+      <Link>Storage\MessageStatus.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Storage\OutgoingMessageStatus.cs">
+      <Link>Storage\OutgoingMessageStatus.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Storage\QueueActions.cs">
+      <Link>Storage\QueueActions.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Storage\QueueSchemaCreator.cs">
+      <Link>Storage\QueueSchemaCreator.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Storage\QueueStorage.cs">
+      <Link>Storage\QueueStorage.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Storage\SchemaCreator.cs">
+      <Link>Storage\SchemaCreator.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Storage\SenderActions.cs">
+      <Link>Storage\SenderActions.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\TransactionalScope.cs">
+      <Link>TransactionalScope.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Utils\GuidCombGenerator.cs">
+      <Link>Utils\GuidCombGenerator.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Utils\MonoHttpEncoder.cs">
+      <Link>Utils\MonoHttpEncoder.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Utils\MonoHttpUtility.cs">
+      <Link>Utils\MonoHttpUtility.cs</Link>
+    </Compile>
+    <Compile Include="..\LightningQueues\Utils\ThreadSafeSet.cs">
+      <Link>Utils\ThreadSafeSet.cs</Link>
+    </Compile>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

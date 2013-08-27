@@ -46,12 +46,6 @@ namespace LightningQueues.Tests.Protocol
             sender.SendCompleted += () => wait.Set();
         }
 
-        [TearDown]
-        public void Teardown()
-        {
-            sender.Dispose();
-        }
-
         [Test]
         public void CanHandleItWhenReceiverDoesNotExists()
         {
