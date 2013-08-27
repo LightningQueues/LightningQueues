@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LightningQueues", "LightningQueues\LightningQueues.csproj", "{398BF580-41F5-418E-A017-19D19B289A97}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LightningQueues.Tests", "LightningQueues.Tests\LightningQueues.Tests.csproj", "{98D394CA-9FEF-49AD-8DAB-FE039152E001}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{398BF580-41F5-418E-A017-19D19B289A97}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{398BF580-41F5-418E-A017-19D19B289A97}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{398BF580-41F5-418E-A017-19D19B289A97}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{398BF580-41F5-418E-A017-19D19B289A97}.Release|Any CPU.Build.0 = Release|Any CPU
+		{98D394CA-9FEF-49AD-8DAB-FE039152E001}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{98D394CA-9FEF-49AD-8DAB-FE039152E001}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{98D394CA-9FEF-49AD-8DAB-FE039152E001}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{98D394CA-9FEF-49AD-8DAB-FE039152E001}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

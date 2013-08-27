@@ -3,11 +3,14 @@
 [Rr]elease/
 build/
 packages/
+results/
+artifacts/
 logs/
 [Bb]in/
 [Oo]bj/
 *.suo
 *.sln.cache
 _ReSharper.*/
-AssemblyInfo.cs
+CommonAssemblyInfo.cs
 *.user
+Gemfile.lock

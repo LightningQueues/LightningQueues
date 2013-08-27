@@ -1,0 +1,329 @@
+using System;
+using System.IO;
+using System.Linq;
+using FubuTestingSupport;
+using LightningQueues.Model;
+using LightningQueues.Storage;
+using NUnit.Framework;
+
+namespace LightningQueues.Tests.Storage
+{
+    [TestFixture]
+    public class CanUseQueue
+    {
+        [SetUp]
+        public void Setup()
+        {
+            if (Directory.Exists("test.esent"))
+                Directory.Delete("test.esent", true);
+        }
+
+        [Test]
+        public void CanCreateNewQueueFactory()
+        {
+            using (var qf = CreateQueueStorage())
+            {
+                qf.Initialize();
+            }
+        }
+
+	    [Test]
+		public void CanRegisterReceivedMessageIds()
+		{
+			using (var qf = CreateQueueStorage())
+			{
+				qf.Initialize();
+
+					var random = MessageId.GenerateRandom();
+				qf.Global(actions =>
+				{
+					actions.MarkReceived(random);
+
+					actions.Commit();
+				});
+
+				qf.Global(actions =>
+				{
+					actions.GetAlreadyReceivedMessageIds().Contains(random).ShouldBeTrue();
+
+					actions.Commit();
+				});
+			}
+		}
+
+
+		[Test]
+		public void CanDeleteOldEntries()
+		{
+			using (var qf = CreateQueueStorage())
+			{
+				qf.Initialize();
+
+				var random = MessageId.GenerateRandom();
+				qf.Global(actions =>
+				{
+					for (int i = 0; i < 5; i++)
+					{
+						actions.MarkReceived(MessageId.GenerateRandom());
+					} 
+					actions.MarkReceived(random);
+
+					for (int i = 0; i < 5; i++)
+					{
+						actions.MarkReceived(MessageId.GenerateRandom());
+					}
+
+					actions.Commit();
+				});
+
+				
+				qf.Global(actions =>
+				{
+					actions.DeleteOldestReceivedMessageIds(6, 10).ToArray();//consume & activate
+
+					actions.Commit();
+				});
+
+				qf.Global(actions =>
+				{
+					var array = actions.GetAlreadyReceivedMessageIds().ToArray();
+					6.ShouldEqual(array.Length);
+					random.ShouldEqual(array[0]);
+
+					actions.Commit();
+				});
+			}
+		}
+
+		[Test]
+		public void CallingDeleteOldEntriesIsSafeIfThereAreNotEnoughEntries()
+		{
+			using (var qf = CreateQueueStorage())
+			{
+				qf.Initialize();
+
+				var random = MessageId.GenerateRandom();
+				qf.Global(actions =>
+				{
+					for (int i = 0; i < 5; i++)
+					{
+						actions.MarkReceived(MessageId.GenerateRandom());
+					}
+					actions.MarkReceived(random);
+
+					actions.Commit();
+				});
+
+
+				qf.Global(actions =>
+				{
+					actions.DeleteOldestReceivedMessageIds(10, 10).ToArray();//consume & activate
+
+					actions.Commit();
+				});
+
+				qf.Global(actions =>
+				{
+					var array = actions.GetAlreadyReceivedMessageIds().ToArray();
+					6.ShouldEqual(array.Length);
+					random.ShouldEqual(array[5]);
+
+					actions.Commit();
+				});
+
+
+			}
+		}
+
+        [Test]
+        public void CanPutSingleMessageInQueue()
+        {
+            using (var qf = CreateQueueStorage())
+            {
+                qf.Initialize();
+
+                qf.Global(actions =>
+                {
+                    actions.CreateQueueIfDoesNotExists("h");
+                    actions.Commit();
+                });
+
+                MessageBookmark bookmark = null;
+                var guid = Guid.NewGuid();
+				var identifier = Guid.NewGuid();
+				qf.Global(actions =>
+                {
+                	bookmark = actions.GetQueue("h").Enqueue(new Message
+                    {
+                        Queue = "h",
+                        Data = new byte[] { 13, 12, 43, 5 },
+                        SentAt = new DateTime(2004, 5, 5),
+                        Id = new MessageId { SourceInstanceId = guid, MessageIdentifier = identifier }
+                    });
+                    actions.Commit();
+                });
+
+                qf.Global(actions =>
+                {
+                    actions.GetQueue("h").SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
+                    actions.Commit();
+                });
+
+                qf.Global(actions =>
+                {
+                    var message = actions.GetQueue("h").Dequeue(null);
+
+                    new byte[] { 13, 12, 43, 5 }.ShouldEqual(message.Data);
+					identifier.ShouldEqual(message.Id.MessageIdentifier);
+                    guid.ShouldEqual(message.Id.SourceInstanceId);
+                    "h".ShouldEqual(message.Queue);
+                    new DateTime(2004, 5, 5).ShouldEqual(message.SentAt);
+                    actions.Commit();
+                });
+            }
+        }
+
+        [Test]
+        public void WillGetMessagesBackInOrder()
+        {
+            using (var qf = CreateQueueStorage())
+            {
+                qf.Initialize();
+
+                qf.Global(actions =>
+                {
+                    actions.CreateQueueIfDoesNotExists("h");
+                    actions.Commit();
+                });
+
+                qf.Global(actions =>
+                {
+                    var queue = actions.GetQueue("h");
+
+                    var bookmark = queue.Enqueue(new Message
+                    {
+                        Queue = "h",
+                        Id = MessageId.GenerateRandom(),
+                        Data = new byte[] { 1 },
+                    });
+
+                    queue.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
+
+                    bookmark = queue.Enqueue(new Message
+                    {
+                        Queue = "h",
+                        Id = MessageId.GenerateRandom(),
+                        Data = new byte[] { 2 },
+                    });
+
+                    queue.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
+
+                    bookmark = queue.Enqueue(new Message
+                    {
+                        Queue = "h",
+                        Id = MessageId.GenerateRandom(),
+                        Data = new byte[] { 3 },
+                    });
+
+                    queue.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
+
+                    actions.Commit();
+                });
+
+                qf.Global(actions =>
+                {
+                    var m1 = actions.GetQueue("h").Dequeue(null);
+                    var m2 = actions.GetQueue("h").Dequeue(null);
+                    var m3 = actions.GetQueue("h").Dequeue(null);
+
+                    new byte[] { 1 }.ShouldEqual(m1.Data);
+                    new byte[] { 2 }.ShouldEqual(m2.Data);
+                    new byte[] { 3 }.ShouldEqual(m3.Data);
+
+                    actions.Commit();
+                });
+            }
+        }
+
+        [Test]
+        public void WillNotGiveMessageToTwoClient()
+        {
+            using (var qf = CreateQueueStorage())
+            {
+                qf.Initialize();
+
+                qf.Global(actions =>
+                {
+                    actions.CreateQueueIfDoesNotExists("h");
+                    actions.Commit();
+                });
+
+                qf.Global(actions =>
+                {
+                    var queue = actions.GetQueue("h");
+                    var bookmark = queue.Enqueue(new Message
+                    {
+                        Queue = "h",
+                        Id = MessageId.GenerateRandom(),
+                        Data = new byte[] { 1 },
+                    });
+                    queue.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
+
+                    bookmark = queue.Enqueue(new Message
+                    {
+                        Queue = "h",
+                        Id = MessageId.GenerateRandom(),
+                        Data = new byte[] { 2 },
+                    });
+                    queue.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
+
+                    actions.Commit();
+                });
+
+                qf.Global(actions =>
+                {
+                    var m1 = actions.GetQueue("h").Dequeue(null);
+
+                    qf.Global(queuesActions =>
+                    {
+                        var m2 = queuesActions.GetQueue("h").Dequeue(null);
+                        
+                        new byte[] { 2 }.ShouldEqual(m2.Data);
+
+                        queuesActions.Commit();
+                    });
+
+                   new byte[] { 1 }.ShouldEqual(m1.Data);
+                   actions.Commit();
+                });
+            }
+        }
+
+        [Test]
+        public void WillGiveNullWhenNoItemsAreInQueue()
+        {
+            using (var qf = CreateQueueStorage())
+            {
+                qf.Initialize();
+               
+                qf.Global(actions =>
+                {
+                    actions.CreateQueueIfDoesNotExists("h");
+                    actions.Commit();
+                });
+
+                qf.Global(actions =>
+                {
+                    var message = actions.GetQueue("h").Dequeue(null);
+                    message.ShouldBeNull();
+                    actions.Commit();
+                });
+            }
+        }
+
+        private static QueueStorage CreateQueueStorage()
+        {
+            return new QueueStorage("test.esent", new QueueManagerConfiguration(), ObjectMother.Logger());
+        }
+    }
+}

@@ -1,9 +1,6 @@
-Rhino Queues - Reliable async queueing system
+LightningQueues - Fast persistent queues for .NET
 =====================================================
 
-## HOW TO BUILD
-From an administrative powershell prompt
--- `.\psake.ps1`
-
-## ASK QUESTIONS
-Ask questions and report issues [here](http://groups.google.com/group/rhino-tools-dev).
+This project was originally based on and forked from Rhino.Queues
+with the intention of changing some of the original opinions of the project
+as well as changing the dependency from Esent to LMDB for persistence (future).
