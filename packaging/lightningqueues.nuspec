@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <id>LightningQueues</id>
+    <version>0.0</version>
+    <authors>Corey Kaylor</authors>
+    <owners>Corey Kaylor</owners>
+    <projectUrl>https://github.com/DarthFubuMVC/LightningQueues</projectUrl>
+    <iconUrl>https://github.com/DarthFubuMVC/fubu-collateral/raw/master/Icons/FubuMvc_256.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Fast persistent queues for .NET</description>
+    <tags>queue persistence fubu msmq messaging</tags>
+    <dependencies>
+      <dependency id="ManagedEsent" version="1.8.3.2" />
+      <dependency id="PowerThreading" version="20101026.0" />
+      <dependency id="FubuCore" version="1.1.0.255" />
+    </dependencies>
+  </metadata>
+  <files xmlns="">
+    <file src="..\src\LightningQueues\bin\Release\LightningQueues.dll" target="lib" />
+    <file src="..\src\LightningQueues\bin\Release\LightningQueues.pdb" target="lib" />
+    <file src="..\src\LightningQueues\bin\Release\LightningQueues.xml" target="lib" />
+    <file src="..\src\LightningQueues\**\*.cs" target="src\LightningQueues" />
+  </files>
+</package>
