@@ -21,6 +21,6 @@
     <file src="..\src\LightningQueues\bin\Release\LightningQueues.dll" target="lib" />
     <file src="..\src\LightningQueues\bin\Release\LightningQueues.pdb" target="lib" />
     <file src="..\src\LightningQueues\bin\Release\LightningQueues.xml" target="lib" />
-    <file src="..\src\LightningQueues45\**\*.cs" target="src\LightningQueues" />
+    <file src="..\src\LightningQueues\**\*.cs" target="src\LightningQueues" />
   </files>
 </package>
