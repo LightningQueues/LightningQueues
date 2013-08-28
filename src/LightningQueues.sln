@@ -5,8 +5,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LightningQueues", "Lightnin
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LightningQueues.Tests", "LightningQueues.Tests\LightningQueues.Tests.csproj", "{98D394CA-9FEF-49AD-8DAB-FE039152E001}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LightningQueues45", "LightningQueues45\LightningQueues45.csproj", "{C3866986-4983-4479-A641-0347A2DFFF28}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,10 +19,6 @@ Global
 		{98D394CA-9FEF-49AD-8DAB-FE039152E001}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{98D394CA-9FEF-49AD-8DAB-FE039152E001}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{98D394CA-9FEF-49AD-8DAB-FE039152E001}.Release|Any CPU.Build.0 = Release|Any CPU
-		{C3866986-4983-4479-A641-0347A2DFFF28}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C3866986-4983-4479-A641-0347A2DFFF28}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C3866986-4983-4479-A641-0347A2DFFF28}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C3866986-4983-4479-A641-0347A2DFFF28}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
