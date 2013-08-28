@@ -163,8 +163,6 @@ namespace LightningQueues.Tests
                     sender.Send();
                     wait.WaitOne(TimeSpan.FromSeconds(1));
 
-                    Thread.Sleep(1000);
-
                     receiver.MessageQueuedForReceive -= RecordMessageEvent;
                 }
             }
@@ -228,7 +226,6 @@ namespace LightningQueues.Tests
 
                         tx.Complete();
                     }
-                    Thread.Sleep(1000);
 
                     receiver.MessageReceived -= RecordMessageEvent;
                 }

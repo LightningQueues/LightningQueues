@@ -140,7 +140,6 @@ namespace LightningQueues.Tests
 
                     tx.Complete();
                 }
-                Thread.Sleep(1000);
 
                 sender.MessageSent -= RecordMessageEvent;
             }
@@ -171,7 +170,6 @@ namespace LightningQueues.Tests
 
                         tx.Complete();
                     }
-                    Thread.Sleep(1000);
 
                     sender.MessageSent -= RecordMessageEvent;
                 }

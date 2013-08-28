@@ -168,8 +168,6 @@ namespace LightningQueues.Tests
                 tx.Complete();
             }
 
-            Thread.Sleep(500);
-
             var messages = queueManager.GetAllProcessedMessages("h");
             1.ShouldEqual(messages.Length);
             "hello".ShouldEqual(Encoding.Unicode.GetString(messages[0].Data));

@@ -106,7 +106,6 @@ namespace LightningQueues.Tests.Protocol
             {
                 reciever.CompletedRecievingMessages += () =>
                 {
-                    Thread.Sleep(300);
                     _wait.Set();
                 };
                 reciever.Start();
