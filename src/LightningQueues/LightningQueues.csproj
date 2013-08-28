@@ -118,7 +118,7 @@
     <Compile Include="Protocol\ProtocolConstants.cs" />
     <Compile Include="Protocol\IMessageAcceptance.cs" />
     <Compile Include="Protocol\Receiver.cs" />
-    <Compile Include="Protocol\ReceivingProtocolCoordinator.cs" />
+    <Compile Include="Protocol\ReceivingProtocol.cs" />
     <Compile Include="Protocol\Sender.cs" />
     <Compile Include="Protocol\SerializationExtensions.cs" />
     <Compile Include="Protocol\StreamExtensions.cs" />

@@ -9,38 +9,31 @@ namespace LightningQueues.Protocol.Chunks
 {
     public class ReadMessage : Chunk<Message[]>
     {
-        private readonly byte[] _buffer;
+        private readonly int _length;
 
-        public ReadMessage(ILogger logger, byte[] buffer, string endpoint) : base(logger, endpoint)
+        public ReadMessage(ILogger logger, int length, string endpoint) : base(logger, endpoint)
         {
-            _buffer = buffer;
+            _length = length;
         }
 
-        public ReadMessage(ILogger logger, byte[] buffer) : this(logger, buffer, null)
+        public ReadMessage(ILogger logger, int length) : this(logger, length, null)
         {
         }
 
         protected async override Task<Message[]> GetInternalAsync(Stream stream)
         {
-            await stream.ReadBytesAsync(_buffer, "message data", false);
-            Exception serializationException = null;
-            Message[] messages = null;
+            var buffer = new byte[_length];
             try
             {
-                messages = SerializationExtensions.ToMessages(_buffer);
+                await stream.ReadBytesAsync(buffer, "message data", false);
+                var messages = SerializationExtensions.ToMessages(buffer);
                 _logger.Debug("Deserialized {0} messages from {1}", messages.Length, _endpoint);
+                return messages;
             }
-            catch (Exception exception)
+            catch (Exception ex)
             {
-                serializationException = exception;
-                _logger.Info("Failed to deserialize messages from " + _endpoint, exception);
+                throw new SerializationException("Failed to deserialize message", ex);
             }
-            if (serializationException != null)
-            {
-                await stream.WriteAsync(ProtocolConstants.SerializationFailureBuffer, 0, ProtocolConstants.SerializationFailureBuffer.Length);
-                throw new SerializationException("Failed to deserialize message", serializationException);
-            }
-            return messages;
         }
 
         public override string ToString()

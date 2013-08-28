@@ -148,7 +148,7 @@ namespace LightningQueues.Tests.Protocol
                 _wait.WaitOne();
 
                 var warn = (from e in _logger.InfoMessages.OfType<StringMessage>()
-                            where e.Message.StartsWith("Failed to deserialize messages from")
+                            where e.Message.StartsWith("Unable to deserialize messages")
                             select e).FirstOrDefault();
 
                 warn.ShouldNotBeNull();

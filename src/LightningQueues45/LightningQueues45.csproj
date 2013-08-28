@@ -166,8 +166,8 @@
     <Compile Include="..\LightningQueues\Protocol\Receiver.cs">
       <Link>Protocol\Receiver.cs</Link>
     </Compile>
-    <Compile Include="..\LightningQueues\Protocol\ReceivingProtocolCoordinator.cs">
-      <Link>Protocol\ReceivingProtocolCoordinator.cs</Link>
+    <Compile Include="..\LightningQueues\Protocol\ReceivingProtocol.cs">
+      <Link>Protocol\ReceivingProtocol.cs</Link>
     </Compile>
     <Compile Include="..\LightningQueues\Protocol\Sender.cs">
       <Link>Protocol\Sender.cs</Link>

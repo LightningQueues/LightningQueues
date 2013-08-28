@@ -49,7 +49,7 @@ namespace LightningQueues.Protocol
                         ex.Message == "Only one usage of each socket address (protocol/network address/port) is normally permitted")
                     {
                         _endpointToListenTo.Port = new PortFinder().Find();
-                        _logger.Debug("Port in use, new enpoint selected: {0}", _endpointToListenTo);
+                        _logger.Debug("Port in use, new endpoint selected: {0}", _endpointToListenTo);
                     }
                     else
                         throw;
@@ -100,7 +100,7 @@ namespace LightningQueues.Protocol
             using (var stream = client.GetStream())
             {
                 var sender = client.Client.RemoteEndPoint.ToString();
-                await new ReceivingProtocolCoordinator(_logger).ReadMessagesAsync(sender, stream, _acceptMessages);
+                await new ReceivingProtocol(_logger).ReadMessagesAsync(sender, stream, _acceptMessages);
             }
         }
 

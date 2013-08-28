@@ -6,7 +6,7 @@ using LightningQueues.Exceptions;
 
 namespace LightningQueues.Protocol.Chunks
 {
-    public class ReadLength : Chunk<byte[]>
+    public class ReadLength : Chunk<int>
     {
         public ReadLength(ILogger logger, string sender) : base(logger, sender)
         {
@@ -16,7 +16,7 @@ namespace LightningQueues.Protocol.Chunks
         {
         }
 
-        protected override async Task<byte[]> GetInternalAsync(Stream stream)
+        protected override async Task<int> GetInternalAsync(Stream stream)
         {
             var lenOfDataToReadBuffer = new byte[sizeof(int)];
             await stream.ReadBytesAsync(lenOfDataToReadBuffer, "length data", false);
@@ -27,9 +27,7 @@ namespace LightningQueues.Protocol.Chunks
                 throw new InvalidLengthException(string.Format("Got invalid length {0} from endpoint {1}",
                                                                lengthOfDataToRead, _endpoint));
             }
-
-            var buffer = new byte[lengthOfDataToRead];
-            return buffer;
+            return lengthOfDataToRead;
         }
 
         public override string ToString()

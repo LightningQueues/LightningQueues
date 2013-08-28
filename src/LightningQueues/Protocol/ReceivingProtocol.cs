@@ -9,11 +9,11 @@ using LightningQueues.Protocol.Chunks;
 
 namespace LightningQueues.Protocol
 {
-    public class ReceivingProtocolCoordinator
+    public class ReceivingProtocol
     {
         private readonly ILogger _logger;
 
-        public ReceivingProtocolCoordinator(ILogger logger)
+        public ReceivingProtocol(ILogger logger)
         {
             _logger = logger;
         }
@@ -25,8 +25,8 @@ namespace LightningQueues.Protocol
             Message[] messages = null;
             try
             {
-                var buffer = await new ReadLength(_logger, endpoint).GetAsync(stream);
-                messages = await new ReadMessage(_logger, buffer, endpoint).GetAsync(stream);
+                var length = await new ReadLength(_logger, endpoint).GetAsync(stream);
+                messages = await new ReadMessage(_logger, length, endpoint).GetAsync(stream);
             }
             catch (SerializationException exception)
             {
