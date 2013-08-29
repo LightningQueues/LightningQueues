@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Transactions;
 using FubuTestingSupport;
 using NUnit.Framework;
@@ -203,19 +205,23 @@ namespace LightningQueues.Tests
                 tx.Complete();
             }
 
+            var messages = new List<byte[]>();
             using (var tx = new TransactionScope())
             {
                 var message = receiver.Receive("h", null);
-                new byte[] { 1, 2, 4, 5 }.ShouldEqual(message.Data);
+                messages.Add(message.Data);
 
-                message = receiver.Receive("h", null);
-                new byte[] { 4, 5, 6, 7 }.ShouldEqual(message.Data);
+                var message2 = receiver.Receive("h", null);
+                messages.Add(message2.Data);
 
-                message = receiver.Receive("h", null);
-                new byte[] { 6, 7, 8, 9 }.ShouldEqual(message.Data);
+                var message3 = receiver.Receive("h", null);
+                messages.Add(message3.Data);
 
                 tx.Complete();
             }
+            messages.Any(x => x.SequenceEqual(new byte[] {1, 2, 4, 5})).ShouldBeTrue();
+            messages.Any(x => x.SequenceEqual(new byte[] {4, 5, 6, 7})).ShouldBeTrue();
+            messages.Any(x => x.SequenceEqual(new byte[] {6, 7, 8, 9})).ShouldBeTrue();
         }
 
         [Test]

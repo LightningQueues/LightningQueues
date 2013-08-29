@@ -18,13 +18,11 @@ namespace LightningQueues.Tests.Protocol
     public class RecieverFailure
     {
         private readonly IPEndPoint _endpointToListenTo = new IPEndPoint(IPAddress.Loopback, 23456);
-        private ManualResetEvent _wait;
         private RecordingLogger _logger;
 
         [SetUp]
         public void Setup()
         {
-            _wait = new ManualResetEvent(false);
             _logger = new RecordingLogger();
         }
 
@@ -33,7 +31,6 @@ namespace LightningQueues.Tests.Protocol
         {
             using (var reciever = new Receiver(_endpointToListenTo, messages => null, _logger))
             {
-                reciever.CompletedRecievingMessages += () => _wait.Set();
                 reciever.Start();
 
                 using (var client = new TcpClient())
@@ -41,13 +38,9 @@ namespace LightningQueues.Tests.Protocol
                     client.Connect(_endpointToListenTo);
                 }
 
-                _wait.WaitOne();
-
-                var warn = (from e in _logger.InfoMessages.OfType<StringMessage>()
+                Wait.Until(() => (from e in _logger.InfoMessages.OfType<StringMessage>()
                             where e.Message.StartsWith("Could not process Reading Length")
-                            select e).FirstOrDefault();
-
-                warn.ShouldNotBeNull();
+                            select e).Any()).ShouldBeTrue();
             }
         }
 
@@ -56,7 +49,6 @@ namespace LightningQueues.Tests.Protocol
         {
             using (var reciever = new Receiver(_endpointToListenTo, messages => null, _logger))
             {
-                reciever.CompletedRecievingMessages += () => _wait.Set();
                 reciever.Start();
 
                 using (var client = new TcpClient())
@@ -65,13 +57,9 @@ namespace LightningQueues.Tests.Protocol
                     client.GetStream().Write(new byte[] { 1, 4, 6 }, 0, 3);
                 }
 
-                _wait.WaitOne();
-
-                var warn = (from e in _logger.InfoMessages.OfType<StringMessage>()
+                Wait.Until(() => (from e in _logger.InfoMessages.OfType<StringMessage>()
                             where e.Message.StartsWith("Could not process Reading Length")
-                            select e).FirstOrDefault();
-
-                warn.ShouldNotBeNull();
+                            select e).Any()).ShouldBeTrue();
             }
         }
 
@@ -80,7 +68,6 @@ namespace LightningQueues.Tests.Protocol
         {
             using (var reciever = new Receiver(_endpointToListenTo, messages => null, _logger))
             {
-                reciever.CompletedRecievingMessages += () => _wait.Set();
                 reciever.Start();
 
                 using (var client = new TcpClient())
@@ -89,13 +76,9 @@ namespace LightningQueues.Tests.Protocol
                     client.GetStream().Write(BitConverter.GetBytes(-2), 0, 4);
                 }
 
-                _wait.WaitOne();
-
-                var warn = (from e in _logger.InfoMessages.OfType<StringMessage>()
+                Wait.Until(() => (from e in _logger.InfoMessages.OfType<StringMessage>()
                             where e.Message.Contains("Got invalid length -2")
-                            select e).FirstOrDefault();
-
-                warn.ShouldNotBeNull();
+                            select e).Any()).ShouldBeTrue();
             }
         }
 
@@ -104,10 +87,6 @@ namespace LightningQueues.Tests.Protocol
         {
             using (var reciever = new Receiver(_endpointToListenTo, messages => null, _logger))
             {
-                reciever.CompletedRecievingMessages += () =>
-                {
-                    _wait.Set();
-                };
                 reciever.Start();
 
                 using (var client = new TcpClient())
@@ -118,13 +97,9 @@ namespace LightningQueues.Tests.Protocol
                     stream.Write(BitConverter.GetBytes(5), 0, 4);
                 }
 
-                _wait.WaitOne();
-
-                var warn = (from e in _logger.InfoMessages.OfType<StringMessage>()
-                            where e.Message.StartsWith("Could not process Reading Message")
-                            select e).FirstOrDefault();
-
-                warn.ShouldNotBeNull();
+                Wait.Until(() => (from e in _logger.InfoMessages.OfType<StringMessage>()
+                            where e.Message.Contains("Could not process Reading Message")
+                            select e).Any()).ShouldBeTrue();
             }
         }
 
@@ -133,7 +108,6 @@ namespace LightningQueues.Tests.Protocol
         {
             using (var reciever = new Receiver(_endpointToListenTo, messages => null, _logger))
             {
-                reciever.CompletedRecievingMessages += () => _wait.Set();
                 reciever.Start();
 
                 using (var client = new TcpClient())
@@ -144,13 +118,9 @@ namespace LightningQueues.Tests.Protocol
                     stream.Write(Guid.NewGuid().ToByteArray(), 0, 16);
                 }
 
-                _wait.WaitOne();
-
-                var warn = (from e in _logger.InfoMessages.OfType<StringMessage>()
-                            where e.Message.StartsWith("Unable to deserialize messages")
-                            select e).FirstOrDefault();
-
-                warn.ShouldNotBeNull();
+                Wait.Until(() => (from e in _logger.InfoMessages.OfType<StringMessage>()
+                            where e.Message.Contains("Unable to deserialize messages")
+                            select e).Any()).ShouldBeTrue();
             }
         }
 
@@ -162,7 +132,6 @@ namespace LightningQueues.Tests.Protocol
                 throw new InvalidOperationException();
             }, _logger))
             {
-                reciever.CompletedRecievingMessages += () => _wait.Set();
                 reciever.Start();
 
                 using (var client = new TcpClient())
@@ -176,10 +145,8 @@ namespace LightningQueues.Tests.Protocol
                     var buffer = new byte[ProtocolConstants.ProcessingFailureBuffer.Length];
                     stream.Read(buffer, 0, buffer.Length);
 
-                    ProtocolConstants.ProcessingFailure.ShouldEqual(Encoding.Unicode.GetString(buffer));
+                    ProtocolConstants.ProcessingFailureBuffer.ShouldEqual(buffer);
                 }
-
-                _wait.WaitOne();
             }
         }
 
@@ -191,7 +158,6 @@ namespace LightningQueues.Tests.Protocol
                 throw new QueueDoesNotExistsException();
             }, _logger))
             {
-                reciever.CompletedRecievingMessages += () => _wait.Set();
                 reciever.Start();
 
                 using (var client = new TcpClient())
@@ -205,10 +171,8 @@ namespace LightningQueues.Tests.Protocol
                     var buffer = new byte[ProtocolConstants.ProcessingFailureBuffer.Length];
                     stream.Read(buffer, 0, buffer.Length);
 
-                    ProtocolConstants.QueueDoesNotExists.ShouldEqual(Encoding.Unicode.GetString(buffer));
+                    ProtocolConstants.QueueDoesNoExiststBuffer.ShouldEqual(buffer);
                 }
-
-                _wait.WaitOne();
             }
         }
 
@@ -218,7 +182,6 @@ namespace LightningQueues.Tests.Protocol
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
             using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance, _logger))
             {
-                reciever.CompletedRecievingMessages += () => _wait.Set();
                 reciever.Start();
 
                 using (var client = new TcpClient())
@@ -232,10 +195,8 @@ namespace LightningQueues.Tests.Protocol
                     var buffer = new byte[ProtocolConstants.RecievedBuffer.Length];
                     stream.Read(buffer, 0, buffer.Length);
 
-                    ProtocolConstants.Recieved.ShouldEqual(Encoding.Unicode.GetString(buffer));
+                    ProtocolConstants.RecievedBuffer.ShouldEqual(buffer);
                 }
-
-                _wait.WaitOne();
             }
         }
 
@@ -245,7 +206,6 @@ namespace LightningQueues.Tests.Protocol
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
             using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance, _logger))
             {
-                reciever.CompletedRecievingMessages += () => _wait.Set();
                 reciever.Start();
 
                 using (var client = new TcpClient())
@@ -259,10 +219,8 @@ namespace LightningQueues.Tests.Protocol
                     var buffer = new byte[ProtocolConstants.RecievedBuffer.Length];
                     stream.Read(buffer, 0, buffer.Length);
 
-                    ProtocolConstants.Recieved.ShouldEqual(Encoding.Unicode.GetString(buffer));
+                    ProtocolConstants.RecievedBuffer.ShouldEqual(buffer);
                 }
-
-                _wait.WaitOne();
             }
 
             acceptance.AssertWasCalled(x => x.Abort());
@@ -274,7 +232,6 @@ namespace LightningQueues.Tests.Protocol
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
             using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance, _logger))
             {
-                reciever.CompletedRecievingMessages += () => _wait.Set();
                 reciever.Start();
 
                 using (var client = new TcpClient())
@@ -288,13 +245,11 @@ namespace LightningQueues.Tests.Protocol
                     var buffer = new byte[ProtocolConstants.RecievedBuffer.Length];
                     stream.Read(buffer, 0, buffer.Length);
 
-                    ProtocolConstants.Recieved.ShouldEqual(Encoding.Unicode.GetString(buffer));
+                    ProtocolConstants.RecievedBuffer.ShouldEqual(buffer);
 
                     var bytes = Encoding.Unicode.GetBytes("Unknowledged");
                     stream.Write(bytes, 0, bytes.Length);
                 }
-
-                _wait.WaitOne();
             }
 
             acceptance.AssertWasCalled(x => x.Abort());
@@ -306,7 +261,6 @@ namespace LightningQueues.Tests.Protocol
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
             using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance, _logger))
             {
-                reciever.CompletedRecievingMessages += () => _wait.Set();
                 reciever.Start();
 
                 using (var client = new TcpClient())
@@ -320,12 +274,10 @@ namespace LightningQueues.Tests.Protocol
                     var buffer = new byte[ProtocolConstants.RecievedBuffer.Length];
                     stream.Read(buffer, 0, buffer.Length);
 
-                    ProtocolConstants.Recieved.ShouldEqual(Encoding.Unicode.GetString(buffer));
+                    ProtocolConstants.RecievedBuffer.ShouldEqual(buffer);
 
                     stream.Write(ProtocolConstants.AcknowledgedBuffer, 0, ProtocolConstants.AcknowledgedBuffer.Length);
                 }
-
-                _wait.WaitOne();
             }
 
             acceptance.AssertWasCalled(x => x.Commit());
@@ -339,7 +291,6 @@ namespace LightningQueues.Tests.Protocol
 
             using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance, _logger))
             {
-                reciever.CompletedRecievingMessages += () => _wait.Set();
                 reciever.Start();
 
                 using (var client = new TcpClient())
@@ -353,17 +304,15 @@ namespace LightningQueues.Tests.Protocol
                     var buffer = new byte[ProtocolConstants.RecievedBuffer.Length];
                     stream.Read(buffer, 0, buffer.Length);
 
-                    ProtocolConstants.Recieved.ShouldEqual(Encoding.Unicode.GetString(buffer));
+                    ProtocolConstants.RecievedBuffer.ShouldEqual(buffer);
 
                     stream.Write(ProtocolConstants.AcknowledgedBuffer, 0, ProtocolConstants.AcknowledgedBuffer.Length);
 
                     buffer = new byte[ProtocolConstants.RevertBuffer.Length];
                     stream.Read(buffer, 0, buffer.Length);
 
-                    ProtocolConstants.Revert.ShouldEqual(Encoding.Unicode.GetString(buffer));
+                    ProtocolConstants.RevertBuffer.ShouldEqual(buffer);
                 }
-
-                _wait.WaitOne();
             }
         }
     }

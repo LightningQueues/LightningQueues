@@ -16,8 +16,6 @@ namespace LightningQueues.Protocol
         private TcpListener _listener;
         private bool _disposed;
 
-        public event Action CompletedRecievingMessages;
-
         public Receiver(IPEndPoint endpointToListenTo, Func<Message[], IMessageAcceptance> acceptMessages, ILogger logger)
             : this(endpointToListenTo, false, acceptMessages, logger)
         {
@@ -85,12 +83,6 @@ namespace LightningQueues.Protocol
             catch (Exception ex)
             {
                 _logger.Info("Error on ProcessRequest " + ex.Message, ex);
-            }
-            finally
-            {
-                var copy = CompletedRecievingMessages;
-                if (copy != null)
-                    copy();
             }
         }
 

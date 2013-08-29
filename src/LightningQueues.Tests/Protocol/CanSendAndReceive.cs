@@ -14,8 +14,6 @@ namespace LightningQueues.Tests.Protocol
         [Test]
         public void OneMessage()
         {
-            var wait = new ManualResetEvent(false);
-
             Message[] recievedMsgs = null;
             var endPoint = new Endpoint("localhost", 23456);
             using (var reciever = new Receiver(new IPEndPoint(IPAddress.Loopback, 23456), messages =>
@@ -24,9 +22,7 @@ namespace LightningQueues.Tests.Protocol
                 return MockRepository.GenerateStub<IMessageAcceptance>();
             }, ObjectMother.Logger()))
             {
-                reciever.CompletedRecievingMessages += () => wait.Set();
                 reciever.Start();
-
 
                 new Sender(ObjectMother.Logger())
                 {
@@ -44,10 +40,9 @@ namespace LightningQueues.Tests.Protocol
                 }.Send();
 
 
-                wait.WaitOne();
+                Wait.Until(() => recievedMsgs != null).ShouldBeTrue();
 
-
-                1.ShouldEqual(recievedMsgs.Length);
+                recievedMsgs.ShouldHaveCount(1);
                 "hello doggy".ShouldEqual(recievedMsgs[0].Queue);
                 new byte[] { 1, 2, 4, 5, 6 }.ShouldEqual(recievedMsgs[0].Data);
                 new DateTime(2001, 1, 1).ShouldEqual(recievedMsgs[0].SentAt);
@@ -57,8 +52,6 @@ namespace LightningQueues.Tests.Protocol
         [Test]
         public void TwoMessagesInSeparateCalls()
         {
-            var wait = new ManualResetEvent(false);
-
             Message[] recievedMsgs = null;
             using (var reciever = new Receiver(new IPEndPoint(IPAddress.Loopback, 23456), messages =>
             {
@@ -66,9 +59,7 @@ namespace LightningQueues.Tests.Protocol
                 return MockRepository.GenerateStub<IMessageAcceptance>();
             }, ObjectMother.Logger()))
             {
-                reciever.CompletedRecievingMessages += () => wait.Set();
                 reciever.Start();
-
 
                 new Sender(ObjectMother.Logger())
                 {
@@ -85,12 +76,10 @@ namespace LightningQueues.Tests.Protocol
                     }
                 }.Send();
 
+                Wait.Until(() => recievedMsgs != null).ShouldBeTrue();
+                recievedMsgs.ShouldHaveCount(1);
 
-                wait.WaitOne();
-
-                1.ShouldEqual(recievedMsgs.Length);
-
-                wait.Reset();
+                recievedMsgs = null;
 
                 new Sender(ObjectMother.Logger())
                 {
@@ -107,9 +96,9 @@ namespace LightningQueues.Tests.Protocol
                     }
                 }.Send();
 
-                wait.WaitOne();
+                Wait.Until(() => recievedMsgs != null).ShouldBeTrue();
 
-                1.ShouldEqual(recievedMsgs.Length);
+                recievedMsgs.ShouldHaveCount(1);
                 "hello doggy2".ShouldEqual(recievedMsgs[0].Queue);
             }
         }
@@ -117,8 +106,6 @@ namespace LightningQueues.Tests.Protocol
         [Test]
         public void TwoMessagesInOneCall()
         {
-            var wait = new ManualResetEvent(false);
-
             Message[] recievedMsgs = null;
             using (var reciever = new Receiver(new IPEndPoint(IPAddress.Loopback, 23456), messages =>
             {
@@ -126,7 +113,6 @@ namespace LightningQueues.Tests.Protocol
                 return MockRepository.GenerateStub<IMessageAcceptance>();
             }, ObjectMother.Logger()))
             {
-                reciever.CompletedRecievingMessages += () => wait.Set();
                 reciever.Start();
 
                 new Sender(ObjectMother.Logger())
@@ -151,10 +137,9 @@ namespace LightningQueues.Tests.Protocol
                     }
                 }.Send();
 
+                Wait.Until(() => recievedMsgs != null).ShouldBeTrue();
 
-                wait.WaitOne();
-
-                2.ShouldEqual(recievedMsgs.Length);
+                recievedMsgs.ShouldHaveCount(2);
                 "hello doggy".ShouldEqual(recievedMsgs[0].Queue);
                 "hello doggy2".ShouldEqual(recievedMsgs[1].Queue);
             }
