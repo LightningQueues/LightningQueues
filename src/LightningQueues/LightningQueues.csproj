@@ -70,7 +70,6 @@
     <Compile Include="Internal\ITransaction.cs" />
     <Compile Include="Internal\QueueTransaction.cs" />
     <Compile Include="ITransactionalScope.cs" />
-    <Compile Include="ITransactionalQueueManager.cs" />
     <Compile Include="IQueue.cs" />
     <Compile Include="IQueueManager.cs" />
     <Compile Include="MessageEventArgs.cs" />
@@ -105,6 +104,7 @@
     <Compile Include="Protocol\SerializationExtensions.cs" />
     <Compile Include="Protocol\StreamExtensions.cs" />
     <Compile Include="Queue.cs" />
+    <Compile Include="QueueExtensions.cs" />
     <Compile Include="QueueManager.cs" />
     <Compile Include="QueueManagerConfiguration.cs" />
     <Compile Include="Storage\AbstractActions.cs" />

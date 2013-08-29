@@ -16,7 +16,7 @@ using LightningQueues.Utils;
 #pragma warning disable 420
 namespace LightningQueues
 {
-    public class QueueManager : IQueueManager, ITransactionalQueueManager
+    public class QueueManager : IQueueManager
     {
         [ThreadStatic]
         private static TransactionEnlistment _enlistment;
@@ -457,21 +457,6 @@ namespace LightningQueues
             return msgs;
         }
 
-        public Message Peek(string queueName)
-        {
-            return Peek(queueName, null, TimeSpan.FromDays(1));
-        }
-
-        public Message Peek(string queueName, TimeSpan timeout)
-        {
-            return Peek(queueName, null, timeout);
-        }
-
-        public Message Peek(string queueName, string subqueue)
-        {
-            return Peek(queueName, subqueue, TimeSpan.FromDays(1));
-        }
-
         public Message Peek(string queueName, string subqueue, TimeSpan timeout)
         {
             var remaining = timeout;
@@ -498,21 +483,6 @@ namespace LightningQueues
         private static TimeSpan Max(TimeSpan x, TimeSpan y)
         {
             return x >= y ? x : y;
-        }
-
-        public Message Receive(string queueName)
-        {
-            return Receive(queueName, null, TimeSpan.FromDays(1));
-        }
-
-        public Message Receive(string queueName, TimeSpan timeout)
-        {
-            return Receive(queueName, null, timeout);
-        }
-
-        public Message Receive(string queueName, string subqueue)
-        {
-            return Receive(queueName, subqueue, TimeSpan.FromDays(1));
         }
 
         public Message Receive(string queueName, string subqueue, TimeSpan timeout)
@@ -756,6 +726,11 @@ namespace LightningQueues
         {
             EnsureEnlistment();
 
+            EnqueueDirectlyTo(_enlistment, queue, subqueue, payload);
+        }
+
+        public void EnqueueDirectlyTo(ITransaction transaction, string queue, string subqueue, MessagePayload payload)
+        {
             var message = new PersistentMessage
             {
                 Data = payload.Data,
@@ -776,7 +751,7 @@ namespace LightningQueues
                 var queueActions = actions.GetQueue(queue);
 
                 var bookmark = queueActions.Enqueue(message);
-                actions.RegisterUpdateToReverse(_enlistment.Id, bookmark, MessageStatus.EnqueueWait, subqueue);
+                actions.RegisterUpdateToReverse(transaction.Id, bookmark, MessageStatus.EnqueueWait, subqueue);
 
                 actions.Commit();
             });
@@ -867,21 +842,6 @@ namespace LightningQueues
         {
             var action = MessageReceived;
             if (action != null) action(this, messageEventArgs);
-        }
-
-        public Message Receive(ITransaction transaction, string queueName)
-        {
-            return Receive(transaction, queueName, null, TimeSpan.FromDays(1));
-        }
-
-        public Message Receive(ITransaction transaction, string queueName, TimeSpan timeout)
-        {
-            return Receive(transaction, queueName, null, timeout);
-        }
-
-        public Message Receive(ITransaction transaction, string queueName, string subqueue)
-        {
-            return Receive(transaction, queueName, subqueue, TimeSpan.FromDays(1));
         }
 
         public Message Receive(ITransaction transaction, string queueName, string subqueue, TimeSpan timeout)

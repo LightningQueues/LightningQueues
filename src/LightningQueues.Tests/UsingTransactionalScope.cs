@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Text;
 using FubuTestingSupport;
+using LightningQueues.Model;
 using NUnit.Framework;
 
 namespace LightningQueues.Tests
@@ -75,6 +76,24 @@ namespace LightningQueues.Tests
             var receivingScope = queueManager.BeginTransactionalScope();
             Assert.Throws<TimeoutException>(() => receivingScope.Receive("h", TimeSpan.FromSeconds(1)));
             sender.Dispose();
+        }
+
+        [Test]
+        public void can_receive_on_one_queue_move_to_another()
+        {
+            var sender = ObjectMother.Sender();
+            sender.Send();
+
+            queueManager.CreateQueues("a");
+            var receivingScope = queueManager.BeginTransactionalScope();
+            var message = receivingScope.Receive("h", TimeSpan.FromSeconds(1));
+            receivingScope.EnqueueDirectlyTo("a", new MessagePayload{Data = message.Data, Headers = message.Headers});
+            receivingScope.Commit();
+            receivingScope = queueManager.BeginTransactionalScope();
+            Assert.Throws<TimeoutException>(() => receivingScope.Receive("h", TimeSpan.FromSeconds(1)));
+            message = receivingScope.Receive("a", TimeSpan.FromSeconds(1));
+
+            "hello".ShouldEqual(Encoding.Unicode.GetString(message.Data));
         }
 
         [TearDown]

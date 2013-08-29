@@ -6,48 +6,23 @@ namespace LightningQueues
 {
     public class TransactionalScope : ITransactionalScope
     {
-        private readonly ITransactionalQueueManager queueManager;
-        private readonly ITransaction transaction;
-
-        public TransactionalScope(ITransactionalQueueManager queueManager, ITransaction transaction)
+        public TransactionalScope(IQueueManager queueManager, ITransaction transaction)
         {
-            this.queueManager = queueManager;
-            this.transaction = transaction;
+            QueueManager = queueManager;
+            Transaction = transaction;
         }
 
-        public Message Receive(string queue)
-        {
-            return queueManager.Receive(transaction, queue);
-        }
-
-        public Message Receive(string queue, TimeSpan timeout)
-        {
-            return queueManager.Receive(transaction, queue, timeout);
-        }
-
-        public Message Receive(string queue, string subqueue)
-        {
-            return queueManager.Receive(transaction, queue);
-        }
-
-        public Message Receive(string queue, string subqueue, TimeSpan timeout)
-        {
-            return queueManager.Receive(transaction, queue, subqueue, timeout);
-        }
-
-        public MessageId Send(Uri uri, MessagePayload payload)
-        {
-            return queueManager.Send(transaction, uri, payload);
-        }
+        public ITransaction Transaction { get; private set; }
+        public IQueueManager QueueManager { get; private set; }
 
         public void Commit()
         {
-            transaction.Commit();
+            Transaction.Commit();
         }
 
         public void Rollback()
         {
-            transaction.Rollback();
+            Transaction.Rollback();
         }
     }
 }

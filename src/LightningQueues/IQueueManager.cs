@@ -1,5 +1,6 @@
 using System;
 using System.Net;
+using LightningQueues.Internal;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
 
@@ -20,18 +21,15 @@ namespace LightningQueues
         HistoryMessage[] GetAllProcessedMessages(string queueName);
         PersistentMessageToSend[] GetAllSentMessages();
         PersistentMessageToSend[] GetMessagesCurrentlySending();
-        Message Peek(string queueName);
-        Message Peek(string queueName, TimeSpan timeout);
-        Message Peek(string queueName, string subqueue);
         Message Peek(string queueName, string subqueue, TimeSpan timeout);
-        Message Receive(string queueName);
-        Message Receive(string queueName, TimeSpan timeout);
-        Message Receive(string queueName, string subqueue);
         Message Receive(string queueName, string subqueue, TimeSpan timeout);
+        Message Receive(ITransaction transaction, string queueName, string subqueue, TimeSpan timeout);
         MessageId Send(Uri uri, MessagePayload payload);
+        MessageId Send(ITransaction transaction, Uri uri, MessagePayload payload);
         void CreateQueues(params string[] queueNames);
         void MoveTo(string subqueue, Message message);
         void EnqueueDirectlyTo(string queue, string subqueue, MessagePayload payload);
+        void EnqueueDirectlyTo(ITransaction transaction, string queue, string subqueue, MessagePayload payload);
         PersistentMessage PeekById(string queueName, MessageId id);
         string[] GetSubqueues(string queueName);
         int GetNumberOfMessages(string queueName);
