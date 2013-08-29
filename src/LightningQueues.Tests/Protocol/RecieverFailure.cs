@@ -203,7 +203,10 @@ namespace LightningQueues.Tests.Protocol
         [Test]
         public void WillCallAbortAcceptanceIfSenderDoesNotConfirm()
         {
+            var abortCalled = false;
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
+            acceptance.Expect(x => x.Abort()).WhenCalled(x => abortCalled = true);
+            
             using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance, _logger))
             {
                 reciever.Start();
@@ -223,13 +226,17 @@ namespace LightningQueues.Tests.Protocol
                 }
             }
 
-            acceptance.AssertWasCalled(x => x.Abort());
+            Wait.Until(() => abortCalled);
+
+            acceptance.VerifyAllExpectations();
         }
 
         [Test]
         public void WillCallAbortAcceptanceIfSenderSendNonConfirmation()
         {
+            var abortCalled = false;
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
+            acceptance.Expect(x => x.Abort()).WhenCalled(x => abortCalled = true);
             using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance, _logger))
             {
                 reciever.Start();
@@ -252,13 +259,17 @@ namespace LightningQueues.Tests.Protocol
                 }
             }
 
-            acceptance.AssertWasCalled(x => x.Abort());
+            Wait.Until(() => abortCalled);
+
+            acceptance.VerifyAllExpectations();
         }
 
         [Test]
         public void WillCallCommitAcceptanceIfSenderSendConfirmation()
         {
+            var commitCalled = false;
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
+            acceptance.Expect(x => x.Commit()).WhenCalled(x => commitCalled = true);
             using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance, _logger))
             {
                 reciever.Start();
@@ -280,7 +291,9 @@ namespace LightningQueues.Tests.Protocol
                 }
             }
 
-            acceptance.AssertWasCalled(x => x.Commit());
+            Wait.Until(() => commitCalled);
+
+            acceptance.VerifyAllExpectations();
         }
 
         [Test]
