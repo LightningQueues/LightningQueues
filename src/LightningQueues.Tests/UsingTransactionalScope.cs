@@ -85,8 +85,14 @@ namespace LightningQueues.Tests
             sender.Send();
 
             queueManager.CreateQueues("a");
+            Message message = null;
+            Wait.Until(() =>
+            {
+                message = queueManager.Peek("h", null);
+                return message != null;
+            });
             var receivingScope = queueManager.BeginTransactionalScope();
-            var message = receivingScope.Receive("h", TimeSpan.FromSeconds(1));
+            message = receivingScope.ReceiveById("h", message.Id);
             receivingScope.EnqueueDirectlyTo("a", new MessagePayload{Data = message.Data, Headers = message.Headers});
             receivingScope.Commit();
             receivingScope = queueManager.BeginTransactionalScope();

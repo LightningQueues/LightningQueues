@@ -492,6 +492,29 @@ namespace LightningQueues
             return Receive(_enlistment, queueName, subqueue, timeout);
         }
 
+        public Message ReceiveById(string queueName, MessageId id)
+        {
+            EnsureEnlistment();
+
+            return ReceiveById(_enlistment, queueName, id);
+        }
+
+        public Message ReceiveById(ITransaction transaction, string queueName, MessageId id)
+        {
+            PersistentMessage message = null;
+            _queueStorage.Global(actions =>
+            {
+                var queue = actions.GetQueue(queueName);
+
+                message = queue.PeekById(id);
+                queue.SetMessageStatus(message.Bookmark, MessageStatus.Processing);
+                actions.RegisterUpdateToReverse(transaction.Id, message.Bookmark, MessageStatus.ReadyToDeliver, null);
+
+                actions.Commit();
+            });
+            return message;
+        }
+
         public MessageId Send(Uri uri, MessagePayload payload)
         {
             if (_waitingForAllMessagesToBeSent)

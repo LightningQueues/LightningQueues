@@ -430,7 +430,7 @@ namespace LightningQueues.Storage
 
 				if (status != MessageStatus.ReadyToDeliver)
 					continue;
-
+			    bookmark.QueueName = queueName;
 				return new PersistentMessage
 				{
 					Bookmark = bookmark,

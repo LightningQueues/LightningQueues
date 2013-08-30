@@ -71,6 +71,11 @@ namespace LightningQueues
             return scope.QueueManager.Receive(scope.Transaction, queue, subqueue, timeout);
         }
 
+        public static Message ReceiveById(this ITransactionalScope scope, string queue, MessageId id)
+        {
+            return scope.QueueManager.ReceiveById(scope.Transaction, queue, id);
+        }
+
         public static MessageId Send(this ITransactionalScope scope, Uri uri, MessagePayload payload)
         {
             return scope.QueueManager.Send(scope.Transaction, uri, payload);

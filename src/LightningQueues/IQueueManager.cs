@@ -24,6 +24,8 @@ namespace LightningQueues
         Message Peek(string queueName, string subqueue, TimeSpan timeout);
         Message Receive(string queueName, string subqueue, TimeSpan timeout);
         Message Receive(ITransaction transaction, string queueName, string subqueue, TimeSpan timeout);
+        Message ReceiveById(string queueName, MessageId id);
+        Message ReceiveById(ITransaction transaction, string queueName, MessageId id);
         MessageId Send(Uri uri, MessagePayload payload);
         MessageId Send(ITransaction transaction, Uri uri, MessagePayload payload);
         void CreateQueues(params string[] queueNames);
