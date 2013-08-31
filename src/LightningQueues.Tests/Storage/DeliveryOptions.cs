@@ -44,9 +44,8 @@ namespace LightningQueues.Tests.Storage
 
                 qf.Send(actions =>
                 {
-                    Endpoint endpoint;
-                    var msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue, out endpoint);
-                    msgs.ShouldHaveCount(0);
+                    var msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue);
+                    msgs.ShouldBeNull();
                     actions.Commit();
                 });
 
@@ -96,12 +95,11 @@ namespace LightningQueues.Tests.Storage
 
                 qf.Send(actions =>
                 {
-                    Endpoint endpoint;
-                    var msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue, out endpoint);
-                    actions.MarkOutgoingMessageAsFailedTransmission(msgs.First().Bookmark, false);
+                    var msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue);
+                    actions.MarkOutgoingMessageAsFailedTransmission(msgs.Messages.First().Bookmark, false);
                     
-                    msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue, out endpoint);
-                    msgs.ShouldHaveCount(0);
+                    msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue);
+                    msgs.ShouldBeNull();
                     actions.Commit();
                 });
 

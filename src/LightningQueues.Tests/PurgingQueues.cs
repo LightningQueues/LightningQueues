@@ -23,7 +23,7 @@ namespace LightningQueues.Tests
         }
 
         [Test]
-        [Ignore("This is a slow load test")]
+        [Explicit]
         public void CanPurgeLargeSetsOfOldData()
         {
             queueManager = ObjectMother.QueueManager();

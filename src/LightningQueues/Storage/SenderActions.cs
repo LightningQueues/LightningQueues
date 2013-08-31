@@ -22,11 +22,11 @@ namespace LightningQueues.Storage
 		    _logger = logger;
 		}
 
-        public IList<PersistentMessage> GetMessagesToSendAndMarkThemAsInFlight(int maxNumberOfMessage, int maxSizeOfMessagesInTotal, out Endpoint endPoint)
+        public MessagesForEndpoint GetMessagesToSendAndMarkThemAsInFlight(int maxNumberOfMessage, int maxSizeOfMessagesInTotal)
         {
             Api.MoveBeforeFirst(session, outgoing);
 
-            endPoint = null;
+            Endpoint endPoint = null;
         	string queue = null;
             var messages = new List<PersistentMessage>();
 
@@ -123,7 +123,9 @@ namespace LightningQueues.Storage
                 if (maxSizeOfMessagesInTotal < messages.Sum(x => x.Data.Length))
                     break;
             }
-            return messages;
+            return messages.Count == 0 
+                ? null 
+                : new MessagesForEndpoint {Destination = endPoint, Messages = messages.ToArray()};
         }
 
         public void MarkOutgoingMessageAsFailedTransmission(MessageBookmark bookmark, bool queueDoesNotExistsInDestination)

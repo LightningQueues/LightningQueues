@@ -31,8 +31,6 @@ namespace LightningQueues.Tests.FromUsers
 				new Sender(ObjectMother.Logger())
 				{
 					Destination = new Endpoint("localhost", 23456),
-					Failure = exception => true.ShouldBeFalse(),
-					Success = () => null,
 					Messages = new[]
 					{
 						new Message

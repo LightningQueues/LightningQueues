@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -19,7 +18,7 @@ namespace LightningQueues.Protocol
                     if (expectedToHaveNoData)
                         break;
 
-                    throw new InvalidOperationException("Could not read value for " + type);
+                    throw new IOException("Could not read value for " + type);
                 }
 
                 totalBytesRead += bytesRead;

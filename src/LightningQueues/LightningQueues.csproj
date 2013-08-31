@@ -62,16 +62,20 @@
       <Link>CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="Exceptions\CannotSendWhileWaitingForAllMessagesToBeSentException.cs" />
+    <Compile Include="Exceptions\FailedToConnectException.cs" />
     <Compile Include="Exceptions\InvalidAcknowledgementException.cs" />
     <Compile Include="Exceptions\InvalidLengthException.cs" />
     <Compile Include="Exceptions\QueueDoesNotExistsException.cs" />
     <Compile Include="Exceptions\RevertSendException.cs" />
     <Compile Include="Exceptions\UnexpectedReceivedMessageFormatException.cs" />
     <Compile Include="Internal\ITransaction.cs" />
+    <Compile Include="Model\MessagesForEndpoint.cs" />
     <Compile Include="Internal\QueueTransaction.cs" />
+    <Compile Include="ISendingThrottle.cs" />
     <Compile Include="ITransactionalScope.cs" />
     <Compile Include="IQueue.cs" />
     <Compile Include="IQueueManager.cs" />
+    <Compile Include="Logging\MessageQueuedForSend.cs" />
     <Compile Include="MessageEventArgs.cs" />
     <Compile Include="MessagePayload.cs" />
     <Compile Include="Model\HistoryMessage.cs" />
@@ -95,12 +99,14 @@
     <Compile Include="Model\Message.cs" />
     <Compile Include="Model\MessageId.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Logging\MessagesSent.cs" />
     <Compile Include="Protocol\PortFinder.cs" />
     <Compile Include="Protocol\ProtocolConstants.cs" />
     <Compile Include="Protocol\IMessageAcceptance.cs" />
     <Compile Include="Protocol\Receiver.cs" />
     <Compile Include="Protocol\ReceivingProtocol.cs" />
     <Compile Include="Protocol\Sender.cs" />
+    <Compile Include="Protocol\SendingProtocol.cs" />
     <Compile Include="Protocol\SerializationExtensions.cs" />
     <Compile Include="Protocol\StreamExtensions.cs" />
     <Compile Include="Queue.cs" />

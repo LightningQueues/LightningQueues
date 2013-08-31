@@ -1,6 +1,9 @@
 using System;
-using System.Threading;
+using System.IO;
+using System.Linq;
+using FubuCore.Logging;
 using FubuTestingSupport;
+using LightningQueues.Exceptions;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
 using NUnit.Framework;
@@ -10,18 +13,18 @@ namespace LightningQueues.Tests.Protocol
     [TestFixture]
     public class SendingFailure 
     {
-        private bool failureReported;
+        private Exception error;
         private bool wasSuccessful;
         private Sender sender;
-        private ManualResetEvent wait;
-        private bool revertCalled;
+        private RecordingLogger _logger;
 
         [SetUp]
         public void Setup()
         {
-            failureReported = wasSuccessful = revertCalled = false;
-            wait = new ManualResetEvent(false);
-            sender = new Sender(ObjectMother.Logger())
+            _logger = new RecordingLogger();
+            wasSuccessful = false;
+            error = null;
+            sender = new Sender(_logger)
             {
                 Destination = new Endpoint("localhost", 23456),
                 Messages = new[]
@@ -34,25 +37,20 @@ namespace LightningQueues.Tests.Protocol
                         SentAt = new DateTime(2004, 4, 4)
                     },
                 },
-                Failure = exception => failureReported = true,
-                FailureToConnect = exception => failureReported = true,
                 Success = () =>
                 {
                     wasSuccessful = true;
-                    return null;
                 },
-                Revert = bookmarks => revertCalled = true
             };
-            sender.SendCompleted += () => wait.Set();
         }
 
         [Test]
         public void CanHandleItWhenReceiverDoesNotExists()
         {
-            sender.Send();
-            wait.WaitOne();
+            var task = sender.Send();
+            var aggregateException = Assert.Throws<AggregateException>(task.Wait);
+            aggregateException.InnerExceptions.OfType<FailedToConnectException>().Any().ShouldBeTrue();
 
-            failureReported.ShouldBeTrue();
             wasSuccessful.ShouldBeFalse();
         }
 
@@ -61,7 +59,7 @@ namespace LightningQueues.Tests.Protocol
         {
             StartReceiver(x => x.DisconnectAfterConnect = true);
 
-            failureReported.ShouldBeTrue();
+            error.ShouldBeOfType<IOException>();
             wasSuccessful.ShouldBeFalse();
         }
 
@@ -70,7 +68,7 @@ namespace LightningQueues.Tests.Protocol
         {
             StartReceiver(x => x.DisconnectDuringMessageSend = true);
 
-            failureReported.ShouldBeTrue();
+            error.ShouldBeOfType<IOException>();
             wasSuccessful.ShouldBeFalse();
         }
 
@@ -80,8 +78,15 @@ namespace LightningQueues.Tests.Protocol
             receiverAction(receiver);
             receiver.Start();
 
-            sender.Send();
-            wait.WaitOne();
+            try
+            {
+                var task = sender.Send();
+                task.Wait();
+            }
+            catch (AggregateException ex)
+            {
+                error = ex.InnerExceptions.First();
+            }
         }
 
         [Test]
@@ -89,7 +94,7 @@ namespace LightningQueues.Tests.Protocol
         {
             StartReceiver(x => x.DisconnectAfterMessageSend = true);
 
-            failureReported.ShouldBeTrue();
+            error.ShouldBeOfType<IOException>();
             wasSuccessful.ShouldBeFalse();
         }
 
@@ -98,7 +103,7 @@ namespace LightningQueues.Tests.Protocol
         {
             StartReceiver(x => x.SendBadResponse = true);
 
-            failureReported.ShouldBeTrue();
+            error.ShouldBeOfType<UnexpectedReceivedMessageFormatException>();
             wasSuccessful.ShouldBeFalse();
         }
 
@@ -113,7 +118,7 @@ namespace LightningQueues.Tests.Protocol
             // lost, but merely undeliverable in the receiver 
             // queue.
 
-            failureReported.ShouldBeFalse();
+            error.ShouldBeNull();
             wasSuccessful.ShouldBeTrue();
         }
 
@@ -125,9 +130,8 @@ namespace LightningQueues.Tests.Protocol
             // this is a case where we create compensation
             // for reported failure on the Receiver side
 
-            failureReported.ShouldBeFalse();
+            error.ShouldBeOfType<RevertSendException>();
             wasSuccessful.ShouldBeTrue();
-            revertCalled.ShouldBeTrue();
         }
     }
 }

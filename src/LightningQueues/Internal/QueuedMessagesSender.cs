@@ -1,13 +1,12 @@
+using System.Linq;
 using FubuCore.Logging;
 using LightningQueues.Exceptions;
+using LightningQueues.Logging;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
 using LightningQueues.Storage;
-#pragma warning disable 420
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
 
 namespace LightningQueues.Internal
 {
@@ -16,163 +15,149 @@ namespace LightningQueues.Internal
         private readonly QueueStorage _queueStorage;
     	private readonly IQueueManager _queueManager;
         private readonly ILogger _logger;
+        private readonly SendingChoke _choke;
         private volatile bool _continueSending = true;
-        private volatile int _currentlySendingCount;
-        private volatile int _currentlyConnecting;
-		private readonly object _lock = new object();
 
-        public QueuedMessagesSender(QueueStorage queueStorage, IQueueManager queueManager, ILogger logger)
+        public QueuedMessagesSender(QueueStorage queueStorage, SendingChoke choke, IQueueManager queueManager, ILogger logger)
         {
         	_queueStorage = queueStorage;
         	_queueManager = queueManager;
             _logger = logger;
-        }
-
-        public int CurrentlySendingCount
-        {
-            get { return _currentlySendingCount; }
-        }
-
-        public int CurrentlyConnectingCount
-        {
-            get { return _currentlyConnecting; }
+            _choke = choke;
         }
 
         public void Send()
         {
             while (_continueSending)
             {
-                IList<PersistentMessage> messages = null;
+                if(!_choke.ShouldBeginSend())
+                    continue;
 
-                //normal conditions will be at 5, when there are several unreliable endpoints 
-                //it will grow up to 31 connections all attempting to connect, timeouts can take up to 30 seconds
-            	if ((_currentlySendingCount - _currentlyConnecting > 5) || _currentlyConnecting > 30)
+                var messages = gatherMessagesToSend();
+
+                if (messages == null)
                 {
-					lock (_lock)
-						Monitor.Wait(_lock, TimeSpan.FromSeconds(1));
+                    _choke.NoMessagesToSend();
                     continue;
                 }
 
-                Endpoint point = null;
-                _queueStorage.Send(actions =>
-                {
-                    messages = actions.GetMessagesToSendAndMarkThemAsInFlight(100, 1024*1024, out point);
+                _choke.StartSend();
 
-                    actions.Commit();
-                });
-
-                if (messages.Count == 0)
-                {
-					lock (_lock)
-						Monitor.Wait(_lock, TimeSpan.FromSeconds(1));
-                    continue;
-                }
-
-                Interlocked.Increment(ref _currentlySendingCount);
-                Interlocked.Increment(ref _currentlyConnecting);
-
-                new Sender(_logger)
-                {
-                    Connected = () => Interlocked.Decrement(ref _currentlyConnecting),
-                    Destination = point,
-                    Messages = messages.ToArray(),
-					Success = OnSuccess(messages),
-					Failure = OnFailure(point, messages),
-                    FailureToConnect = e =>
-                    {
-                        Interlocked.Decrement(ref _currentlyConnecting);
-                        OnFailure(point, messages)(e);
-                    },
-					Revert = OnRevert(point),
-                    Commit = OnCommit(point, messages)
-                }.Send();
+                SendMessages(messages.Destination, messages.Messages);
             }
         }
 
-        private Action<MessageBookmark[]> OnRevert(Endpoint endpoint	)
+        public async void SendMessages(Endpoint destination, PersistentMessage[] messages)
         {
-        	return bookmarksToRevert =>
-			{
-				_queueStorage.Send(actions =>
-				{
-					actions.RevertBackToSend(bookmarksToRevert);
-
-					actions.Commit();
-				});
-				_queueManager.FailedToSendTo(endpoint);
-			};
+            var sender = createSender(destination, messages);
+            MessageBookmark[] sendHistoryBookmarks = null;
+            sender.Success = () => sendHistoryBookmarks = success(messages);
+            try
+            {
+                await sender.Send();
+                _logger.DebugMessage(() => new MessagesSent(messages, destination));
+            }
+            catch (FailedToConnectException ex)
+            {
+                _logger.Info("Failed to connect to {0} because {1}", destination, ex);
+                failedToConnect(destination, messages);
+            }
+            catch (QueueDoesNotExistsException)
+            {
+                failedToSend(destination, messages, true);
+            }
+            catch (RevertSendException)
+            {
+                revert(destination, sendHistoryBookmarks);
+            }
+            catch (Exception)
+            {
+                failedToConnect(destination, messages);
+            }
         }
 
-        private Action<Exception> OnFailure(Endpoint endpoint, IEnumerable<PersistentMessage> messages)
+        private Sender createSender(Endpoint destination, PersistentMessage[] messages)
         {
-            return exception =>
+            return new Sender(_logger)
             {
-                try
-                {
-                    _queueStorage.Send(actions =>
-                        {
-                            foreach (var message in messages)
-                            {
-                                actions.MarkOutgoingMessageAsFailedTransmission(message.Bookmark,
-                                                                                exception is QueueDoesNotExistsException);
-                            }
-
-                            actions.Commit();
-                            _queueManager.FailedToSendTo(endpoint);
-                        });
-                }
-                finally
-                {
-                    Interlocked.Decrement(ref _currentlySendingCount);
-                }
+                Connected = () => _choke.SuccessfullyConnected(),
+                Destination = destination,
+                Messages = messages,
             };
         }
 
-        private Func<MessageBookmark[]> OnSuccess(IEnumerable<PersistentMessage> messages)
+        private MessagesForEndpoint gatherMessagesToSend()
         {
-            return () =>
+            MessagesForEndpoint messages = null;
+            _queueStorage.Send(actions =>
             {
-                try
+                messages = actions.GetMessagesToSendAndMarkThemAsInFlight(100, 1024 * 1024);
+                actions.Commit();
+            });
+            return messages;
+        }
+
+        private void failedToConnect(Endpoint endpoint, IEnumerable<PersistentMessage> messages)
+        {
+            _choke.FailedToConnect();
+            failedToSend(endpoint, messages);
+        }
+
+        private void failedToSend(Endpoint endpoint, IEnumerable<PersistentMessage> messages, bool queueDoesntExist = false)
+        {
+            try
+            {
+                _queueStorage.Send(actions =>
                 {
-                    var newBookmarks = new List<MessageBookmark>();
-                    _queueStorage.Send(actions =>
+                    foreach (var message in messages)
                     {
-                        foreach (var message in messages)
-                        {
-                            var bookmark = actions.MarkOutgoingMessageAsSuccessfullySent(message.Bookmark);
-                            newBookmarks.Add(bookmark);
-                        }
+                        actions.MarkOutgoingMessageAsFailedTransmission(message.Bookmark, queueDoesntExist);
+                    }
 
-                        actions.Commit();
-                    });
-                    return newBookmarks.ToArray();
-                }
-                finally
-                {
-                    Interlocked.Decrement(ref _currentlySendingCount);
-                }
-            };
+                    actions.Commit();
+                    _queueManager.FailedToSendTo(endpoint);
+                });
+            }
+            finally
+            {
+                _choke.FinishedSend();
+            }
         }
 
-        private Action OnCommit(Endpoint endpoint, IEnumerable<PersistentMessage> messages)
+        private void revert(Endpoint endpoint, MessageBookmark[] sendHistoryBookmarks)
         {
-            return () =>
+            _logger.Info("Got back revert message from receiver {0}, reverting send", endpoint);
+            _queueStorage.Send(actions =>
             {
-                foreach (var message in messages)
+                actions.RevertBackToSend(sendHistoryBookmarks);
+                actions.Commit();
+            });
+            _queueManager.FailedToSendTo(endpoint);
+        }
+
+        private MessageBookmark[] success(IEnumerable<PersistentMessage> messages)
+        {
+            try
+            {
+                var newBookmarks = new List<MessageBookmark>();
+                _queueStorage.Send(actions =>
                 {
-                    _queueManager.OnMessageSent(new MessageEventArgs(endpoint, message));
-                }
-            };
+                    var result = messages.Select(message => actions.MarkOutgoingMessageAsSuccessfullySent(message.Bookmark));
+                    newBookmarks.AddRange(result);
+                    actions.Commit();
+                });
+                return newBookmarks.ToArray();
+            }
+            finally
+            {
+                _choke.FinishedSend();
+            }
         }
 
         public void Stop()
         {
             _continueSending = false;
-            while (_currentlySendingCount > 0)
-                Thread.Sleep(TimeSpan.FromSeconds(1));
-			lock(_lock)
-				Monitor.Pulse(_lock);
+            _choke.StopSending();
         }
     }
 }
-#pragma warning restore 420

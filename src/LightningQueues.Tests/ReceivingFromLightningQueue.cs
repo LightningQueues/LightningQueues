@@ -35,8 +35,6 @@ namespace LightningQueues.Tests
             new Sender(ObjectMother.Logger())
             {
                 Destination = new Endpoint("localhost", 23456),
-                Failure = exception => Assert.False(true),
-                Success = () => null,
                 Messages = new[]
                 {
                     new Message
@@ -47,7 +45,7 @@ namespace LightningQueues.Tests
                         SentAt = DateTime.Now
                     },
                 }
-            }.Send();
+            }.Send().Wait();
 
             using (var tx = new TransactionScope())
             {
@@ -77,17 +75,12 @@ namespace LightningQueues.Tests
 			};
 			for (int i = 0; i < 2; i++)
 			{
-				var wait = new ManualResetEvent(false);
 				var sender = new Sender(ObjectMother.Logger())
 				{
 					Destination = new Endpoint("localhost", 23456),
-					Failure = exception => Assert.False(true),
-					Success = () => null,
 					Messages = new[] { msg, },
 				};
-				sender.SendCompleted += () => wait.Set();
-				sender.Send();
-				wait.WaitOne();
+				sender.Send().Wait();
 			}
 
 			using (var tx = new TransactionScope())
@@ -113,8 +106,6 @@ namespace LightningQueues.Tests
             {
 
                 Destination = new Endpoint("localhost", 23456),
-                Failure = exception => true.ShouldBeFalse(),
-                Success = () => null,
                 Messages = new[]
                 {
                     new Message
@@ -125,7 +116,7 @@ namespace LightningQueues.Tests
                         SentAt = DateTime.Now
                     },
                 }
-            }.Send();
+            }.Send().Wait();
 
             using (new TransactionScope())
             {
@@ -146,8 +137,6 @@ namespace LightningQueues.Tests
             new Sender(ObjectMother.Logger())
             {
                 Destination = new Endpoint("localhost", 23456),
-                Failure = exception => true.ShouldBeFalse(),
-                Success = () => null,
                 Messages = new[]
                 {
                     new Message
@@ -158,7 +147,7 @@ namespace LightningQueues.Tests
                         SentAt = DateTime.Now
                     },
                 }
-            }.Send();
+            }.Send().Wait();
 
             using (var tx = new TransactionScope())
             {
@@ -179,8 +168,6 @@ namespace LightningQueues.Tests
             new Sender(ObjectMother.Logger())
             {
                 Destination = new Endpoint("localhost", 23456),
-                Failure = exception => true.ShouldBeFalse(),
-                Success = () => null,
                 Messages = new[]
                 {
                     new Message
@@ -191,7 +178,7 @@ namespace LightningQueues.Tests
                         SentAt = DateTime.Now
                     },
                 }
-            }.Send();
+            }.Send().Wait();
 
             using(new TransactionScope())
             {

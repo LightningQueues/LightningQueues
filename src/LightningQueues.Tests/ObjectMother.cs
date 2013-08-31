@@ -6,7 +6,6 @@ using System.Text;
 using FubuCore.Logging;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
-using NUnit.Framework;
 
 namespace LightningQueues.Tests
 {
@@ -33,8 +32,7 @@ namespace LightningQueues.Tests
             return new Sender(Logger())
             {
                 Destination = new Endpoint("localhost", port),
-                Failure = exception => Assert.False(true),
-                Success = () => null,
+                Success = () => { },
                 Messages = MessageBatchSingleMessage(),
             };
         }
@@ -52,13 +50,13 @@ namespace LightningQueues.Tests
             };
         }
 
-        public static QueueManager QueueManager(string name = "test", int port = 23456, string queue = "h", bool delete = true)
+        public static QueueManager QueueManager(string name = "test", int port = 23456, string queue = "h", bool delete = true, ILogger logger = null)
         {
             var directory = string.Format("{0}.esent", name);
             if (delete && Directory.Exists(directory))
                 Directory.Delete(directory, true);
 
-            var queueManager = new QueueManager(new IPEndPoint(IPAddress.Loopback, port), directory, new QueueManagerConfiguration(), Logger());
+            var queueManager = new QueueManager(new IPEndPoint(IPAddress.Loopback, port), directory, new QueueManagerConfiguration(), logger ?? Logger());
             queueManager.CreateQueues(queue);
             return queueManager;
         }

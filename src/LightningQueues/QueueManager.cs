@@ -8,6 +8,7 @@ using System.Transactions;
 using FubuCore.Logging;
 using LightningQueues.Exceptions;
 using LightningQueues.Internal;
+using LightningQueues.Logging;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
 using LightningQueues.Storage;
@@ -39,6 +40,7 @@ namespace LightningQueues
         private Receiver _receiver;
         private Thread _sendingThread;
         private QueuedMessagesSender _queuedMessagesSender;
+        private SendingChoke _choke;
         private volatile bool _waitingForAllMessagesToBeSent;
 
 
@@ -47,15 +49,7 @@ namespace LightningQueues
 
         public QueueManagerConfiguration Configuration { get; set; }
 
-        public int CurrentlySendingCount
-        {
-            get { return _queuedMessagesSender.CurrentlySendingCount; }
-        }
-
-        public int CurrentlyConnectingCount
-        {
-            get { return _queuedMessagesSender.CurrentlyConnectingCount; }
-        }
+        public ISendingThrottle SendingThrottle { get { return _choke; } }
 
         public event Action<Endpoint> FailedToSendMessagesTo;
 
@@ -95,7 +89,8 @@ namespace LightningQueues
             _receiver = new Receiver(_endpoint, _enableEndpointPortAutoSelection, AcceptMessages, _logger);
             _receiver.Start();
 
-            _queuedMessagesSender = new QueuedMessagesSender(_queueStorage, this, _logger);
+            _choke = new SendingChoke();
+            _queuedMessagesSender = new QueuedMessagesSender(_queueStorage, _choke, this, _logger);
             _sendingThread = new Thread(_queuedMessagesSender.Send)
             {
                 IsBackground = true,
@@ -937,7 +932,7 @@ namespace LightningQueues
                 SubQueue = subqueue
             };
 
-            OnMessageQueuedForSend(new MessageEventArgs(destination, message));
+            _logger.DebugMessage(() => new MessageQueuedForSend(destination, message));
 
             return messageId;
         }

@@ -53,7 +53,7 @@ namespace LightningQueues.Tests
             int maxNumberOfConnecting = 0;
 			sender.FailedToSendMessagesTo += endpoint =>
 			{
-			    maxNumberOfConnecting = Math.Max(maxNumberOfConnecting, sender.CurrentlyConnectingCount);
+			    maxNumberOfConnecting = Math.Max(maxNumberOfConnecting, sender.SendingThrottle.CurrentlyConnectingCount);
                 if(endpoint.Host.Equals("foo50"))
 				    wait.Set();
 			};

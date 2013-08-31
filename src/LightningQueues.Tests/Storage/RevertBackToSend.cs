@@ -50,13 +50,13 @@ namespace LightningQueues.Tests.Storage
 
                 qf.Send(actions =>
                 {
-                    Endpoint endpoint;
-                    var msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue, out endpoint);
-                    var bookmark = actions.MarkOutgoingMessageAsSuccessfullySent(msgs[0].Bookmark);
+                    var msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue);
+                    var bookmark = actions.MarkOutgoingMessageAsSuccessfullySent(msgs.Messages[0].Bookmark);
                     actions.RevertBackToSend(new[] { bookmark });
 
-                    msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue, out endpoint);
-                    msgs.ShouldNotBeEmpty();
+                    msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue);
+                    msgs.ShouldNotBeNull();
+                    msgs.Messages.ShouldHaveCount(1);
                     actions.Commit();
                 });
 

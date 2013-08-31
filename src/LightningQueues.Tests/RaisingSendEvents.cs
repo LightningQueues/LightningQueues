@@ -1,10 +1,10 @@
 ﻿using System;
-using System.IO;
+using System.Linq;
 using System.Net;
-using System.Threading;
 using System.Transactions;
 using FubuCore.Logging;
 using FubuTestingSupport;
+using LightningQueues.Logging;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
 using NUnit.Framework;
@@ -16,166 +16,136 @@ namespace LightningQueues.Tests
     {
         private const string TEST_QUEUE_1 = "testA.esent";
         private const string TEST_QUEUE_2 = "testB.esent";
+        private QueueManager _sender;
+        private RecordingLogger _logger;
 
-        private MessageEventArgs messageEventArgs;
-
-        public QueueManager SetupSender()
+        [SetUp]
+        public void Setup()
         {
-            var sender = ObjectMother.QueueManager(TEST_QUEUE_1);
-            sender.Start();
-            messageEventArgs = null;
-            return sender;
+            _logger = new RecordingLogger();
+            _sender = ObjectMother.QueueManager(TEST_QUEUE_1, logger:_logger);
+            _sender.Start();
         }
 
-        void RecordMessageEvent(object s, MessageEventArgs e)
+        [TearDown]
+        public void Teardown()
         {
-            messageEventArgs = e;
+            _sender.Dispose();
         }
 
         [Test]
         public void MessageQueuedForSend_EventIsRaised()
         {
-            using(var sender = SetupSender())
+            using (var tx = new TransactionScope())
             {
-                sender.MessageQueuedForSend += RecordMessageEvent;
+                _sender.Send(
+                    new Uri("lq.tcp://localhost:23999/h"),
+                    new MessagePayload
+                    {
+                        Data = new byte[] {1, 2, 4, 5}
+                    });
 
-                using (var tx = new TransactionScope())
-                {
-                    sender.Send(
-                        new Uri("lq.tcp://localhost:23999/h"),
-                         new MessagePayload
-                         {
-                             Data = new byte[] { 1, 2, 4, 5 }
-                         });
-
-                    tx.Complete();
-                }
-
-                sender.MessageQueuedForSend -= RecordMessageEvent;
+                tx.Complete();
             }
 
-            messageEventArgs.ShouldNotBeNull();
-            "localhost".ShouldEqual(messageEventArgs.Endpoint.Host);
-            23999.ShouldEqual(messageEventArgs.Endpoint.Port);
-            "h".ShouldEqual(messageEventArgs.Message.Queue);
+            var log = _logger.DebugMessages.OfType<MessageQueuedForSend>().FirstOrDefault();
+
+            log.ShouldNotBeNull();
+            "localhost".ShouldEqual(log.Destination.Host);
+            23999.ShouldEqual(log.Destination.Port);
+            "h".ShouldEqual(log.Message.Queue);
         }
 
         [Test]
         public void MessageQueuedForSend_EventIsRaised_EvenIfTransactionFails()
         {
-            using(var sender = SetupSender())
+            using (new TransactionScope())
             {
-                sender.MessageQueuedForSend += RecordMessageEvent;
-
-                using (new TransactionScope())
-                {
-                    sender.Send(
-                        new Uri("lq.tcp://localhost:23999/h"),
-                        new MessagePayload
-                        {
-                            Data = new byte[] { 1, 2, 4, 5 }
-                        });
-
-                }
-
-                sender.MessageQueuedForSend -= RecordMessageEvent;
+                _sender.Send(
+                    new Uri("lq.tcp://localhost:23999/h"),
+                    new MessagePayload
+                    {
+                        Data = new byte[] {1, 2, 4, 5}
+                    });
             }
 
-            messageEventArgs.ShouldNotBeNull();
-            "localhost".ShouldEqual(messageEventArgs.Endpoint.Host);
-            23999.ShouldEqual(messageEventArgs.Endpoint.Port);
-            "h".ShouldEqual(messageEventArgs.Message.Queue);
+            var log = _logger.DebugMessages.OfType<MessageQueuedForSend>().FirstOrDefault();
+            log.ShouldNotBeNull();
+            "localhost".ShouldEqual(log.Destination.Host);
+            23999.ShouldEqual(log.Destination.Port);
+            "h".ShouldEqual(log.Message.Queue);
         }
 
         [Test]
         public void MessageSent_EventIsRaised()
         {
-            using(var sender = SetupSender())
+            using (var receiver = ObjectMother.QueueManager(TEST_QUEUE_2, 23457))
             {
-                sender.MessageSent += RecordMessageEvent;
+                receiver.Start();
 
-                using (var receiver = ObjectMother.QueueManager(TEST_QUEUE_2, 23457))
+                using (var tx = new TransactionScope())
                 {
-                    receiver.Start();
+                    _sender.Send(
+                        new Uri("lq.tcp://localhost:23457/h"),
+                        new MessagePayload
+                        {
+                            Data = new byte[] {1, 2, 4, 5}
+                        });
 
-                    using (var tx = new TransactionScope())
-                    {
-                        sender.Send(
-                            new Uri("lq.tcp://localhost:23457/h"),
-                            new MessagePayload
-                                {
-                                    Data = new byte[] {1, 2, 4, 5}
-                                });
-
-                        tx.Complete();
-                    }
-                    sender.WaitForAllMessagesToBeSent();
+                    tx.Complete();
                 }
-
-                sender.MessageSent -= RecordMessageEvent;
+                _sender.WaitForAllMessagesToBeSent();
             }
 
-            messageEventArgs.ShouldNotBeNull();
-            "localhost".ShouldEqual(messageEventArgs.Endpoint.Host);
-            23457.ShouldEqual(messageEventArgs.Endpoint.Port);
-            "h".ShouldEqual(messageEventArgs.Message.Queue);
+            var log = _logger.DebugMessages.OfType<MessagesSent>().FirstOrDefault();
+            log.ShouldNotBeNull();
+            "localhost".ShouldEqual(log.Destination.Host);
+            23457.ShouldEqual(log.Destination.Port);
+            "h".ShouldEqual(log.Messages[0].Queue);
         }
 
         [Test]
         public void MessageSent_EventNotRaised_IfNotSent()
         {
-            using (var sender = SetupSender())
+            using (var tx = new TransactionScope())
             {
+                _sender.Send(
+                    new Uri("lq.tcp://localhost:23999/h"),
+                    new MessagePayload
+                    {
+                        Data = new byte[] {1, 2, 4, 5}
+                    });
 
-                sender.MessageSent += RecordMessageEvent;
-
-                using (var tx = new TransactionScope())
-                {
-                    sender.Send(
-                        new Uri("lq.tcp://localhost:23999/h"),
-                        new MessagePayload
-                            {
-                                Data = new byte[] {1, 2, 4, 5}
-                            });
-
-                    tx.Complete();
-                }
-
-                sender.MessageSent -= RecordMessageEvent;
+                tx.Complete();
             }
 
-            messageEventArgs.ShouldBeNull();
+            var log = _logger.DebugMessages.OfType<MessagesSent>().FirstOrDefault();
+            log.ShouldBeNull();
         }
 
         [Test]
         public void MessageSent_EventNotRaised_IfReceiverReverts()
         {
-            using (var sender = SetupSender())
+            using (var receiver = new RevertingQueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2, new QueueManagerConfiguration(), ObjectMother.Logger()))
             {
-                sender.MessageSent += RecordMessageEvent;
+                receiver.CreateQueues("h");
+                receiver.Start();
 
-                using (var receiver = new RevertingQueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2, null, ObjectMother.Logger()))
+                using (var tx = new TransactionScope())
                 {
-                    receiver.CreateQueues("h");
-                    receiver.Start();
+                    _sender.Send(
+                        new Uri("lq.tcp://localhost:23457/h"),
+                        new MessagePayload
+                        {
+                            Data = new byte[] {1, 2, 4, 5}
+                        });
 
-                    using (var tx = new TransactionScope())
-                    {
-                        sender.Send(
-                            new Uri("lq.tcp://localhost:23457/h"),
-                            new MessagePayload
-                                {
-                                    Data = new byte[] {1, 2, 4, 5}
-                                });
-
-                        tx.Complete();
-                    }
-
-                    sender.MessageSent -= RecordMessageEvent;
+                    tx.Complete();
                 }
             }
 
-            messageEventArgs.ShouldBeNull();
+            var log = _logger.DebugMessages.OfType<MessagesSent>().FirstOrDefault();
+            log.ShouldBeNull();
         }
 
         private class RevertingQueueManager : QueueManager
