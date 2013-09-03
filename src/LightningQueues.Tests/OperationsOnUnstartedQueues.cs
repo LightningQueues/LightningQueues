@@ -38,8 +38,7 @@ namespace LightningQueues.Tests
             receiver.CreateQueues("a");
 
             receiver.Start();
-
-            Wait.Until(() => logger.DebugMessages.OfType<MessageQueuedForReceive>().Any()).ShouldBeTrue();
+            sender.WaitForAllMessagesToBeSent();
             
             sender.Dispose();
             receiver.Dispose();

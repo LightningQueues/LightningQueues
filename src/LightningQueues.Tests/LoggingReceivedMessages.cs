@@ -159,6 +159,7 @@ namespace LightningQueues.Tests
 
                 tx.Complete();
             }
+            _sender.WaitForAllMessagesToBeSent();
 
             using (var tx = new TransactionScope())
             {
@@ -171,9 +172,9 @@ namespace LightningQueues.Tests
 
             var messageReceived = _logger.DebugMessages.OfType<MessageReceived>().First();
             "h".ShouldEqual(messageReceived.Message.Queue);
-            messageReceived.Message.SubQueue.ShouldBeNull();
+            messageReceived.Message.SubQueue.ShouldEqual("b");
 
-            var messageQueuedForReceive = _logger.DebugMessages.OfType<MessageQueuedForReceive>().First();
+            var messageQueuedForReceive = _logger.DebugMessages.OfType<MessageQueuedForReceive>().Last();
 
             "h".ShouldEqual(messageQueuedForReceive.Message.Queue);
             "b".ShouldEqual(messageQueuedForReceive.Message.SubQueue);
@@ -205,11 +206,11 @@ namespace LightningQueues.Tests
 
             Wait.Until(() => _logger.DebugMessages.OfType<MessageQueuedForReceive>().Any()).ShouldBeTrue();
 
-            var messageReceived = _logger.DebugMessages.OfType<MessageReceived>().First();
+            var messageReceived = _logger.DebugMessages.OfType<MessageReceived>().Last();
             "h".ShouldEqual(messageReceived.Message.Queue);
-            messageReceived.Message.SubQueue.ShouldBeNull();
+            messageReceived.Message.SubQueue.ShouldEqual("b");
 
-            var messageQueuedForReceive = _logger.DebugMessages.OfType<MessageQueuedForReceive>().First();
+            var messageQueuedForReceive = _logger.DebugMessages.OfType<MessageQueuedForReceive>().Last();
 
             "h".ShouldEqual(messageQueuedForReceive.Message.Queue);
             "b".ShouldEqual(messageQueuedForReceive.Message.SubQueue);

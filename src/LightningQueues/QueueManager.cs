@@ -715,6 +715,7 @@ namespace LightningQueues
                     message.SubQueue
                     );
                 actions.Commit();
+                message.SubQueue = subqueue;
             });
 
             if (((PersistentMessage)message).Status == MessageStatus.ReadyToDeliver)
