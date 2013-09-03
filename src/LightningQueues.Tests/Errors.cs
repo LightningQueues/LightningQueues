@@ -45,34 +45,6 @@ namespace LightningQueues.Tests
 		    2200.ShouldEqual(log.Destination.Port);
 		}
 
-        [Test]
-        [Ignore("Needs to be its own test for sending choke")]
-        public void Will_not_exceed_sending_thresholds()
-        {
-            var wait = new ManualResetEvent(false);
-            int maxNumberOfConnecting = 0;
-            //_sender.FailedToSendMessagesTo += endpoint =>
-            //{
-            //    maxNumberOfConnecting = Math.Max(maxNumberOfConnecting, _sender.SendingThrottle.CurrentlyConnectingCount);
-            //    if(endpoint.Host.Equals("foo50"))
-            //        wait.Set();
-            //};
-			using(var tx = new TransactionScope())
-			{
-                for (int i = 0; i < 200; ++i)
-                {
-                    _sender.Send(new Uri(string.Format("lq.tcp://foo{0}/hello/world", i)), new MessagePayload
-                    {
-                        Data = new byte[] {1}
-                    });
-                }
-			    tx.Complete();
-			}
-
-			wait.WaitOne(TimeSpan.FromSeconds(10));
-            Assert.True(maxNumberOfConnecting < 32);
-        }
-
         [TearDown]
 		public void TearDown()
 		{

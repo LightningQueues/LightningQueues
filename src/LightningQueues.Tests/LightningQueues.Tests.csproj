@@ -88,6 +88,7 @@
     <Compile Include="Protocol\FakeReceiver.cs" />
     <Compile Include="FromUsers\QueueIsAsync.cs" />
     <Compile Include="RaisingSendEvents.cs" />
+    <Compile Include="SendingChokeTester.cs" />
     <Compile Include="SendingToLightningQueue.cs" />
     <Compile Include="StartingLightningQueues.cs" />
     <Compile Include="Storage\CanUseQueue.cs" />

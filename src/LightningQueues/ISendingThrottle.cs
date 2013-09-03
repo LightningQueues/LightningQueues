@@ -7,6 +7,8 @@ namespace LightningQueues
     {
         int CurrentlySendingCount { get; }
         int CurrentlyConnectingCount { get; }
+        int MaxSendingCount { get; }
+        int MaxConnectingCount { get; }
         void AlterSendingCountMaximumTo(int maxSendingCount);
         void AlterConnectingCountMaximumTo(int maxConnectingCount);
     }
@@ -56,6 +58,9 @@ namespace LightningQueues
             }
         }
 
+        public int MaxSendingCount { get { return _maxSendingCount; } }
+        public int MaxConnectingCount { get { return _maxConnectingCount; } }
+
         public void AlterSendingCountMaximumTo(int maxSendingCount)
         {
             Interlocked.Exchange(ref _maxSendingCount, maxSendingCount);
@@ -70,7 +75,7 @@ namespace LightningQueues
         {
             //normal conditions will be at max sending count, when there are several unreliable endpoints 
             //it will grow up to max connecting count attempting to connect, timeouts can take up to 30 seconds
-            if ((_currentlySendingCount - _currentlyConnectingCount <= _maxSendingCount) &&
+            if ((_currentlySendingCount - _currentlyConnectingCount < _maxSendingCount) &&
                 _currentlyConnectingCount <= _maxConnectingCount) return true;
             lock (_sendingLock)
                 Monitor.Wait(_sendingLock, TimeSpan.FromSeconds(1));
