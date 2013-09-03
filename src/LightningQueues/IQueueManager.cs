@@ -35,12 +35,5 @@ namespace LightningQueues
         string[] GetSubqueues(string queueName);
         int GetNumberOfMessages(string queueName);
     	void DisposeRudely();
-
-        event Action<object, MessageEventArgs> MessageQueuedForSend;
-        event Action<object, MessageEventArgs> MessageSent;
-        event Action<object, MessageEventArgs> MessageQueuedForReceive;
-        event Action<object, MessageEventArgs> MessageReceived;
-
-        void OnMessageSent(MessageEventArgs messageEventArgs);
     }
 }

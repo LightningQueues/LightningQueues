@@ -1,9 +1,12 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Transactions;
+using FubuCore.Logging;
 using FubuTestingSupport;
+using LightningQueues.Logging;
 using NUnit.Framework;
 
 namespace LightningQueues.Tests
@@ -15,7 +18,8 @@ namespace LightningQueues.Tests
 
         public void SetupReceivedMessages()
         {
-            sender = ObjectMother.QueueManager();
+            var logger = new RecordingLogger();
+            sender = ObjectMother.QueueManager(logger:logger);
             sender.Start();
 
             using (var tx = new TransactionScope())
@@ -33,15 +37,9 @@ namespace LightningQueues.Tests
             receiver = ObjectMother.QueueManager("test2", 23457);
             receiver.CreateQueues("a");
 
-            var wait = new ManualResetEvent(false);
-            Action<object, MessageEventArgs> handler = (s,e) => wait.Set();
-            receiver.MessageQueuedForReceive += handler;
-            
             receiver.Start();
 
-            wait.WaitOne();
-
-            receiver.MessageQueuedForReceive -= handler;
+            Wait.Until(() => logger.DebugMessages.OfType<MessageQueuedForReceive>().Any()).ShouldBeTrue();
             
             sender.Dispose();
             receiver.Dispose();

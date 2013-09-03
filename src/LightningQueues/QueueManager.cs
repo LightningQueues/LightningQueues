@@ -51,12 +51,6 @@ namespace LightningQueues
 
         public ISendingThrottle SendingThrottle { get { return _choke; } }
 
-        public event Action<object, MessageEventArgs> MessageQueuedForSend;
-
-        public event Action<object, MessageEventArgs> MessageSent;
-        public event Action<object, MessageEventArgs> MessageQueuedForReceive;
-        public event Action<object, MessageEventArgs> MessageReceived;
-
         public QueueManager(IPEndPoint endpoint, string path, QueueManagerConfiguration configuration, ILogger logger)
         {
             Configuration = configuration;
@@ -552,6 +546,7 @@ namespace LightningQueues
 
                 actions.Commit();
             });
+            _logger.DebugMessage(new MessageReceived(message));
             return message;
         }
 
@@ -632,9 +627,9 @@ namespace LightningQueues
                     });
                     _parent._receivedMsgs.Add(_messages.Select(m => m.Id));
 
-                    foreach (var msg in _messages)
+                    foreach (var message in _messages)
                     {
-                        _parent.OnMessageQueuedForReceive(msg);
+                        _parent._logger.DebugMessage(() => new MessageQueuedForReceive(message));
                     }
 
                     lock (_parent._newMessageArrivedLock)
@@ -723,19 +718,9 @@ namespace LightningQueues
             });
 
             if (((PersistentMessage)message).Status == MessageStatus.ReadyToDeliver)
-                OnMessageReceived(message);
-
-            var updatedMessage = new Message
-                                     {
-                                         Id = message.Id,
-                                         Data = message.Data,
-                                         Headers = message.Headers,
-                                         Queue = message.Queue,
-                                         SubQueue = subqueue,
-                                         SentAt = message.SentAt
-                                     };
-
-            OnMessageQueuedForReceive(updatedMessage);
+                _logger.DebugMessage(() => new MessageReceived(message));
+            
+            _logger.DebugMessage(() => new MessageQueuedForReceive(message));
         }
 
         public void EnqueueDirectlyTo(string queue, string subqueue, MessagePayload payload)
@@ -772,7 +757,7 @@ namespace LightningQueues
                 actions.Commit();
             });
 
-            OnMessageQueuedForReceive(message);
+            _logger.DebugMessage(() => new MessageQueuedForReceive(message));
 
             lock (_newMessageArrivedLock)
             {
@@ -819,40 +804,6 @@ namespace LightningQueues
             return numberOfMsgs;
         }
 
-        public void OnMessageQueuedForSend(MessageEventArgs messageEventArgs)
-        {
-            var action = MessageQueuedForSend;
-            if (action != null) action(this, messageEventArgs);
-        }
-
-        public void OnMessageSent(MessageEventArgs messageEventArgs)
-        {
-            var action = MessageSent;
-            if (action != null) action(this, messageEventArgs);
-        }
-
-        private void OnMessageQueuedForReceive(Message message)
-        {
-            OnMessageQueuedForReceive(new MessageEventArgs(null, message));
-        }
-
-        public void OnMessageQueuedForReceive(MessageEventArgs messageEventArgs)
-        {
-            var action = MessageQueuedForReceive;
-            if (action != null) action(this, messageEventArgs);
-        }
-
-        private void OnMessageReceived(Message message)
-        {
-            OnMessageReceived(new MessageEventArgs(null, message));
-        }
-
-        public void OnMessageReceived(MessageEventArgs messageEventArgs)
-        {
-            var action = MessageReceived;
-            if (action != null) action(this, messageEventArgs);
-        }
-
         public Message Receive(ITransaction transaction, string queueName, string subqueue, TimeSpan timeout)
         {
             var remaining = timeout;
@@ -861,7 +812,6 @@ namespace LightningQueues
                 var message = GetMessageFromQueue(transaction, queueName, subqueue);
                 if (message != null)
                 {
-                    OnMessageReceived(message);
                     return message;
                 }
                 lock (_newMessageArrivedLock)
@@ -869,7 +819,6 @@ namespace LightningQueues
                     message = GetMessageFromQueue(transaction, queueName, subqueue);
                     if (message != null)
                     {
-                        OnMessageReceived(message);
                         return message;
                     }
                     var sp = Stopwatch.StartNew();

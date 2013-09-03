@@ -77,7 +77,7 @@
     <Compile Include="Protocol\FakeSender.cs" />
     <Compile Include="Protocol\ProtocolChunkTester.cs" />
     <Compile Include="PurgingQueues.cs" />
-    <Compile Include="RaisingReceivedEvents.cs" />
+    <Compile Include="LoggingReceivedMessages.cs" />
     <Compile Include="Errors.cs" />
     <Compile Include="FromUsers\FromRene.cs" />
     <Compile Include="OperationsOnUnstartedQueues.cs" />
