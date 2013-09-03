@@ -13,15 +13,13 @@ namespace LightningQueues.Internal
     public class QueuedMessagesSender
     {
         private readonly QueueStorage _queueStorage;
-    	private readonly IQueueManager _queueManager;
         private readonly ILogger _logger;
         private readonly SendingChoke _choke;
         private volatile bool _continueSending = true;
 
-        public QueuedMessagesSender(QueueStorage queueStorage, SendingChoke choke, IQueueManager queueManager, ILogger logger)
+        public QueuedMessagesSender(QueueStorage queueStorage, SendingChoke choke, ILogger logger)
         {
         	_queueStorage = queueStorage;
-        	_queueManager = queueManager;
             _logger = logger;
             _choke = choke;
         }
@@ -59,20 +57,23 @@ namespace LightningQueues.Internal
             }
             catch (FailedToConnectException ex)
             {
-                _logger.Info("Failed to connect to {0} because {1}", destination, ex);
-                failedToConnect(destination, messages);
+                _logger.InfoMessage(new FailedToSend(destination, "Failed to connect", ex));
+                failedToConnect(messages);
             }
             catch (QueueDoesNotExistsException)
             {
-                failedToSend(destination, messages, true);
+                _logger.InfoMessage(new FailedToSend(destination, "Queue doesn't exist"));
+                failedToSend(messages, true);
             }
             catch (RevertSendException)
             {
-                revert(destination, sendHistoryBookmarks);
+                _logger.InfoMessage(new FailedToSend(destination, "Revert was received"));
+                revert(sendHistoryBookmarks, messages);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                failedToConnect(destination, messages);
+                _logger.InfoMessage(new FailedToSend(destination, "Exception was thrown", ex));
+                failedToSend(messages);
             }
         }
 
@@ -97,13 +98,13 @@ namespace LightningQueues.Internal
             return messages;
         }
 
-        private void failedToConnect(Endpoint endpoint, IEnumerable<PersistentMessage> messages)
+        private void failedToConnect(IEnumerable<PersistentMessage> messages)
         {
             _choke.FailedToConnect();
-            failedToSend(endpoint, messages);
+            failedToSend(messages);
         }
 
-        private void failedToSend(Endpoint endpoint, IEnumerable<PersistentMessage> messages, bool queueDoesntExist = false)
+        private void failedToSend(IEnumerable<PersistentMessage> messages, bool queueDoesntExist = false)
         {
             try
             {
@@ -115,7 +116,6 @@ namespace LightningQueues.Internal
                     }
 
                     actions.Commit();
-                    _queueManager.FailedToSendTo(endpoint);
                 });
             }
             finally
@@ -124,15 +124,14 @@ namespace LightningQueues.Internal
             }
         }
 
-        private void revert(Endpoint endpoint, MessageBookmark[] sendHistoryBookmarks)
+        private void revert(MessageBookmark[] sendHistoryBookmarks, IEnumerable<PersistentMessage> messages)
         {
-            _logger.Info("Got back revert message from receiver {0}, reverting send", endpoint);
             _queueStorage.Send(actions =>
             {
                 actions.RevertBackToSend(sendHistoryBookmarks);
                 actions.Commit();
             });
-            _queueManager.FailedToSendTo(endpoint);
+            failedToSend(messages);
         }
 
         private MessageBookmark[] success(IEnumerable<PersistentMessage> messages)

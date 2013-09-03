@@ -12,7 +12,6 @@ namespace LightningQueues
         string Path { get; }
         IPEndPoint Endpoint { get; }
         string[] Queues { get; }
-        event Action<Endpoint> FailedToSendMessagesTo;
         ITransactionalScope BeginTransactionalScope();
         void EnableEndpointPortAutoSelection();
         void WaitForAllMessagesToBeSent();
@@ -35,7 +34,6 @@ namespace LightningQueues
         PersistentMessage PeekById(string queueName, MessageId id);
         string[] GetSubqueues(string queueName);
         int GetNumberOfMessages(string queueName);
-        void FailedToSendTo(Endpoint endpointThatWeFailedToSendTo);
     	void DisposeRudely();
 
         event Action<object, MessageEventArgs> MessageQueuedForSend;

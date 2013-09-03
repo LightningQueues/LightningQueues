@@ -69,6 +69,7 @@
     <Compile Include="Exceptions\RevertSendException.cs" />
     <Compile Include="Exceptions\UnexpectedReceivedMessageFormatException.cs" />
     <Compile Include="Internal\ITransaction.cs" />
+    <Compile Include="Logging\FailedToSend.cs" />
     <Compile Include="Model\MessagesForEndpoint.cs" />
     <Compile Include="Internal\QueueTransaction.cs" />
     <Compile Include="ISendingThrottle.cs" />

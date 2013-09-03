@@ -51,8 +51,6 @@ namespace LightningQueues
 
         public ISendingThrottle SendingThrottle { get { return _choke; } }
 
-        public event Action<Endpoint> FailedToSendMessagesTo;
-
         public event Action<object, MessageEventArgs> MessageQueuedForSend;
 
         public event Action<object, MessageEventArgs> MessageSent;
@@ -90,7 +88,7 @@ namespace LightningQueues
             _receiver.Start();
 
             _choke = new SendingChoke();
-            _queuedMessagesSender = new QueuedMessagesSender(_queueStorage, _choke, this, _logger);
+            _queuedMessagesSender = new QueuedMessagesSender(_queueStorage, _choke, _logger);
             _sendingThread = new Thread(_queuedMessagesSender.Send)
             {
                 IsBackground = true,
@@ -819,13 +817,6 @@ namespace LightningQueues
                 actions.Commit();
             });
             return numberOfMsgs;
-        }
-
-        public void FailedToSendTo(Endpoint endpointThatWeFailedToSendTo)
-        {
-            var action = FailedToSendMessagesTo;
-            if (action != null)
-                action(endpointThatWeFailedToSendTo);
         }
 
         public void OnMessageQueuedForSend(MessageEventArgs messageEventArgs)
