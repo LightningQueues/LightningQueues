@@ -168,7 +168,7 @@ namespace LightningQueues.Tests
                 tx.Complete();
             }
 
-            Wait.Until(() => _logger.DebugMessages.OfType<MessageQueuedForReceive>().Any()).ShouldBeTrue();
+            Wait.Until(() => _logger.DebugMessages.OfType<MessageQueuedForReceive>().Count() == 2).ShouldBeTrue();
 
             var messageReceived = _logger.DebugMessages.OfType<MessageReceived>().First();
             "h".ShouldEqual(messageReceived.Message.Queue);

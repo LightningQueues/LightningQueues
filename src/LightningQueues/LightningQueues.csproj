@@ -131,8 +131,6 @@
     <Compile Include="Internal\TransactionEnlistment.cs" />
     <Compile Include="TransactionalScope.cs" />
     <Compile Include="Utils\GuidCombGenerator.cs" />
-    <Compile Include="Utils\MonoHttpEncoder.cs" />
-    <Compile Include="Utils\MonoHttpUtility.cs" />
     <Compile Include="Utils\ThreadSafeSet.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

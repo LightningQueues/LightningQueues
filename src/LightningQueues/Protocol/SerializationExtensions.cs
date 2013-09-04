@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Specialized;
 using System.IO;
+using System.Net;
 using LightningQueues.Model;
 using LightningQueues.Utils;
 
@@ -10,7 +11,7 @@ namespace LightningQueues.Protocol
     {
         public static string ToQueryString(this NameValueCollection qs)
         {
-            return string.Join("&", Array.ConvertAll(qs.AllKeys, key => string.Format("{0}={1}", MonoHttpUtility.UrlEncode(key), MonoHttpUtility.UrlEncode(qs[key]))));
+            return string.Join("&", Array.ConvertAll(qs.AllKeys, key => string.Format("{0}={1}", WebUtility.UrlEncode(key), WebUtility.UrlEncode(qs[key]))));
         }
 
         public static Message[] ToMessages(byte[] buffer)
