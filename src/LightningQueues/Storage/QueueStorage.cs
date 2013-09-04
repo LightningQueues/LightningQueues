@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.ConstrainedExecution;
 using System.Threading;
 using FubuCore.Logging;
+using LightningQueues.Model;
 using Microsoft.Isam.Esent.Interop;
 
 namespace LightningQueues.Storage
@@ -195,30 +198,6 @@ namespace LightningQueues.Storage
 			}
 		}
 
-		public void DisposeRudely()
-		{
-			_usageLock.EnterWriteLock();
-			try
-			{
-				_logger.Debug("Rudely disposing queue storage");
-				try
-				{
-					Api.JetTerm2(_instance, TermGrbit.Abrupt);
-					GC.SuppressFinalize(this);
-				}
-				catch (Exception e)
-				{
-					_logger.Error("Could not dispose of queue storage properly", e);
-					throw;
-				}
-			}
-			finally
-			{
-				_usageLock.ExitWriteLock();
-			}
-		}
-
-
 		~QueueStorage()
 		{
 			try
@@ -283,5 +262,156 @@ namespace LightningQueues.Storage
 					_usageLock.ExitReadLock();
 			}
 		}
+
+	    public IEnumerable<MessageId> PurgeHistory()
+	    {
+            _logger.Info("Starting to purge old data");
+	        var cleanedUpIds = Enumerable.Empty<MessageId>();
+            try
+            {
+                PurgeProcessedMessages();
+                PurgeOutgoingHistory();
+                cleanedUpIds = PurgeOldestReceivedMessageIds();
+            }
+            catch (Exception exception)
+            {
+                _logger.Info("Failed to purge old data from the system {0}", exception);
+            }
+	        return cleanedUpIds;
+	    }
+
+        private void PurgeProcessedMessages()
+        {
+            if (!_configuration.EnableProcessedMessageHistory)
+                return;
+
+            string[] queues = null;
+            Global(actions =>
+            {
+                queues = actions.GetAllQueuesNames();
+            });
+
+            foreach (string queue in queues)
+            {
+                PurgeProcessedMessagesInQueue(queue);
+            }
+        }
+
+        private void PurgeProcessedMessagesInQueue(string queue)
+        {
+            // To make this batchable:
+            // 1: Move to the end of the history (to the newest messages) and seek 
+            //    backword by NumberOfMessagesToKeepInProcessedHistory.
+            // 2: Save a bookmark of the current position.
+            // 3: Delete from the beginning of the table (oldest messages) in batches until 
+            //    a) we reach the bookmark or b) we hit OldestMessageInProcessedHistory.
+            MessageBookmark purgeLimit = null;
+            int numberOfMessagesToKeep = _configuration.NumberOfMessagesToKeepInProcessedHistory;
+            if (numberOfMessagesToKeep > 0)
+            {
+                Global(actions =>
+                {
+                    var queueActions = actions.GetQueue(queue);
+                    purgeLimit = queueActions.GetMessageHistoryBookmarkAtPosition(numberOfMessagesToKeep);
+                    actions.Commit();
+                });
+
+                if (purgeLimit == null)
+                    return;
+            }
+
+            bool foundMessages = false;
+            do
+            {
+                foundMessages = false;
+                Global(actions =>
+                {
+                    var queueActions = actions.GetQueue(queue);
+                    var messages = queueActions.GetAllProcessedMessages(batchSize: 250)
+                        .TakeWhile(x => (purgeLimit == null || !x.Bookmark.Equals(purgeLimit))
+                            && (DateTime.Now - x.SentAt) > _configuration.OldestMessageInProcessedHistory);
+
+                    foreach (var message in messages)
+                    {
+                        foundMessages = true;
+                        _logger.Debug("Purging message {0} from queue {1}/{2}", message.Id, message.Queue, message.SubQueue);
+                        queueActions.DeleteHistoric(message.Bookmark);
+                    }
+
+                    actions.Commit();
+                });
+            } while (foundMessages);
+        }
+
+        private void PurgeOutgoingHistory()
+        {
+            // Outgoing messages are still stored in the history in case the sender 
+            // needs to revert, so there will still be messages to purge even when
+            // the QueueManagerConfiguration has disabled outgoing history.
+            //
+            // To make this batchable:
+            // 1: Move to the end of the history (to the newest messages) and seek 
+            //    backword by NumberOfMessagesToKeepInOutgoingHistory.
+            // 2: Save a bookmark of the current position.
+            // 3: Delete from the beginning of the table (oldest messages) in batches until 
+            //    a) we reach the bookmark or b) we hit OldestMessageInOutgoingHistory.
+
+            MessageBookmark purgeLimit = null;
+            int numberOfMessagesToKeep = _configuration.NumberOfMessagesToKeepInOutgoingHistory;
+            if (numberOfMessagesToKeep > 0 && _configuration.EnableOutgoingMessageHistory)
+            {
+                Global(actions =>
+                {
+                    purgeLimit = actions.GetSentMessageBookmarkAtPosition(numberOfMessagesToKeep);
+                    actions.Commit();
+                });
+
+                if (purgeLimit == null)
+                    return;
+            }
+
+            bool foundMessages = false;
+            do
+            {
+                foundMessages = false;
+                Global(actions =>
+                {
+                    IEnumerable<PersistentMessageToSend> sentMessages = actions.GetSentMessages(batchSize: 250)
+                        .TakeWhile(x => (purgeLimit == null || !x.Bookmark.Equals(purgeLimit))
+                            && (!_configuration.EnableOutgoingMessageHistory || (DateTime.Now - x.SentAt) > _configuration.OldestMessageInOutgoingHistory));
+
+                    foreach (var sentMessage in sentMessages)
+                    {
+                        foundMessages = true;
+                        _logger.Debug("Purging sent message {0} to {1}/{2}/{3}", sentMessage.Id, sentMessage.Endpoint,
+                                           sentMessage.Queue, sentMessage.SubQueue);
+                        actions.DeleteMessageToSendHistoric(sentMessage.Bookmark);
+                    }
+
+                    actions.Commit();
+                });
+            } while (foundMessages);
+        }
+
+        private IEnumerable<MessageId> PurgeOldestReceivedMessageIds()
+        {
+            int totalCount = 0;
+            List<MessageId> totalRemoved = new List<MessageId>();
+            List<MessageId> deletedMessageIds = new List<MessageId>();
+            do
+            {
+                Global(actions =>
+                {
+                    deletedMessageIds = actions.DeleteOldestReceivedMessageIds(_configuration.NumberOfReceivedMessageIdsToKeep, 250)
+                        .ToList();
+                    actions.Commit();
+                    totalRemoved.AddRange(deletedMessageIds);
+                });
+                totalCount += deletedMessageIds.Count;
+            } while (deletedMessageIds.Count > 0);
+
+            _logger.Info("Purged {0} message ids", totalCount);
+            return totalRemoved;
+        }
 	}
 }

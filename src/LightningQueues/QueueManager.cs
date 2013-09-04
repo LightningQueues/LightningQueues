@@ -34,7 +34,6 @@ namespace LightningQueues
         private readonly object _newMessageArrivedLock = new object();
         private readonly string _path;
         private readonly ILogger _logger;
-        private Timer _purgeOldDataTimer;
         private readonly QueueStorage _queueStorage;
 
         private Receiver _receiver;
@@ -64,7 +63,6 @@ namespace LightningQueues
             _queueStorage.Global(actions =>
             {
                 _receivedMsgs.Add(actions.GetAlreadyReceivedMessageIds());
-
                 actions.Commit();
             });
 
@@ -89,153 +87,13 @@ namespace LightningQueues
                 Name = "Lightning Queues Sender Thread for " + _path
             };
             _sendingThread.Start();
-            _purgeOldDataTimer = new Timer(_ => PurgeOldData(), null,
-                                          TimeSpan.FromMinutes(3),
-                                          TimeSpan.FromMinutes(3));
-
             _wasStarted = true;
         }
 
         public void PurgeOldData()
         {
-            _logger.Info("Starting to purge old data");
-            try
-            {
-                PurgeProcessedMessages();
-                PurgeOutgoingHistory();
-                PurgeOldestReceivedMessageIds();
-            }
-            catch (Exception exception)
-            {
-                _logger.Info("Failed to purge old data from the system {0}", exception);
-            }
-        }
-
-        private void PurgeProcessedMessages()
-        {
-            if (!Configuration.EnableProcessedMessageHistory)
-                return;
-
-            foreach (string queue in Queues)
-            {
-                PurgeProcessedMessagesInQueue(queue);
-            }
-        }
-
-        private void PurgeProcessedMessagesInQueue(string queue)
-        {
-            // To make this batchable:
-            // 1: Move to the end of the history (to the newest messages) and seek 
-            //    backword by NumberOfMessagesToKeepInProcessedHistory.
-            // 2: Save a bookmark of the current position.
-            // 3: Delete from the beginning of the table (oldest messages) in batches until 
-            //    a) we reach the bookmark or b) we hit OldestMessageInProcessedHistory.
-            MessageBookmark purgeLimit = null;
-            int numberOfMessagesToKeep = Configuration.NumberOfMessagesToKeepInProcessedHistory;
-            if (numberOfMessagesToKeep > 0)
-            {
-                _queueStorage.Global(actions =>
-                {
-                    var queueActions = actions.GetQueue(queue);
-                    purgeLimit = queueActions.GetMessageHistoryBookmarkAtPosition(numberOfMessagesToKeep);
-                    actions.Commit();
-                });
-
-                if (purgeLimit == null)
-                    return;
-            }
-
-            bool foundMessages = false;
-            do
-            {
-                foundMessages = false;
-                _queueStorage.Global(actions =>
-                {
-                    var queueActions = actions.GetQueue(queue);
-                    var messages = queueActions.GetAllProcessedMessages(batchSize: 250)
-                        .TakeWhile(x => (purgeLimit == null || !x.Bookmark.Equals(purgeLimit))
-                            && (DateTime.Now - x.SentAt) > Configuration.OldestMessageInProcessedHistory);
-
-                    foreach (var message in messages)
-                    {
-                        foundMessages = true;
-                        _logger.Debug("Purging message {0} from queue {1}/{2}", message.Id, message.Queue, message.SubQueue);
-                        queueActions.DeleteHistoric(message.Bookmark);
-                    }
-
-                    actions.Commit();
-                });
-            } while (foundMessages);
-        }
-
-        private void PurgeOutgoingHistory()
-        {
-            // Outgoing messages are still stored in the history in case the sender 
-            // needs to revert, so there will still be messages to purge even when
-            // the QueueManagerConfiguration has disabled outgoing history.
-            //
-            // To make this batchable:
-            // 1: Move to the end of the history (to the newest messages) and seek 
-            //    backword by NumberOfMessagesToKeepInOutgoingHistory.
-            // 2: Save a bookmark of the current position.
-            // 3: Delete from the beginning of the table (oldest messages) in batches until 
-            //    a) we reach the bookmark or b) we hit OldestMessageInOutgoingHistory.
-
-            MessageBookmark purgeLimit = null;
-            int numberOfMessagesToKeep = Configuration.NumberOfMessagesToKeepInOutgoingHistory;
-            if (numberOfMessagesToKeep > 0 && Configuration.EnableOutgoingMessageHistory)
-            {
-                _queueStorage.Global(actions =>
-                {
-                    purgeLimit = actions.GetSentMessageBookmarkAtPosition(numberOfMessagesToKeep);
-                    actions.Commit();
-                });
-
-                if (purgeLimit == null)
-                    return;
-            }
-
-            bool foundMessages = false;
-            do
-            {
-                foundMessages = false;
-                _queueStorage.Global(actions =>
-                {
-                    IEnumerable<PersistentMessageToSend> sentMessages = actions.GetSentMessages(batchSize: 250)
-                        .TakeWhile(x => (purgeLimit == null || !x.Bookmark.Equals(purgeLimit))
-                            && (!Configuration.EnableOutgoingMessageHistory || (DateTime.Now - x.SentAt) > Configuration.OldestMessageInOutgoingHistory));
-
-                    foreach (var sentMessage in sentMessages)
-                    {
-                        foundMessages = true;
-                        _logger.Debug("Purging sent message {0} to {1}/{2}/{3}", sentMessage.Id, sentMessage.Endpoint,
-                                           sentMessage.Queue, sentMessage.SubQueue);
-                        actions.DeleteMessageToSendHistoric(sentMessage.Bookmark);
-                    }
-
-                    actions.Commit();
-                });
-            } while (foundMessages);
-        }
-
-        private void PurgeOldestReceivedMessageIds()
-        {
-            int totalCount = 0;
-            List<MessageId> deletedMessageIds = null;
-            do
-            {
-                _queueStorage.Global(actions =>
-                {
-                    deletedMessageIds = actions.DeleteOldestReceivedMessageIds(
-                        Configuration.NumberOfReceivedMessageIdsToKeep, numberOfItemsToDelete: 250)
-                        .ToList();
-                    actions.Commit();
-                });
-                _receivedMsgs.Remove(deletedMessageIds);
-                totalCount += deletedMessageIds.Count;
-            } while (deletedMessageIds.Count > 0);
-
-            _logger.Info("Purged {0} message ids", totalCount);
+            var receivedIdsPurged = _queueStorage.PurgeHistory();
+            _receivedMsgs.Remove(receivedIdsPurged);
         }
 
         private void HandleRecovery()
@@ -280,8 +138,6 @@ namespace LightningQueues
             get { return _endpoint; }
         }
 
-        #region IDisposable Members
-
         public void Dispose()
         {
             if (_wasDisposed)
@@ -290,20 +146,6 @@ namespace LightningQueues
             DisposeResourcesWhoseDisposalCannotFail();
 
             _queueStorage.Dispose();
-
-            // only after we finish incoming recieves, and finish processing
-            // active transactions can we mark it as disposed
-            _wasDisposed = true;
-        }
-
-        public void DisposeRudely()
-        {
-            if (_wasDisposed)
-                return;
-
-            DisposeResourcesWhoseDisposalCannotFail();
-
-            _queueStorage.DisposeRudely();
 
             // only after we finish incoming recieves, and finish processing
             // active transactions can we mark it as disposed
@@ -321,8 +163,6 @@ namespace LightningQueues
 
             if (_wasStarted)
             {
-                _purgeOldDataTimer.Dispose();
-
                 _queuedMessagesSender.Stop();
                 _sendingThread.Join();
 
@@ -341,8 +181,6 @@ namespace LightningQueues
                 Thread.Sleep(TimeSpan.FromSeconds(1));
             }
         }
-
-        #endregion
 
         private void OnTransactionComplete()
         {

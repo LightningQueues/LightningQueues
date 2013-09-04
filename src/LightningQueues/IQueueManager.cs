@@ -2,7 +2,6 @@ using System;
 using System.Net;
 using LightningQueues.Internal;
 using LightningQueues.Model;
-using LightningQueues.Protocol;
 
 namespace LightningQueues
 {
@@ -34,6 +33,5 @@ namespace LightningQueues
         PersistentMessage PeekById(string queueName, MessageId id);
         string[] GetSubqueues(string queueName);
         int GetNumberOfMessages(string queueName);
-    	void DisposeRudely();
     }
 }
