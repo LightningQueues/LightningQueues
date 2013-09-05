@@ -20,11 +20,7 @@ namespace LightningQueues.Tests.Storage
             {
                 qf.Initialize();
 
-                qf.Global(actions =>
-                {
-                    actions.CreateQueueIfDoesNotExists("test");
-                    actions.Commit();
-                });
+                qf.Global(actions => actions.CreateQueueIfDoesNotExists("test"));
 
                 var testMessage = new MessagePayload{
                     Data = new byte[0],
@@ -39,14 +35,12 @@ namespace LightningQueues.Tests.Storage
                     Guid transactionId = Guid.NewGuid();
                     messageId = actions.RegisterToSend(new Endpoint("localhost", 0), "test", null, testMessage, transactionId);
                     actions.MarkAsReadyToSend(transactionId);
-                    actions.Commit();
                 });
 
                 qf.Send(actions =>
                 {
                     var msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue);
                     msgs.ShouldBeNull();
-                    actions.Commit();
                 });
 
                 qf.Global(actions =>
@@ -54,7 +48,6 @@ namespace LightningQueues.Tests.Storage
                     var message = actions.GetSentMessages().FirstOrDefault(x => x.Id.MessageIdentifier == messageId);
                     message.ShouldNotBeNull();
                     OutgoingMessageStatus.Failed.ShouldEqual(message.OutgoingStatus);
-                    actions.Commit();
                 });
             }
         }
@@ -66,11 +59,7 @@ namespace LightningQueues.Tests.Storage
             using (var qf = new QueueStorage("test.esent", new QueueManagerConfiguration(), ObjectMother.Logger()))
             {
                 qf.Initialize();
-                qf.Global(actions =>
-                {
-                    actions.CreateQueueIfDoesNotExists("test");
-                    actions.Commit();
-                });
+                qf.Global(actions => actions.CreateQueueIfDoesNotExists("test"));
 
                 var testMessage = new MessagePayload
                 {
@@ -90,7 +79,6 @@ namespace LightningQueues.Tests.Storage
                         testMessage,
                         transactionId);
                     actions.MarkAsReadyToSend(transactionId);
-                    actions.Commit();
                 });
 
                 qf.Send(actions =>
@@ -100,7 +88,6 @@ namespace LightningQueues.Tests.Storage
                     
                     msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue);
                     msgs.ShouldBeNull();
-                    actions.Commit();
                 });
 
                 qf.Global(actions =>
@@ -108,7 +95,6 @@ namespace LightningQueues.Tests.Storage
                     PersistentMessageToSend message = actions.GetSentMessages().FirstOrDefault(x => x.Id.MessageIdentifier == messageId);
                     message.ShouldNotBeNull();
                     OutgoingMessageStatus.Failed.ShouldEqual(message.OutgoingStatus);
-                    actions.Commit();
                 });
             }
         }

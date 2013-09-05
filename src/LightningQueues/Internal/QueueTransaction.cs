@@ -32,7 +32,6 @@ namespace LightningQueues.Internal
                 {
                     actions.ReverseAllFrom(Id);
                     actions.DeleteMessageToSend(Id);
-                    actions.Commit();
                 });
                 _logger.Debug("Rolledback transaction with id: {0}", Id);
             }
@@ -73,7 +72,6 @@ namespace LightningQueues.Internal
                 actions.RemoveReversalsMoveCompletedMessagesAndFinishSubQueueMove(Id);
                 actions.MarkAsReadyToSend(Id);
                 actions.DeleteRecoveryInformation(Id);
-                actions.Commit();
             });
             _logger.Debug("Commited transaction with id: {0}", Id); 
         }

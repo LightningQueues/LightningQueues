@@ -227,33 +227,55 @@ namespace LightningQueues.Storage
 
 		public void Global(Action<GlobalActions> action)
 		{
-			var shouldTakeLock = _usageLock.IsReadLockHeld == false;
-			try
-			{
-				if (shouldTakeLock)
-					_usageLock.EnterReadLock();
-				using (var qa = new GlobalActions(_instance, _columnsInformation, _database, Id, _configuration, _logger))
-				{
-					action(qa);
-				}
-			}
-			finally 
-			{
-				if(shouldTakeLock)
-					_usageLock.ExitReadLock();
-			}
+	        ScopedAction(GetGlobal, action);
 		}
 
-		public void Send(Action<SenderActions> action)
-		{
+	    public T Global<T>(Func<GlobalActions, T> selector)
+	    {
+	        return ScopedActions(GetGlobal, selector);
+	    }
+
+	    public void Send(Action<SenderActions> action)
+	    {
+	        ScopedAction(GetSender, action);
+	    }
+
+	    private void ScopedAction<T>(Func<T> constructor, Action<T> action) where T : AbstractActions
+	    {
+	        ScopedActions(constructor, x =>
+	        {
+	            action(x);
+	            return true;
+	        });
+	    }
+
+	    public T Send<T>(Func<SenderActions, T> selector)
+	    {
+	        return ScopedActions(GetSender, selector);
+	    }
+
+	    private SenderActions GetSender()
+	    {
+	        return new SenderActions(_instance, _columnsInformation, _database, Id, _configuration, _logger);
+	    }
+
+	    private GlobalActions GetGlobal()
+	    {
+	        return new GlobalActions(_instance, _columnsInformation, _database, Id, _configuration, _logger);
+	    }
+
+	    private TResult ScopedActions<T,TResult>(Func<T> constructor, Func<T, TResult> selector) where T : AbstractActions
+	    {
 			var shouldTakeLock = _usageLock.IsReadLockHeld == false;
 			try
 			{
 				if (shouldTakeLock)
 					_usageLock.EnterReadLock();
-				using (var qa = new SenderActions(_instance, _columnsInformation, _database, Id, _configuration, _logger))
+				using (var qa = constructor())
 				{
-					action(qa);
+					var result = selector(qa);
+                    qa.Commit();
+				    return result;
 				}
 			}
 			finally
@@ -261,7 +283,8 @@ namespace LightningQueues.Storage
 				if (shouldTakeLock)
 					_usageLock.ExitReadLock();
 			}
-		}
+	        
+	    }
 
 	    public IEnumerable<MessageId> PurgeHistory()
 	    {

@@ -36,7 +36,6 @@ namespace LightningQueues.Internal
 			_queueStorage.Global(actions =>
 			{
 				actions.RegisterRecoveryInformation(Id, information);
-				actions.Commit();
 			});
 			preparingEnlistment.Prepared();
 			_logger.Debug("Prepared enlistment with id: {0}", Id);

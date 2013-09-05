@@ -35,19 +35,9 @@ namespace LightningQueues.Tests.Storage
 				qf.Initialize();
 
 					var random = MessageId.GenerateRandom();
-				qf.Global(actions =>
-				{
-					actions.MarkReceived(random);
+				qf.Global(actions => actions.MarkReceived(random));
 
-					actions.Commit();
-				});
-
-				qf.Global(actions =>
-				{
-					actions.GetAlreadyReceivedMessageIds().Contains(random).ShouldBeTrue();
-
-					actions.Commit();
-				});
+				qf.Global(actions => actions.GetAlreadyReceivedMessageIds().Contains(random).ShouldBeTrue());
 			}
 		}
 
@@ -72,16 +62,12 @@ namespace LightningQueues.Tests.Storage
 					{
 						actions.MarkReceived(MessageId.GenerateRandom());
 					}
-
-					actions.Commit();
 				});
 
 				
 				qf.Global(actions =>
 				{
 					actions.DeleteOldestReceivedMessageIds(6, 10).ToArray();//consume & activate
-
-					actions.Commit();
 				});
 
 				qf.Global(actions =>
@@ -89,8 +75,6 @@ namespace LightningQueues.Tests.Storage
 					var array = actions.GetAlreadyReceivedMessageIds().ToArray();
 					6.ShouldEqual(array.Length);
 					random.ShouldEqual(array[0]);
-
-					actions.Commit();
 				});
 			}
 		}
@@ -110,16 +94,12 @@ namespace LightningQueues.Tests.Storage
 						actions.MarkReceived(MessageId.GenerateRandom());
 					}
 					actions.MarkReceived(random);
-
-					actions.Commit();
 				});
 
 
 				qf.Global(actions =>
 				{
 					actions.DeleteOldestReceivedMessageIds(10, 10).ToArray();//consume & activate
-
-					actions.Commit();
 				});
 
 				qf.Global(actions =>
@@ -127,8 +107,6 @@ namespace LightningQueues.Tests.Storage
 					var array = actions.GetAlreadyReceivedMessageIds().ToArray();
 					6.ShouldEqual(array.Length);
 					random.ShouldEqual(array[5]);
-
-					actions.Commit();
 				});
 
 
@@ -142,11 +120,7 @@ namespace LightningQueues.Tests.Storage
             {
                 qf.Initialize();
 
-                qf.Global(actions =>
-                {
-                    actions.CreateQueueIfDoesNotExists("h");
-                    actions.Commit();
-                });
+                qf.Global(actions => actions.CreateQueueIfDoesNotExists("h"));
 
                 MessageBookmark bookmark = null;
                 var guid = Guid.NewGuid();
@@ -160,13 +134,11 @@ namespace LightningQueues.Tests.Storage
                         SentAt = new DateTime(2004, 5, 5),
                         Id = new MessageId { SourceInstanceId = guid, MessageIdentifier = identifier }
                     });
-                    actions.Commit();
                 });
 
                 qf.Global(actions =>
                 {
                     actions.GetQueue("h").SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
-                    actions.Commit();
                 });
 
                 qf.Global(actions =>
@@ -178,7 +150,6 @@ namespace LightningQueues.Tests.Storage
                     guid.ShouldEqual(message.Id.SourceInstanceId);
                     "h".ShouldEqual(message.Queue);
                     new DateTime(2004, 5, 5).ShouldEqual(message.SentAt);
-                    actions.Commit();
                 });
             }
         }
@@ -190,11 +161,7 @@ namespace LightningQueues.Tests.Storage
             {
                 qf.Initialize();
 
-                qf.Global(actions =>
-                {
-                    actions.CreateQueueIfDoesNotExists("h");
-                    actions.Commit();
-                });
+                qf.Global(actions => actions.CreateQueueIfDoesNotExists("h"));
 
                 qf.Global(actions =>
                 {
@@ -226,8 +193,6 @@ namespace LightningQueues.Tests.Storage
                     });
 
                     queue.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
-
-                    actions.Commit();
                 });
 
                 qf.Global(actions =>
@@ -239,8 +204,6 @@ namespace LightningQueues.Tests.Storage
                     new byte[] { 1 }.ShouldEqual(m1.Data);
                     new byte[] { 2 }.ShouldEqual(m2.Data);
                     new byte[] { 3 }.ShouldEqual(m3.Data);
-
-                    actions.Commit();
                 });
             }
         }
@@ -252,11 +215,7 @@ namespace LightningQueues.Tests.Storage
             {
                 qf.Initialize();
 
-                qf.Global(actions =>
-                {
-                    actions.CreateQueueIfDoesNotExists("h");
-                    actions.Commit();
-                });
+                qf.Global(actions => actions.CreateQueueIfDoesNotExists("h"));
 
                 qf.Global(actions =>
                 {
@@ -276,8 +235,6 @@ namespace LightningQueues.Tests.Storage
                         Data = new byte[] { 2 },
                     });
                     queue.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
-
-                    actions.Commit();
                 });
 
                 qf.Global(actions =>
@@ -289,12 +246,9 @@ namespace LightningQueues.Tests.Storage
                         var m2 = queuesActions.GetQueue("h").Dequeue(null);
                         
                         new byte[] { 2 }.ShouldEqual(m2.Data);
-
-                        queuesActions.Commit();
                     });
 
                    new byte[] { 1 }.ShouldEqual(m1.Data);
-                   actions.Commit();
                 });
             }
         }
@@ -306,17 +260,12 @@ namespace LightningQueues.Tests.Storage
             {
                 qf.Initialize();
                
-                qf.Global(actions =>
-                {
-                    actions.CreateQueueIfDoesNotExists("h");
-                    actions.Commit();
-                });
+                qf.Global(actions => actions.CreateQueueIfDoesNotExists("h"));
 
                 qf.Global(actions =>
                 {
                     var message = actions.GetQueue("h").Dequeue(null);
                     message.ShouldBeNull();
-                    actions.Commit();
                 });
             }
         }

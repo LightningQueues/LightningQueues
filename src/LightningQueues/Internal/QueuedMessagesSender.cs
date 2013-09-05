@@ -93,7 +93,6 @@ namespace LightningQueues.Internal
             _queueStorage.Send(actions =>
             {
                 messages = actions.GetMessagesToSendAndMarkThemAsInFlight(100, 1024 * 1024);
-                actions.Commit();
             });
             return messages;
         }
@@ -115,7 +114,6 @@ namespace LightningQueues.Internal
                         actions.MarkOutgoingMessageAsFailedTransmission(message.Bookmark, queueDoesntExist);
                     }
 
-                    actions.Commit();
                 });
             }
             finally
@@ -129,7 +127,6 @@ namespace LightningQueues.Internal
             _queueStorage.Send(actions =>
             {
                 actions.RevertBackToSend(sendHistoryBookmarks);
-                actions.Commit();
             });
             failedToSend(messages);
         }
@@ -143,7 +140,6 @@ namespace LightningQueues.Internal
                 {
                     var result = messages.Select(message => actions.MarkOutgoingMessageAsSuccessfullySent(message.Bookmark));
                     newBookmarks.AddRange(result);
-                    actions.Commit();
                 });
                 return newBookmarks.ToArray();
             }

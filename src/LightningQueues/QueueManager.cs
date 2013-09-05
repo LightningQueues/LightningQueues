@@ -63,7 +63,6 @@ namespace LightningQueues
             _queueStorage.Global(actions =>
             {
                 _receivedMsgs.Add(actions.GetAlreadyReceivedMessageIds());
-                actions.Commit();
             });
 
             HandleRecovery();
@@ -109,7 +108,6 @@ namespace LightningQueues
                     TransactionManager.Reenlist(_queueStorage.Id, bytes,
                         new TransactionEnlistment(_logger, _queueStorage, () => { }, () => { }));
                 }
-                actions.Commit();
             });
             if (recoveryRequired)
                 TransactionManager.RecoveryComplete(_queueStorage.Id);
@@ -209,14 +207,10 @@ namespace LightningQueues
             _waitingForAllMessagesToBeSent = true;
             try
             {
-                var hasMessagesToSend = true;
+                bool hasMessagesToSend;
                 do
                 {
-                    _queueStorage.Send(actions =>
-                    {
-                        hasMessagesToSend = actions.HasMessagesToSend();
-                        actions.Commit();
-                    });
+                    hasMessagesToSend = _queueStorage.Send(actions => actions.HasMessagesToSend());
                     if (hasMessagesToSend)
                         Thread.Sleep(100);
                 } while (hasMessagesToSend);
@@ -235,51 +229,25 @@ namespace LightningQueues
         public PersistentMessage[] GetAllMessages(string queueName, string subqueue)
         {
             AssertNotDisposedOrDisposing();
-            PersistentMessage[] messages = null;
-            _queueStorage.Global(actions =>
-            {
-                messages = actions.GetQueue(queueName).GetAllMessages(subqueue).ToArray();
-                actions.Commit();
-            });
-            return messages;
+            return _queueStorage.Global(actions => actions.GetQueue(queueName).GetAllMessages(subqueue).ToArray());
         }
 
         public HistoryMessage[] GetAllProcessedMessages(string queueName)
         {
             AssertNotDisposedOrDisposing();
-            HistoryMessage[] messages = null;
-            _queueStorage.Global(actions =>
-            {
-                messages = actions.GetQueue(queueName).GetAllProcessedMessages().ToArray();
-                actions.Commit();
-            });
-            return messages;
+            return _queueStorage.Global(actions => actions.GetQueue(queueName).GetAllProcessedMessages().ToArray());
         }
 
         public PersistentMessageToSend[] GetAllSentMessages()
         {
             AssertNotDisposedOrDisposing();
-            PersistentMessageToSend[] msgs = null;
-            _queueStorage.Global(actions =>
-            {
-                msgs = actions.GetSentMessages().ToArray();
-
-                actions.Commit();
-            });
-            return msgs;
+            return _queueStorage.Global(actions => actions.GetSentMessages().ToArray());
         }
 
         public PersistentMessageToSend[] GetMessagesCurrentlySending()
         {
             AssertNotDisposedOrDisposing();
-            PersistentMessageToSend[] msgs = null;
-            _queueStorage.Send(actions =>
-            {
-                msgs = actions.GetMessagesToSend().ToArray();
-
-                actions.Commit();
-            });
-            return msgs;
+            return _queueStorage.Send(actions => actions.GetMessagesToSend().ToArray());
         }
 
         public Message Peek(string queueName, string subqueue, TimeSpan timeout)
@@ -300,14 +268,9 @@ namespace LightningQueues
                     var sp = Stopwatch.StartNew();
                     if (Monitor.Wait(_newMessageArrivedLock, remaining) == false)
                         throw new TimeoutException("No message arrived in the specified timeframe " + timeout);
-                    remaining = Max(TimeSpan.Zero, remaining - sp.Elapsed);
+                    remaining = (new[] {TimeSpan.Zero, remaining - sp.Elapsed}).Max();
                 }
             }
-        }
-
-        private static TimeSpan Max(TimeSpan x, TimeSpan y)
-        {
-            return x >= y ? x : y;
         }
 
         public Message Receive(string queueName, string subqueue, TimeSpan timeout)
@@ -326,16 +289,15 @@ namespace LightningQueues
 
         public Message ReceiveById(ITransaction transaction, string queueName, MessageId id)
         {
-            PersistentMessage message = null;
-            _queueStorage.Global(actions =>
+            var message = _queueStorage.Global(actions =>
             {
                 var queue = actions.GetQueue(queueName);
 
-                message = queue.PeekById(id);
-                queue.SetMessageStatus(message.Bookmark, MessageStatus.Processing);
-                actions.RegisterUpdateToReverse(transaction.Id, message.Bookmark, MessageStatus.ReadyToDeliver, null);
+                var msg = queue.PeekById(id);
+                queue.SetMessageStatus(msg.Bookmark, MessageStatus.Processing);
+                actions.RegisterUpdateToReverse(transaction.Id, msg.Bookmark, MessageStatus.ReadyToDeliver, null);
 
-                actions.Commit();
+                return msg;
             });
             return message;
         }
@@ -368,21 +330,19 @@ namespace LightningQueues
         private PersistentMessage GetMessageFromQueue(ITransaction transaction, string queueName, string subqueue)
         {
             AssertNotDisposedOrDisposing();
-            PersistentMessage message = null;
-            _queueStorage.Global(actions =>
+            var message = _queueStorage.Global(actions =>
             {
-                message = actions.GetQueue(queueName).Dequeue(subqueue);
+                var msg = actions.GetQueue(queueName).Dequeue(subqueue);
 
-                if (message != null)
+                if (msg != null)
                 {
                     actions.RegisterUpdateToReverse(
                         transaction.Id,
-                        message.Bookmark,
+                        msg.Bookmark,
                         MessageStatus.ReadyToDeliver,
                         subqueue);
                 }
-
-                actions.Commit();
+                return msg;
             });
             _logger.DebugMessage(new MessageReceived(message));
             return message;
@@ -391,13 +351,7 @@ namespace LightningQueues
         private PersistentMessage PeekMessageFromQueue(string queueName, string subqueue)
         {
             AssertNotDisposedOrDisposing();
-            PersistentMessage message = null;
-            _queueStorage.Global(actions =>
-            {
-                message = actions.GetQueue(queueName).Peek(subqueue);
-
-                actions.Commit();
-            });
+            var message = _queueStorage.Global(actions => actions.GetQueue(queueName).Peek(subqueue));
             if (message != null)
             {
                 _logger.Debug("Peeked message with id '{0}' from '{1}/{2}'",
@@ -408,18 +362,17 @@ namespace LightningQueues
 
         protected virtual IMessageAcceptance AcceptMessages(Message[] msgs)
         {
-            var bookmarks = new List<MessageBookmark>();
-            _queueStorage.Global(actions =>
-            {
-                foreach (var msg in _receivedMsgs.Filter(msgs, message => message.Id))
-                {
-                    var queue = actions.GetQueue(msg.Queue);
-                    var bookmark = queue.Enqueue(msg);
-                    bookmarks.Add(bookmark);
-                }
-                actions.Commit();
-            });
+            var bookmarks = _queueStorage.Global(actions => _receivedMsgs.Filter(msgs, message => message.Id)
+                .Select(x => acceptedBookmarks(actions, x))
+                .ToList());
             return new MessageAcceptance(this, bookmarks, msgs, _queueStorage);
+        }
+
+        private MessageBookmark acceptedBookmarks(GlobalActions actions, Message message)
+        {
+            var queue = actions.GetQueue(message.Queue);
+            var bookmark = queue.Enqueue(message);
+            return bookmark;
         }
 
         #region Nested type: MessageAcceptance
@@ -452,23 +405,14 @@ namespace LightningQueues
                     _parent.AssertNotDisposed();
                     _queueStorage.Global(actions =>
                     {
-                        foreach (var bookmark in _bookmarks)
-                        {
-                            actions.GetQueue(bookmark.QueueName)
-                                .SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
-                        }
-                        foreach (var msg in _messages)
-                        {
-                            actions.MarkReceived(msg.Id);
-                        }
-                        actions.Commit();
+                        _bookmarks.Select(bookmark => new {Queue = actions.GetQueue(bookmark.QueueName), bookmark})
+                            .Each(x => x.Queue.SetMessageStatus(x.bookmark, MessageStatus.ReadyToDeliver));
+
+                        _messages.Each(x => actions.MarkReceived(x.Id));
                     });
                     _parent._receivedMsgs.Add(_messages.Select(m => m.Id));
 
-                    foreach (var message in _messages)
-                    {
-                        _parent._logger.DebugMessage(() => new MessageQueuedForReceive(message));
-                    }
+                    _messages.Each(x => _parent._logger.DebugMessage(() => new MessageQueuedForReceive(x)));
 
                     lock (_parent._newMessageArrivedLock)
                     {
@@ -478,7 +422,6 @@ namespace LightningQueues
                 finally
                 {
                     Interlocked.Decrement(ref _parent._currentlyInCriticalReceiveStatus);
-
                 }
             }
 
@@ -494,7 +437,6 @@ namespace LightningQueues
                             actions.GetQueue(bookmark.QueueName)
                                 .Discard(bookmark);
                         }
-                        actions.Commit();
                     });
                 }
                 finally
@@ -519,7 +461,6 @@ namespace LightningQueues
                     actions.CreateQueueIfDoesNotExists(queueName);
                 }
 
-                actions.Commit();
             });
         }
 
@@ -533,7 +474,6 @@ namespace LightningQueues
                 {
                     queues = actions.GetAllQueuesNames();
 
-                    actions.Commit();
                 });
                 return queues;
             }
@@ -552,7 +492,6 @@ namespace LightningQueues
                     bookmark, MessageStatus.ReadyToDeliver,
                     message.SubQueue
                     );
-                actions.Commit();
                 message.SubQueue = subqueue;
             });
 
@@ -593,7 +532,6 @@ namespace LightningQueues
                 var bookmark = queueActions.Enqueue(message);
                 actions.RegisterUpdateToReverse(transaction.Id, bookmark, MessageStatus.EnqueueWait, subqueue);
 
-                actions.Commit();
             });
 
             _logger.DebugMessage(() => new MessageQueuedForReceive(message));
@@ -613,7 +551,6 @@ namespace LightningQueues
 
                 message = queue.PeekById(id);
 
-                actions.Commit();
             });
             return message;
         }
@@ -627,7 +564,6 @@ namespace LightningQueues
 
                 result = queue.Subqueues;
 
-                actions.Commit();
             });
             return result;
         }
@@ -638,7 +574,6 @@ namespace LightningQueues
             _queueStorage.Global(actions =>
             {
                 numberOfMsgs = actions.GetNumberOfMessages(queueName);
-                actions.Commit();
             });
             return numberOfMsgs;
         }
@@ -694,7 +629,6 @@ namespace LightningQueues
                 msgId = actions.RegisterToSend(destination, queue,
                                                subqueue, payload, transaction.Id);
 
-                actions.Commit();
             });
 
             var messageId = new MessageId

@@ -24,11 +24,7 @@ namespace LightningQueues.Tests.Storage
             using (var qf = new QueueStorage("test.esent", new QueueManagerConfiguration(), ObjectMother.Logger()))
             {
                 qf.Initialize();
-                qf.Global(actions =>
-                {
-                    actions.CreateQueueIfDoesNotExists("test");
-                    actions.Commit();
-                });
+                qf.Global(actions => actions.CreateQueueIfDoesNotExists("test"));
 
                 var testMessage = new MessagePayload
                 {
@@ -45,7 +41,6 @@ namespace LightningQueues.Tests.Storage
                         testMessage,
                         transactionId);
                     actions.MarkAsReadyToSend(transactionId);
-                    actions.Commit();
                 });
 
                 qf.Send(actions =>
@@ -57,14 +52,12 @@ namespace LightningQueues.Tests.Storage
                     msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue);
                     msgs.ShouldNotBeNull();
                     msgs.Messages.ShouldHaveCount(1);
-                    actions.Commit();
                 });
 
                 qf.Global(actions =>
                 {
                     var messages = actions.GetSentMessages();
                     messages.ShouldHaveCount(0);
-                    actions.Commit();
                 });
             }
         }
