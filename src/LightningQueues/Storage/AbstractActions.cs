@@ -180,5 +180,5 @@ namespace LightningQueues.Storage
         {
             transaction.Commit(CommitTransactionGrbit.None);
         }
-    }
+   }
 }
