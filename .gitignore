@@ -8,6 +8,7 @@ artifacts/
 logs/
 [Bb]in/
 [Oo]bj/
+*DotSettings*
 *.suo
 *.sln.cache
 _ReSharper.*/
