@@ -102,6 +102,14 @@ namespace LightningQueues.Tests
             "hello".ShouldEqual(Encoding.Unicode.GetString(message.Data));
         }
 
+        [Test]
+        public void calling_receive_by_id_should_return_null_if_not_found()
+        {
+            var receivingScope = queueManager.BeginTransactionalScope();
+            var message = receivingScope.ReceiveById("h", MessageId.GenerateRandom());
+            message.ShouldBeNull();
+        }
+
         [TearDown]
         public void Teardown()
         {

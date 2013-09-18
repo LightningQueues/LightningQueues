@@ -294,6 +294,8 @@ namespace LightningQueues
                 var queue = actions.GetQueue(queueName);
 
                 var msg = queue.PeekById(id);
+                if (msg == null)
+                    return null;
                 queue.SetMessageStatus(msg.Bookmark, MessageStatus.Processing);
                 actions.RegisterUpdateToReverse(transaction.Id, msg.Bookmark, MessageStatus.ReadyToDeliver, null);
 
