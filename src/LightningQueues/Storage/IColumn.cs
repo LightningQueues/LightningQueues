@@ -29,6 +29,14 @@ namespace LightningQueues.Storage
         {
             return DateTime.FromOADate(Api.RetrieveColumnAsDouble(Session, Table, Columns[columnName]).Value);
         }
+
+        public DateTime? GetOrDefault(string columnName)
+        {
+            var value = Api.RetrieveColumnAsDouble(Session, Table, Columns[columnName]);
+            if (value == null)
+                return null;
+            return DateTime.FromOADate(value.Value);
+        }
     }
 
     public abstract class ColumnBase : IColumn
@@ -71,9 +79,31 @@ namespace LightningQueues.Storage
             Api.SetColumn(Session, Table, Columns[columnName], value);
         }
 
+        public void InterlockedIncrement(string columnName, int increment)
+        {
+            var bytes = BitConverter.GetBytes(increment);
+            int actual;
+            Api.JetEscrowUpdate(Session, Table, Columns[columnName], bytes, bytes.Length, null, 0, out actual, EscrowUpdateGrbit.None);
+        }
+
+        public int InterlockedRead(string columnName)
+        {
+    		var bytes = new byte[4];
+    		var zero = BitConverter.GetBytes(0);
+    		int actual;
+    		Api.JetEscrowUpdate(Session, Table, Columns[columnName],
+    		                    zero, zero.Length, bytes, bytes.Length, out actual, EscrowUpdateGrbit.None);
+    		return BitConverter.ToInt32(bytes, 0);
+        }
+
         public int Get(string columnName)
         {
             return Api.RetrieveColumnAsInt32(Session, Table, Columns[columnName]).Value;
+        }
+
+        public int? GetOrDefault(string columnName)
+        {
+            return Api.RetrieveColumnAsInt32(Session, Table, Columns[columnName]);
         }
     }
 

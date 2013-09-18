@@ -22,11 +22,11 @@ namespace LightningQueues.Storage
 
         public IEnumerable<string> ColumnNames {get { return _columns.Keys; }} 
 
-        public IEnumerator<MessageBookmark> GetEnumerator(IEsentIndex index)
+        public IEnumerator<MessageBookmark> GetEnumerator(IEsentIndex index, bool reverse = false)
         {
             index.Session = _session;
             index.Table = _table;
-            return new EsentEnumerator(_session, _table, index);
+            return new EsentEnumerator(_session, _table, index, reverse);
         }
 
         public IEnumerator<MessageBookmark> GetEnumerator()

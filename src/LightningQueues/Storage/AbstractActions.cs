@@ -14,15 +14,15 @@ namespace LightningQueues.Storage
         protected readonly Guid instanceId;
 		protected readonly ColumnsInformation ColumnsInformation;
     	protected JET_DBID dbid;
-        protected Table queues;
-		protected Table subqueues;
-        protected Table recovery;
+        protected EsentTable queues;
+		protected EsentTable subqueues;
+        protected EsentTable recovery;
 		protected Session session;
         protected Transaction transaction;
-        protected Table txs;
-        protected Table outgoing;
-        protected Table outgoingHistory;
-		protected Table recveivedMsgs;
+        protected EsentTable txs;
+        protected EsentTable outgoing;
+        protected EsentTable outgoingHistory;
+		protected EsentTable recveivedMsgs;
 
         protected readonly Dictionary<string, QueueActions> queuesByName = new Dictionary<string, QueueActions>();
 
@@ -38,13 +38,13 @@ namespace LightningQueues.Storage
 				transaction = new Transaction(session);
 				Api.JetOpenDatabase(session, database, null, out dbid, OpenDatabaseGrbit.None);
 
-				queues = new Table(session, dbid, "queues", OpenTableGrbit.None);
-				subqueues = new Table(session, dbid, "subqueues", OpenTableGrbit.None);
-				txs = new Table(session, dbid, "transactions", OpenTableGrbit.None);
-				recovery = new Table(session, dbid, "recovery", OpenTableGrbit.None);
-				outgoing = new Table(session, dbid, "outgoing", OpenTableGrbit.None);
-				outgoingHistory = new Table(session, dbid, "outgoing_history", OpenTableGrbit.None);
-				recveivedMsgs = new Table(session, dbid, "recveived_msgs", OpenTableGrbit.None);
+				queues = new EsentTable(session, new Table(session, dbid, "queues", OpenTableGrbit.None));
+				subqueues = new EsentTable(session, new Table(session, dbid, "subqueues", OpenTableGrbit.None));
+				txs = new EsentTable(session, new Table(session, dbid, "transactions", OpenTableGrbit.None));
+				recovery = new EsentTable(session, new Table(session, dbid, "recovery", OpenTableGrbit.None));
+				outgoing = new EsentTable(session, new Table(session, dbid, "outgoing", OpenTableGrbit.None));
+				outgoingHistory = new EsentTable(session, new Table(session, dbid, "outgoing_history", OpenTableGrbit.None));
+				recveivedMsgs = new EsentTable(session, new Table(session, dbid, "recveived_msgs", OpenTableGrbit.None));
 			}
 			catch (Exception)
 			{
@@ -59,12 +59,10 @@ namespace LightningQueues.Storage
             if (queuesByName.TryGetValue(queueName, out actions))
                 return actions;
 
-            Api.JetSetCurrentIndex(session, queues, "pk");
-            Api.MakeKey(session, queues, queueName, Encoding.Unicode, MakeKeyGrbit.NewKey);
+            var enumerator = queues.GetEnumerator(new StringValueIndex("pk", queueName));
 
-            if (Api.TrySeek(session, queues, SeekGrbit.SeekEQ) == false)
+            if(!enumerator.MoveNext())
                 throw new QueueDoesNotExistsException(queueName);
-
 
             queuesByName[queueName] = actions =
 				new QueueActions(session, dbid, queueName, GetSubqueues(queueName), this,
@@ -75,31 +73,13 @@ namespace LightningQueues.Storage
 		private string[] GetSubqueues(string queueName)
 		{
 			var list = new List<string>();
+		    var enumerator = subqueues.GetEnumerator(new StringValueIndex("by_queue", queueName));
 
-			Api.JetSetCurrentIndex(session, subqueues, "by_queue");
-			Api.MakeKey(session, subqueues, queueName, Encoding.Unicode, MakeKeyGrbit.NewKey);
+		    while (enumerator.MoveNext())
+		    {
+		        list.Add(subqueues.ForColumnType<StringColumn>().Get("subqueue"));
+		    }
 
-			if (Api.TrySeek(session, subqueues, SeekGrbit.SeekEQ) == false)
-				return list.ToArray();
-
-			Api.MakeKey(session, subqueues, queueName, Encoding.Unicode, MakeKeyGrbit.NewKey);
-			try
-			{
-				Api.JetSetIndexRange(session, subqueues, SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
-			}
-			catch (EsentErrorException e)
-			{
-				if (e.Error !=JET_err.NoCurrentRecord)
-					throw;
-				return list.ToArray();
-			}
-
-			do
-			{
-				list.Add(Api.RetrieveColumnAsString(session, subqueues, ColumnsInformation.SubqueuesColumns["subqueue"]));
-			} while (Api.TryMoveNext(session, subqueues));
-			
-			
 			return list.ToArray();
 		}
 
@@ -107,13 +87,11 @@ namespace LightningQueues.Storage
 		{
 			try
 			{
-				using(var update = new Update(session, subqueues, JET_prep.Insert))
-				{
-					Api.SetColumn(session, subqueues, ColumnsInformation.SubqueuesColumns["queue"], queueName, Encoding.Unicode);
-					Api.SetColumn(session, subqueues, ColumnsInformation.SubqueuesColumns["subqueue"], subQueue, Encoding.Unicode);
-
-					update.Save();
-				}
+			    subqueues.Insert(() =>
+			    {
+			        subqueues.ForColumnType<StringColumn>().Set("queue", queueName);
+			        subqueues.ForColumnType<StringColumn>().Set("subqueue", subQueue);
+			    });
 			}
 			catch (EsentErrorException e)
 			{
@@ -124,16 +102,12 @@ namespace LightningQueues.Storage
 
         private void AddToNumberOfMessagesIn(string queueName, int count)
         {
-            Api.JetSetCurrentIndex(session, queues, "pk");
-            Api.MakeKey(session, queues, queueName, Encoding.Unicode, MakeKeyGrbit.NewKey);
+            var enumerator = queues.GetEnumerator(new StringValueIndex("pk", queueName));
 
-            if (Api.TrySeek(session, queues, SeekGrbit.SeekEQ) == false)
+            if (!enumerator.MoveNext())
                 return;
 
-            var bytes = BitConverter.GetBytes(count);
-            int actual;
-			Api.JetEscrowUpdate(session, queues, ColumnsInformation.QueuesColumns["number_of_messages"], bytes, bytes.Length,
-                                null, 0, out actual, EscrowUpdateGrbit.None);
+            queues.ForColumnType<IntColumn>().InterlockedIncrement("number_of_messages", count);
         }
 
         public void Dispose()

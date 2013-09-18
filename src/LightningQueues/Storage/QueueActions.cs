@@ -77,7 +77,7 @@ namespace LightningQueues.Storage
 
             while(enumerator.MoveNext())
             {
-                var id = GetMessageId(_messages);
+                var id = _messages.GetMessageId();
 			    var status = (MessageStatus) _messages.ForColumnType<IntColumn>().Get("status");
 
 				_logger.Debug("Scanning incoming message {2} on '{0}/{1}' with status {3}",
@@ -105,7 +105,7 @@ namespace LightningQueues.Storage
 				_logger.Debug("Dequeuing message {2} from '{0}/{1}'",
 								   _queueName, subqueue, id);
 
-                return PopulateMessage<PersistentMessage>(_messages, bookmark, x =>
+                return _messages.ReadMessageWithId<PersistentMessage>(bookmark, _queueName, x =>
                 {
                     x.SubQueue = subqueue;
                 });
@@ -117,7 +117,7 @@ namespace LightningQueues.Storage
 		public void SetMessageStatus(MessageBookmark bookmark, MessageStatus status, string subqueue)
 		{
             _messages.MoveTo(bookmark);
-		    var id = GetMessageId(_messages);
+		    var id = _messages.GetMessageId();
             _messages.Update(() =>
             {
                 _messages.ForColumnType<IntColumn>().Set("status", (int)status);
@@ -127,20 +127,10 @@ namespace LightningQueues.Storage
 							   id, status, _queueName, subqueue);
 		}
 
-        private MessageId GetMessageId(EsentTable table)
-        {
-			var id = new MessageId
-			{
-				MessageIdentifier = table.ForColumnType<GuidColumn>().Get("msg_id"),
-				SourceInstanceId = table.ForColumnType<GuidColumn>().Get("instance_id")
-			};
-            return id;
-        }
-
 		public void SetMessageStatus(MessageBookmark bookmark, MessageStatus status)
 		{
             _messages.MoveTo(bookmark);
-		    var id = GetMessageId(_messages);
+		    var id = _messages.GetMessageId();
 
             _messages.Update(() => _messages.ForColumnType<IntColumn>().Set("status", (int)status));
 
@@ -159,7 +149,7 @@ namespace LightningQueues.Storage
 		public void MoveToHistory(MessageBookmark bookmark)
 		{
             _messages.MoveTo(bookmark);
-		    var id = GetMessageId(_messages);
+		    var id = _messages.GetMessageId();
 
 		    _messageHistory.Insert(() =>
 		    {
@@ -182,7 +172,7 @@ namespace LightningQueues.Storage
 			{
 			    var bookmark = enumerator.Current;
 			    bookmark.QueueName = _queueName;
-			    yield return PopulateMessage<PersistentMessage>(_messages, bookmark, x =>
+			    yield return _messages.ReadMessageWithId<PersistentMessage>(bookmark, _queueName, x =>
 			    {
 			        x.SubQueue = subQueue;
 			    });
@@ -198,33 +188,17 @@ namespace LightningQueues.Storage
             {
                 var bookmark = enumerator.Current;
                 bookmark.QueueName = _queueName;
-                yield return PopulateMessage<HistoryMessage>(_messageHistory, bookmark, x =>
+                yield return _messageHistory.ReadMessageWithId<HistoryMessage>(bookmark, _queueName, x =>
                 {
                     x.MovedToHistoryAt = _messageHistory.ForColumnType<DateTimeColumn>().Get("moved_to_history_at");
                 });
 			}
 		}
 
-        private TMessage PopulateMessage<TMessage>(EsentTable table, MessageBookmark bookmark, Action<TMessage> action) where TMessage : PersistentMessage, new()
-        {
-            var message = new TMessage
-            {
-                Bookmark = bookmark,
-                Status = (MessageStatus)table.ForColumnType<IntColumn>().Get("status"),
-                Headers = HttpUtility.ParseQueryString(table.ForColumnType<StringColumn>().Get("headers")),
-                Queue = _queueName,
-                SentAt = table.ForColumnType<DateTimeColumn>().Get("timestamp"),
-                Data = table.ForColumnType<BytesColumn>().Get("data"),
-                Id = GetMessageId(table)
-            };
-            action(message);
-            return message;
-        }
-
-		public MessageBookmark MoveTo(string subQueue, PersistentMessage message)
+        public MessageBookmark MoveTo(string subQueue, PersistentMessage message)
 		{
             _messages.MoveTo(message.Bookmark);
-		    var id = GetMessageId(_messages);
+		    var id = _messages.GetMessageId();
             var bookmark = _messages.Update(() =>
             {
                 _messages.ForColumnType<IntColumn>().Set("status", (int)MessageStatus.SubqueueChanged);
@@ -252,7 +226,7 @@ namespace LightningQueues.Storage
 
 			while(enumerator.MoveNext())
 			{
-			    var id = GetMessageId(_messages);
+			    var id = _messages.GetMessageId();
 
 			    var status = (MessageStatus) _messages.ForColumnType<IntColumn>().Get("status");
 
@@ -268,7 +242,7 @@ namespace LightningQueues.Storage
 				_logger.Debug("Peeking message {2} from '{0}/{1}'",
 								   _queueName, subqueue, id);
 
-			    return PopulateMessage<PersistentMessage>(_messages, bookmark, x =>
+			    return _messages.ReadMessageWithId<PersistentMessage>(bookmark, _queueName, x =>
 			    {
                     x.Status = MessageStatus.ReadyToDeliver;
 			        x.SubQueue = subqueue;
@@ -290,7 +264,7 @@ namespace LightningQueues.Storage
 
 				if (status != MessageStatus.ReadyToDeliver)
 					continue;
-			    return PopulateMessage<PersistentMessage>(_messages, bookmark, x => { });
+			    return _messages.ReadMessageWithId<PersistentMessage>(bookmark, _queueName);
 			}
 
 			return null;

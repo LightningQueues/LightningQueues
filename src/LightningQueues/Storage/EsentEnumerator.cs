@@ -10,14 +10,17 @@ namespace LightningQueues.Storage
         private readonly Table _table;
         private Func<bool> _moveNext;
 
-        public EsentEnumerator(Session session, Table table, IEsentIndex index)
+        public EsentEnumerator(Session session, Table table, IEsentIndex index, bool reverse)
         {
             _session = session;
             _table = table;
             _moveNext = () =>
             {
                 var result = index.SeekTo();
-                _moveNext = subsequentMoveNext;
+                if (reverse)
+                    _moveNext = reverseMoveNext;
+                else
+                    _moveNext = subsequentMoveNext;
                 return result;
             };
         }
@@ -53,6 +56,11 @@ namespace LightningQueues.Storage
         private bool subsequentMoveNext()
         {
             return Api.TryMoveNext(_session, _table);
+        }
+
+        private bool reverseMoveNext()
+        {
+            return Api.TryMovePrevious(_session, _table);
         }
 
         public void Dispose()

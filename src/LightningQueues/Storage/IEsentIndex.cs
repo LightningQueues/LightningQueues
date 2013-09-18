@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System;
+using System.Text;
 using LightningQueues.Model;
 using Microsoft.Isam.Esent.Interop;
 
@@ -11,23 +12,22 @@ namespace LightningQueues.Storage
         bool SeekTo();
     }
 
-    public class StringValueIndex : IEsentIndex
+    public class StringValueIndex : IndexBase
     {
-        private readonly string _indexName;
         private readonly string _value;
 
-        public StringValueIndex(string indexName, string value)
+        public StringValueIndex(string indexName, string value) : base(indexName)
         {
-            _indexName = indexName;
             _value = value;
         }
 
-        public Session Session { get; set; }
-        public Table Table { get; set; }
-
-        public bool SeekTo()
+        public StringValueIndex(string value)
         {
-            Api.JetSetCurrentIndex(Session, Table, _indexName);
+            _value = value;
+        }
+
+        protected override bool SeekImpl()
+        {
             Api.MakeKey(Session, Table, _value, Encoding.Unicode, MakeKeyGrbit.NewKey);
 
             if (Api.TrySeek(Session, Table, SeekGrbit.SeekGE) == false)
@@ -48,33 +48,26 @@ namespace LightningQueues.Storage
         }
     }
 
-    public class StartingIndex : IEsentIndex
+    public class StartingIndex : IndexBase
     {
-        public Session Session { get; set; }
-        public Table Table { get; set; }
-
-        public bool SeekTo()
+        protected override bool SeekImpl()
         {
             Api.MoveBeforeFirst(Session, Table);
             return Api.TryMoveNext(Session, Table);
         }
     }
 
-    public class MessageIdIndex : IEsentIndex
+    public class MessageIdIndex : IndexBase
     {
         private readonly MessageId _id;
 
-        public MessageIdIndex(MessageId id)
+        public MessageIdIndex(MessageId id) : base("by_id")
         {
             _id = id;
         }
 
-        public Session Session { get; set; }
-        public Table Table { get; set; }
-
-        public bool SeekTo()
+        protected override bool SeekImpl()
         {
-            Api.JetSetCurrentIndex(Session, Table, "by_id");
             Api.MakeKey(Session, Table, _id.SourceInstanceId.ToByteArray(), MakeKeyGrbit.NewKey);
             Api.MakeKey(Session, Table, _id.MessageIdentifier, MakeKeyGrbit.None);
 
@@ -96,11 +89,9 @@ namespace LightningQueues.Storage
             }
             return true;
         }
-
-
     }
 
-    public class PositionalIndexFromLast : IEsentIndex
+    public class PositionalIndexFromLast : IndexBase
     {
         private readonly int _numberOfItemsFromEnd;
 
@@ -109,10 +100,7 @@ namespace LightningQueues.Storage
             _numberOfItemsFromEnd = numberOfItemsFromEnd;
         }
 
-        public Session Session { get; set; }
-        public Table Table { get; set; }
-
-        public bool SeekTo()
+        protected override bool SeekImpl()
         {
             Api.MoveAfterLast(Session, Table);
             try
@@ -127,5 +115,70 @@ namespace LightningQueues.Storage
             }
             return true;
         }
+    }
+
+    public class GuidIndex : IndexBase
+    {
+        private readonly Guid _value;
+
+        public GuidIndex(Guid value)
+        {
+            _value = value;
+        }
+
+        public GuidIndex(Guid value, string indexName) : base(indexName)
+        {
+            _value = value;
+        }
+
+        protected override bool SeekImpl()
+        {
+            Api.MakeKey(Session, Table, _value.ToByteArray(), MakeKeyGrbit.NewKey);
+            return Api.TrySeek(Session, Table, SeekGrbit.SeekEQ);
+        }
+    }
+
+    public class BookmarkIndex : IndexBase
+    {
+        private readonly int _size;
+        private readonly byte[] _bookmark;
+
+        public BookmarkIndex(int size, byte[] bookmark) : base("by_bookmark")
+        {
+            _size = size;
+            _bookmark = bookmark;
+        }
+
+        protected override bool SeekImpl()
+        {
+            Api.MakeKey(Session, Table, _size, MakeKeyGrbit.NewKey);
+            Api.MakeKey(Session, Table, _bookmark, MakeKeyGrbit.None);
+            return Api.TrySeek(Session, Table, SeekGrbit.SeekEQ);
+        }
+    }
+
+    public abstract class IndexBase : IEsentIndex
+    {
+        private readonly Action _setIndex;
+
+        protected IndexBase(string indexName)
+        {
+            _setIndex = () => Api.JetSetCurrentIndex(Session, Table, indexName);
+        }
+
+        protected IndexBase()
+        {
+            _setIndex = () => { };
+        }
+
+        public Session Session { get; set; }
+        public Table Table { get; set; }
+
+        public bool SeekTo()
+        {
+            _setIndex();
+            return SeekImpl();
+        }
+        protected abstract bool SeekImpl();
     }
 }
