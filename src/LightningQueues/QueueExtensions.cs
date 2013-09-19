@@ -81,14 +81,14 @@ namespace LightningQueues
             return scope.QueueManager.Send(scope.Transaction, uri, payload);
         }
 
-        public static void EnqueueDirectlyTo(this ITransactionalScope scope, string queue, string subQueue, MessagePayload payload)
+        public static void EnqueueDirectlyTo(this ITransactionalScope scope, string queue, string subQueue, MessagePayload payload, MessageId id = null)
         {
-            scope.QueueManager.EnqueueDirectlyTo(scope.Transaction, queue, subQueue, payload);
+            scope.QueueManager.EnqueueDirectlyTo(scope.Transaction, queue, subQueue, payload, id);
         }
 
-        public static void EnqueueDirectlyTo(this ITransactionalScope scope, string queue, MessagePayload payload)
+        public static void EnqueueDirectlyTo(this ITransactionalScope scope, string queue, MessagePayload payload, MessageId id = null)
         {
-            scope.QueueManager.EnqueueDirectlyTo(scope.Transaction, queue, null, payload);
+            scope.QueueManager.EnqueueDirectlyTo(scope.Transaction, queue, null, payload, id);
         }
     }
 }

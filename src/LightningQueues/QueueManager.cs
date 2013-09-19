@@ -503,20 +503,20 @@ namespace LightningQueues
             _logger.DebugMessage(() => new MessageQueuedForReceive(message));
         }
 
-        public void EnqueueDirectlyTo(string queue, string subqueue, MessagePayload payload)
+        public void EnqueueDirectlyTo(string queue, string subqueue, MessagePayload payload, MessageId id = null)
         {
             EnsureEnlistment();
 
             EnqueueDirectlyTo(_enlistment, queue, subqueue, payload);
         }
 
-        public void EnqueueDirectlyTo(ITransaction transaction, string queue, string subqueue, MessagePayload payload)
+        public void EnqueueDirectlyTo(ITransaction transaction, string queue, string subqueue, MessagePayload payload, MessageId id = null)
         {
             var message = new PersistentMessage
             {
                 Data = payload.Data,
                 Headers = payload.Headers,
-                Id = new MessageId
+                Id = id ?? new MessageId
                 {
                     SourceInstanceId = _queueStorage.Id,
                     MessageIdentifier = GuidCombGenerator.Generate()

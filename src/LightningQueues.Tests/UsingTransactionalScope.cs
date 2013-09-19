@@ -103,6 +103,30 @@ namespace LightningQueues.Tests
         }
 
         [Test]
+        public void can_receive_on_one_queue_move_to_another_preserving_id()
+        {
+            var sender = ObjectMother.Sender();
+            sender.Send();
+
+            queueManager.CreateQueues("a");
+            Message message = null;
+            Wait.Until(() =>
+            {
+                message = queueManager.Peek("h", null);
+                return message != null;
+            });
+            var receivingScope = queueManager.BeginTransactionalScope();
+            message = receivingScope.ReceiveById("h", message.Id);
+            receivingScope.EnqueueDirectlyTo("a", new MessagePayload { Data = message.Data, Headers = message.Headers }, message.Id);
+            receivingScope.Commit();
+            receivingScope = queueManager.BeginTransactionalScope();
+            Assert.Throws<TimeoutException>(() => receivingScope.Receive("h", TimeSpan.FromSeconds(1)));
+            message = receivingScope.ReceiveById("a", message.Id);
+
+            "hello".ShouldEqual(Encoding.Unicode.GetString(message.Data));
+        }
+
+        [Test]
         public void calling_receive_by_id_should_return_null_if_not_found()
         {
             var receivingScope = queueManager.BeginTransactionalScope();

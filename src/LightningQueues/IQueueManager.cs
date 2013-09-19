@@ -28,8 +28,8 @@ namespace LightningQueues
         MessageId Send(ITransaction transaction, Uri uri, MessagePayload payload);
         void CreateQueues(params string[] queueNames);
         void MoveTo(string subqueue, Message message);
-        void EnqueueDirectlyTo(string queue, string subqueue, MessagePayload payload);
-        void EnqueueDirectlyTo(ITransaction transaction, string queue, string subqueue, MessagePayload payload);
+        void EnqueueDirectlyTo(string queue, string subqueue, MessagePayload payload, MessageId id = null);
+        void EnqueueDirectlyTo(ITransaction transaction, string queue, string subqueue, MessagePayload payload, MessageId id = null);
         PersistentMessage PeekById(string queueName, MessageId id);
         string[] GetSubqueues(string queueName);
         int GetNumberOfMessages(string queueName);
