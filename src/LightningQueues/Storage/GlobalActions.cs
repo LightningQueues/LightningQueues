@@ -102,11 +102,12 @@ namespace LightningQueues.Storage
                     case MessageStatus.SubqueueChanged:
                     case MessageStatus.EnqueueWait:
                         actions.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
-                        actions.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver);
                         break;
                     default:
                         if (configuration.EnableProcessedMessageHistory)
                             actions.MoveToHistory(bookmark);
+                        else
+                            actions.Delete(bookmark);
                         break;
                 }
 
