@@ -27,7 +27,6 @@ namespace LightningQueues
 
         private volatile bool _wasStarted;
         private volatile bool _wasDisposed;
-        private volatile bool _enableEndpointPortAutoSelection;
         private volatile int _currentlyInCriticalReceiveStatus;
         private volatile int _currentlyInsideTransaction;
         private readonly IPEndPoint _endpoint;
@@ -75,7 +74,7 @@ namespace LightningQueues
             if (_wasStarted)
                 throw new InvalidOperationException("The Start method may not be invoked more than once.");
 
-            _receiver = new Receiver(_endpoint, _enableEndpointPortAutoSelection, AcceptMessages, _logger);
+            _receiver = new Receiver(_endpoint, AcceptMessages, _logger);
             _receiver.Start();
 
             _choke = new SendingChoke();
@@ -116,14 +115,6 @@ namespace LightningQueues
         public ITransactionalScope BeginTransactionalScope()
         {
             return new TransactionalScope(this, new QueueTransaction(_logger, _queueStorage, OnTransactionComplete, AssertNotDisposed));
-        }
-
-        public void EnableEndpointPortAutoSelection()
-        {
-            if (_wasStarted)
-                throw new InvalidOperationException("Endpoint auto-port-selection cannot be enabled after the queue has been started.");
-
-            _enableEndpointPortAutoSelection = true;
         }
 
         public string Path

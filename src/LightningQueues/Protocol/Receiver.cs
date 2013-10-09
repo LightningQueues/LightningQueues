@@ -11,20 +11,13 @@ namespace LightningQueues.Protocol
     {
         private readonly ILogger _logger;
         private readonly IPEndPoint _endpointToListenTo;
-        private readonly bool _enableEndpointPortAutoSelection;
         private readonly Func<Message[], IMessageAcceptance> _acceptMessages;
         private TcpListener _listener;
         private bool _disposed;
 
         public Receiver(IPEndPoint endpointToListenTo, Func<Message[], IMessageAcceptance> acceptMessages, ILogger logger)
-            : this(endpointToListenTo, false, acceptMessages, logger)
-        {
-        }
-
-        public Receiver(IPEndPoint endpointToListenTo, bool enableEndpointPortAutoSelection, Func<Message[], IMessageAcceptance> acceptMessages, ILogger logger)
         {
             _endpointToListenTo = endpointToListenTo;
-            _enableEndpointPortAutoSelection = enableEndpointPortAutoSelection;
             _acceptMessages = acceptMessages;
             _logger = logger;
         }
@@ -32,27 +25,9 @@ namespace LightningQueues.Protocol
         public void Start()
         {
             _logger.Debug("Starting to listen on {0}", _endpointToListenTo);
-            while (_endpointToListenTo.Port < 65536)
-            {
-                try
-                {
-                    TryStart(_endpointToListenTo);
-                    StartAccepting();
-                    _logger.Debug("Now listen on {0}", _endpointToListenTo);
-                    return;
-                }
-                catch (SocketException ex)
-                {
-                    if (_enableEndpointPortAutoSelection &&
-                        ex.Message == "Only one usage of each socket address (protocol/network address/port) is normally permitted")
-                    {
-                        _endpointToListenTo.Port = new PortFinder().Find();
-                        _logger.Debug("Port in use, new endpoint selected: {0}", _endpointToListenTo);
-                    }
-                    else
-                        throw;
-                }
-            }
+            TryStart(_endpointToListenTo);
+            StartAccepting();
+            _logger.Debug("Now listen on {0}", _endpointToListenTo);
         }
 
         private async void StartAccepting()

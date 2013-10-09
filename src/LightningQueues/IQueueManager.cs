@@ -12,7 +12,6 @@ namespace LightningQueues
         IPEndPoint Endpoint { get; }
         string[] Queues { get; }
         ITransactionalScope BeginTransactionalScope();
-        void EnableEndpointPortAutoSelection();
         void WaitForAllMessagesToBeSent();
         IQueue GetQueue(string queue);
         PersistentMessage[] GetAllMessages(string queueName, string subqueue);

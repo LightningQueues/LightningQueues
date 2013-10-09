@@ -72,7 +72,6 @@
       <Link>CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="FromUsers\WhenPeekingMessages.cs" />
-    <Compile Include="AutoSelectPort.cs" />
     <Compile Include="ObjectMother.cs" />
     <Compile Include="Protocol\FakeSender.cs" />
     <Compile Include="Protocol\ProtocolChunkTester.cs" />
