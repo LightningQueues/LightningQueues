@@ -71,6 +71,12 @@ namespace LightningQueues.Storage
 			return bm;
 		}
 
+        public void ClearQueue()
+        {
+            _actions.ClearTable(_messages);
+            _actions.ClearTable(_messageHistory);
+        }
+
 		public PersistentMessage Dequeue(string subqueue)
 		{
 		    var enumerator = _messages.GetEnumerator(new StringValueIndex("by_sub_queue", subqueue));

@@ -494,6 +494,11 @@ namespace LightningQueues
             _logger.DebugMessage(() => new MessageQueuedForReceive(message));
         }
 
+        public void ClearAllMessages()
+        {
+            _queueStorage.ClearAllMessages();
+        }
+
         public void EnqueueDirectlyTo(string queue, string subqueue, MessagePayload payload, MessageId id = null)
         {
             EnsureEnlistment();

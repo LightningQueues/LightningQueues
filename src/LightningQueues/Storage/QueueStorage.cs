@@ -429,5 +429,19 @@ namespace LightningQueues.Storage
             _logger.Info("Purged {0} message ids", totalCount);
             return totalRemoved;
         }
+
+	    public void ClearAllMessages()
+	    {
+	        Global(actions =>
+	        {
+	            var queueNames = actions.GetAllQueuesNames();
+	            queueNames.Each(queueName =>
+	            {
+	                var queue = actions.GetQueue(queueName);
+	                queue.ClearQueue();
+	            });
+                actions.ClearAllMessages();
+	        });
+	    }
 	}
 }

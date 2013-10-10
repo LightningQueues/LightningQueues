@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 using FubuCore.Logging;
 using LightningQueues.Exceptions;
 using Microsoft.Isam.Esent.Interop;
@@ -52,6 +51,24 @@ namespace LightningQueues.Storage
 				throw;
 			}
 		}
+
+        public void ClearAllMessages()
+        {
+            ClearTable(outgoing);
+            ClearTable(outgoingHistory);
+            ClearTable(recveivedMsgs);
+            ClearTable(recovery);
+            ClearTable(txs);
+        }
+
+        internal void ClearTable(EsentTable table)
+        {
+            var enumerator = table.GetEnumerator();
+            while (enumerator.MoveNext())
+            {
+                table.Delete();
+            }
+        }
 
         public QueueActions GetQueue(string queueName)
         {

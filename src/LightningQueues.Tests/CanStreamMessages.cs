@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
-using FubuCore.Logging;
 using FubuTestingSupport;
 using LightningQueues.Model;
 using NUnit.Framework;
