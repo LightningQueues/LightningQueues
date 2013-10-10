@@ -134,7 +134,22 @@ namespace LightningQueues.Storage
         protected override bool SeekImpl()
         {
             Api.MakeKey(Session, Table, _value.ToByteArray(), MakeKeyGrbit.NewKey);
-            return Api.TrySeek(Session, Table, SeekGrbit.SeekEQ);
+            var found = Api.TrySeek(Session, Table, SeekGrbit.SeekEQ);
+            if (found)
+            {
+                Api.MakeKey(Session, Table, _value.ToByteArray(), MakeKeyGrbit.NewKey);
+                try
+                {
+                    Api.JetSetIndexRange(Session, Table, SetIndexRangeGrbit.RangeInclusive | SetIndexRangeGrbit.RangeUpperLimit);
+                }
+                catch (EsentErrorException e)
+                {
+                    if (e.Error != JET_err.NoCurrentRecord)
+                        throw;
+                    return false;
+                }
+            }
+            return found;
         }
     }
 
