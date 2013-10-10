@@ -71,6 +71,7 @@
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="CanStreamMessages.cs" />
     <Compile Include="FromUsers\WhenPeekingMessages.cs" />
     <Compile Include="ObjectMother.cs" />
     <Compile Include="Protocol\FakeSender.cs" />

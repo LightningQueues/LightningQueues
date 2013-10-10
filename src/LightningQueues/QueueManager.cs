@@ -597,6 +597,26 @@ namespace LightningQueues
             }
         }
 
+        public IEnumerable<StreamedMessage> ReceiveStream(string queueName, string subqueue)
+        {
+            while (!_disposing)
+            {
+                Interlocked.Increment(ref _currentlyInsideTransaction);
+                var scope = BeginTransactionalScope();
+                var message = GetMessageFromQueue(scope.Transaction, queueName, subqueue);
+                if (message != null)
+                {
+                    yield return new StreamedMessage {Message = message, TransactionalScope = scope};
+                    continue;
+                }
+                scope.Rollback();
+                lock (_newMessageArrivedLock)
+                {
+                    Monitor.Wait(_newMessageArrivedLock, TimeSpan.FromSeconds(1));
+                }
+            } 
+        }
+
         public MessageId Send(ITransaction transaction, Uri uri, MessagePayload payload)
         {
             if (_waitingForAllMessagesToBeSent)

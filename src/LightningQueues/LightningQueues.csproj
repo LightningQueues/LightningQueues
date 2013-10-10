@@ -83,6 +83,7 @@
     <Compile Include="MessagePayload.cs" />
     <Compile Include="Model\HistoryMessage.cs" />
     <Compile Include="Model\PersistentMessageToSend.cs" />
+    <Compile Include="Model\StreamedMessage.cs" />
     <Compile Include="Protocol\Chunks\Chunk.cs" />
     <Compile Include="Protocol\Chunks\ReadAcknowledgement.cs" />
     <Compile Include="Protocol\Chunks\ReadLength.cs" />
