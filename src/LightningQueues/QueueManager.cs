@@ -597,6 +597,11 @@ namespace LightningQueues
             }
         }
 
+        public IEnumerable<StreamedMessage> ReceiveStream(string queueName)
+        {
+            return ReceiveStream(queueName, null);
+        }
+
         public IEnumerable<StreamedMessage> ReceiveStream(string queueName, string subqueue)
         {
             while (!_disposing)

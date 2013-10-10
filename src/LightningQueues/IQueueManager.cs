@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net;
 using LightningQueues.Internal;
 using LightningQueues.Model;
@@ -20,6 +21,8 @@ namespace LightningQueues
         PersistentMessageToSend[] GetMessagesCurrentlySending();
         Message Peek(string queueName, string subqueue, TimeSpan timeout);
         Message Receive(string queueName, string subqueue, TimeSpan timeout);
+        IEnumerable<StreamedMessage> ReceiveStream(string queueName);
+        IEnumerable<StreamedMessage> ReceiveStream(string queueName, string subqueue);
         Message Receive(ITransaction transaction, string queueName, string subqueue, TimeSpan timeout);
         Message ReceiveById(string queueName, MessageId id);
         Message ReceiveById(ITransaction transaction, string queueName, MessageId id);
