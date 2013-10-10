@@ -89,12 +89,7 @@ namespace LightningQueues.Internal
 
         private MessagesForEndpoint gatherMessagesToSend()
         {
-            MessagesForEndpoint messages = null;
-            _queueStorage.Send(actions =>
-            {
-                messages = actions.GetMessagesToSendAndMarkThemAsInFlight(100, 1024 * 1024);
-            });
-            return messages;
+            return _queueStorage.Send(actions => actions.GetMessagesToSendAndMarkThemAsInFlight(100, 1024 * 1024));
         }
 
         private void failedToConnect(IEnumerable<PersistentMessage> messages)
@@ -113,7 +108,6 @@ namespace LightningQueues.Internal
                     {
                         actions.MarkOutgoingMessageAsFailedTransmission(message.Bookmark, queueDoesntExist);
                     }
-
                 });
             }
             finally
@@ -124,10 +118,7 @@ namespace LightningQueues.Internal
 
         private void revert(MessageBookmark[] sendHistoryBookmarks, IEnumerable<PersistentMessage> messages)
         {
-            _queueStorage.Send(actions =>
-            {
-                actions.RevertBackToSend(sendHistoryBookmarks);
-            });
+            _queueStorage.Send(actions => actions.RevertBackToSend(sendHistoryBookmarks));
             failedToSend(messages);
         }
 
@@ -135,13 +126,9 @@ namespace LightningQueues.Internal
         {
             try
             {
-                var newBookmarks = new List<MessageBookmark>();
-                _queueStorage.Send(actions =>
-                {
-                    var result = messages.Select(message => actions.MarkOutgoingMessageAsSuccessfullySent(message.Bookmark));
-                    newBookmarks.AddRange(result);
-                });
-                return newBookmarks.ToArray();
+                var newBookmarks = _queueStorage.Send(actions => 
+                    messages.Select(message => actions.MarkOutgoingMessageAsSuccessfullySent(message.Bookmark)).ToArray());
+                return newBookmarks;
             }
             finally
             {

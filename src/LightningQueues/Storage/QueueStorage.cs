@@ -336,7 +336,6 @@ namespace LightningQueues.Storage
                 {
                     var queueActions = actions.GetQueue(queue);
                     purgeLimit = queueActions.GetMessageHistoryBookmarkAtPosition(numberOfMessagesToKeep);
-                    actions.Commit();
                 });
 
                 if (purgeLimit == null)
@@ -360,8 +359,6 @@ namespace LightningQueues.Storage
                         _logger.Debug("Purging message {0} from queue {1}/{2}", message.Id, message.Queue, message.SubQueue);
                         queueActions.DeleteHistoric(message.Bookmark);
                     }
-
-                    actions.Commit();
                 });
             } while (foundMessages);
         }
@@ -386,7 +383,6 @@ namespace LightningQueues.Storage
                 Global(actions =>
                 {
                     purgeLimit = actions.GetSentMessageBookmarkAtPosition(numberOfMessagesToKeep);
-                    actions.Commit();
                 });
 
                 if (purgeLimit == null)
@@ -410,8 +406,6 @@ namespace LightningQueues.Storage
                                            sentMessage.Queue, sentMessage.SubQueue);
                         actions.DeleteMessageToSendHistoric(sentMessage.Bookmark);
                     }
-
-                    actions.Commit();
                 });
             } while (foundMessages);
         }
@@ -427,7 +421,6 @@ namespace LightningQueues.Storage
                 {
                     deletedMessageIds = actions.DeleteOldestReceivedMessageIds(_configuration.NumberOfReceivedMessageIdsToKeep, 250)
                         .ToList();
-                    actions.Commit();
                     totalRemoved.AddRange(deletedMessageIds);
                 });
                 totalCount += deletedMessageIds.Count;
