@@ -72,7 +72,6 @@
     <Compile Include="Logging\FailedToSend.cs" />
     <Compile Include="Logging\MessageQueuedForReceive.cs" />
     <Compile Include="Logging\MessageReceived.cs" />
-    <Compile Include="Model\MessagesForEndpoint.cs" />
     <Compile Include="Internal\QueueTransaction.cs" />
     <Compile Include="ISendingThrottle.cs" />
     <Compile Include="ITransactionalScope.cs" />
