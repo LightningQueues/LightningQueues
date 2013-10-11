@@ -98,6 +98,7 @@
     <Compile Include="Storage\RevertBackToSend.cs" />
     <Compile Include="UsingSubQueues.cs" />
     <Compile Include="UsingTransactionalScope.cs" />
+    <Compile Include="WhenPortIsInUse.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LightningQueues\LightningQueues.csproj">

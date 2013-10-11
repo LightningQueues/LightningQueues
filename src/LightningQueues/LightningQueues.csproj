@@ -65,6 +65,7 @@
     <Compile Include="Exceptions\FailedToConnectException.cs" />
     <Compile Include="Exceptions\InvalidAcknowledgementException.cs" />
     <Compile Include="Exceptions\InvalidLengthException.cs" />
+    <Compile Include="Exceptions\EndpointInUseException.cs" />
     <Compile Include="Exceptions\QueueDoesNotExistsException.cs" />
     <Compile Include="Exceptions\RevertSendException.cs" />
     <Compile Include="Exceptions\UnexpectedReceivedMessageFormatException.cs" />

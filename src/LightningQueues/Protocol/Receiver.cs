@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using FubuCore.Logging;
+using LightningQueues.Exceptions;
 using LightningQueues.Model;
 
 namespace LightningQueues.Protocol
@@ -40,8 +41,18 @@ namespace LightningQueues.Protocol
 
         private void TryStart(IPEndPoint endpointToListenTo)
         {
-            _listener = new TcpListener(endpointToListenTo);
-            _listener.Start();
+            try
+            {
+                _listener = new TcpListener(endpointToListenTo);
+                _listener.Start();
+            }
+            catch (SocketException ex)
+            {
+                if (ex.Message == "Only one usage of each socket address (protocol/network address/port) is normally permitted")
+                {
+                    throw new EndpointInUseException(endpointToListenTo, ex);
+                }
+            }
         }
 
         private async Task AcceptTcpClientAsync()
