@@ -9,6 +9,7 @@ namespace LightningQueues
         int CurrentlyConnectingCount { get; }
         int MaxSendingCount { get; }
         int MaxConnectingCount { get; }
+        int AvailableSendingCount { get; }
         void AlterSendingCountMaximumTo(int maxSendingCount);
         void AlterConnectingCountMaximumTo(int maxConnectingCount);
     }
@@ -60,6 +61,14 @@ namespace LightningQueues
 
         public int MaxSendingCount { get { return _maxSendingCount; } }
         public int MaxConnectingCount { get { return _maxConnectingCount; } }
+
+        public int AvailableSendingCount
+        {
+            get
+            {
+                return Math.Max(MaxSendingCount - CurrentlySendingCount, 0);
+            }
+        }
 
         public void AlterSendingCountMaximumTo(int maxSendingCount)
         {

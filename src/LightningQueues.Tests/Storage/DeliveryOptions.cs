@@ -39,8 +39,8 @@ namespace LightningQueues.Tests.Storage
 
                 qf.Send(actions =>
                 {
-                    var msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue);
-                    msgs.ShouldBeNull();
+                    var msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue, new Endpoint("localhost", 0));
+                    msgs.ShouldHaveCount(0);
                 });
 
                 qf.Global(actions =>
@@ -83,11 +83,11 @@ namespace LightningQueues.Tests.Storage
 
                 qf.Send(actions =>
                 {
-                    var msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue);
-                    actions.MarkOutgoingMessageAsFailedTransmission(msgs.Messages.First().Bookmark, false);
+                    var msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue, new Endpoint("localhost", 0));
+                    actions.MarkOutgoingMessageAsFailedTransmission(msgs.First().Bookmark, false);
                     
-                    msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue);
-                    msgs.ShouldBeNull();
+                    msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue, new Endpoint("localhost", 0));
+                    msgs.ShouldHaveCount(0);
                 });
 
                 qf.Global(actions =>

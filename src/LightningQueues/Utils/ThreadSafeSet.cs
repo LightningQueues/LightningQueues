@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using FubuCore;
 
 namespace LightningQueues.Utils
 {
@@ -24,6 +25,19 @@ namespace LightningQueues.Utils
 				rwl.ExitWriteLock();
 			}
 		}
+
+        public IEnumerable<T> All()
+        {
+            return rwl.Read(all);
+        }
+
+        private IEnumerable<T> all()
+        {
+            foreach (var item in inner)
+            {
+                yield return item;
+            }
+        }
 
 		public IEnumerable<TK> Filter<TK>(IEnumerable<TK> items, Func<TK,T> translator)
 		{
@@ -57,7 +71,14 @@ namespace LightningQueues.Utils
 			{
 				rwl.ExitWriteLock();
 			}
-			
 		}
+
+        public void Remove(T item)
+        {
+            rwl.Write(() =>
+            {
+                inner.Remove(item);
+            });
+        }
 	}
 }

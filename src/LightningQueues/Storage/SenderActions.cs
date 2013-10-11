@@ -22,11 +22,28 @@ namespace LightningQueues.Storage
 		    _logger = logger;
 		}
 
-        public MessagesForEndpoint GetMessagesToSendAndMarkThemAsInFlight(int maxNumberOfMessage, int maxSizeOfMessagesInTotal)
+        public IEnumerable<Endpoint> GetEndpointsToSend(IEnumerable<Endpoint> currentlySending, int numberOfEndpoints)
+        {
+            var endpoints = new HashSet<Endpoint>();
+            var enumerator = outgoing.GetEnumerator();
+            while (enumerator.MoveNext())
+            {
+                var endpoint = new Endpoint( outgoing.ForColumnType<StringColumn>().Get("address"),
+                    outgoing.ForColumnType<IntColumn>().Get("port"));
+                if (!endpoints.Contains(endpoint) && !currentlySending.Contains(endpoint))
+                {
+                    endpoints.Add(endpoint);
+                    if (endpoints.Count == numberOfEndpoints)
+                        break;
+                }
+            }
+            return endpoints;
+        }
+
+        public PersistentMessage[] GetMessagesToSendAndMarkThemAsInFlight(int maxNumberOfMessage, int maxSizeOfMessagesInTotal, Endpoint endpoint)
         {
             var enumerator = outgoing.GetEnumerator();
 
-            Endpoint endPoint = null;
         	string queue = null;
             var messages = new List<PersistentMessage>();
 
@@ -72,10 +89,7 @@ namespace LightningQueues.Storage
                     outgoing.ForColumnType<StringColumn>().Get("address"),
                     outgoing.ForColumnType<IntColumn>().Get("port"));
 
-                if (endPoint == null)
-                    endPoint = rowEndpoint;
-
-                if (endPoint.Equals(rowEndpoint) == false)
+                if (endpoint.Equals(rowEndpoint) == false)
                     continue;
 
                 var rowQueue = outgoing.ForColumnType<StringColumn>().Get("queue");
@@ -113,9 +127,7 @@ namespace LightningQueues.Storage
                 if (maxSizeOfMessagesInTotal < messages.Sum(x => x.Data.Length))
                     break;
             }
-            return messages.Count == 0 
-                ? null 
-                : new MessagesForEndpoint {Destination = endPoint, Messages = messages.ToArray()};
+            return messages.ToArray();
         }
 
         public void MarkOutgoingMessageAsFailedTransmission(MessageBookmark bookmark, bool queueDoesNotExistsInDestination)

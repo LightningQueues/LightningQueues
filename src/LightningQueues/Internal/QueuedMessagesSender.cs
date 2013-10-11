@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Linq;
+using System.Threading.Tasks;
 using FubuCore.Logging;
 using LightningQueues.Exceptions;
 using LightningQueues.Logging;
@@ -7,6 +9,7 @@ using LightningQueues.Protocol;
 using LightningQueues.Storage;
 using System;
 using System.Collections.Generic;
+using LightningQueues.Utils;
 
 namespace LightningQueues.Internal
 {
@@ -26,26 +29,35 @@ namespace LightningQueues.Internal
 
         public void Send()
         {
+            var allEndpoints = new ThreadSafeSet<Endpoint>();
             while (_continueSending)
             {
                 if(!_choke.ShouldBeginSend())
                     continue;
 
-                var messages = gatherMessagesToSend();
-
-                if (messages == null)
+                var endpoints = gatherEndpoints(allEndpoints.All());
+                if (!endpoints.Any())
                 {
                     _choke.NoMessagesToSend();
                     continue;
                 }
+                allEndpoints.Add(endpoints);
 
-                _choke.StartSend();
+                endpoints.Each(endpoint =>
+                {
+                    var messages = gatherMessagesToSend(endpoint);
 
-                SendMessages(messages.Destination, messages.Messages);
+                    _choke.StartSend();
+
+                    sendMessages(endpoint, messages).ContinueWith(x =>
+                    {
+                        allEndpoints.Remove(endpoint);
+                    });
+                });
             }
         }
 
-        public async void SendMessages(Endpoint destination, PersistentMessage[] messages)
+        private async Task sendMessages(Endpoint destination, PersistentMessage[] messages)
         {
             var sender = createSender(destination, messages);
             MessageBookmark[] sendHistoryBookmarks = null;
@@ -87,9 +99,14 @@ namespace LightningQueues.Internal
             };
         }
 
-        private MessagesForEndpoint gatherMessagesToSend()
+        private IEnumerable<Endpoint> gatherEndpoints(IEnumerable<Endpoint> currentlySending)
         {
-            return _queueStorage.Send(actions => actions.GetMessagesToSendAndMarkThemAsInFlight(100, 1024 * 1024));
+            return _queueStorage.Send(actions => actions.GetEndpointsToSend(currentlySending, _choke.AvailableSendingCount));
+        }
+
+        private PersistentMessage[] gatherMessagesToSend(Endpoint endpoint)
+        {
+            return _queueStorage.Send(actions => actions.GetMessagesToSendAndMarkThemAsInFlight(100, 1024 * 1024, endpoint));
         }
 
         private void failedToConnect(IEnumerable<PersistentMessage> messages)

@@ -45,13 +45,13 @@ namespace LightningQueues.Tests.Storage
 
                 qf.Send(actions =>
                 {
-                    var msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue);
-                    var bookmark = actions.MarkOutgoingMessageAsSuccessfullySent(msgs.Messages[0].Bookmark);
+                    var msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue, new Endpoint("localhost", 0));
+                    var bookmark = actions.MarkOutgoingMessageAsSuccessfullySent(msgs[0].Bookmark);
                     actions.RevertBackToSend(new[] { bookmark });
 
-                    msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue);
+                    msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue, new Endpoint("localhost", 0));
                     msgs.ShouldNotBeNull();
-                    msgs.Messages.ShouldHaveCount(1);
+                    msgs.ShouldHaveCount(1);
                 });
 
                 qf.Global(actions =>
