@@ -1,16 +1,5 @@
 require 'fuburake'
 
-begin
-  require 'bundler/setup'
-rescue LoadError
-#  puts 'Bundler and all the gems need to be installed prior to running this rake script. Installing...'
-#  system("gem install bundler --source http://rubygems.org")
-#  sh 'bundle install'
-#  system("bundle exec rake", *ARGV)
-#  exit 0
-end
-
-
 @solution = FubuRake::Solution.new do |sln|
 	sln.assembly_info = {
 		:product_name => "LightningQueues",
@@ -19,4 +8,19 @@ end
 	}
 
 	sln.ripple_enabled = true
+end
+
+require_relative 'ILRepack'
+
+desc "Merge dotnetzip assembly into Bottles projects"
+task :ilrepack => [:compile] do
+  merge_esent("src/LightningQueues/bin/#{@solution.compilemode}", 'LightningQueues.dll')
+end
+
+Rake::Task[:unit_test].enhance [:ilrepack]
+
+def merge_esent(dir, assembly)
+	output = File.join(dir, assembly)
+	packer = ILRepack.new :out => output, :lib => dir
+	packer.merge :lib => dir, :refs => [assembly, 'Esent.Interop.dll'], :clrversion => @solution.options[:clrversion]
 end

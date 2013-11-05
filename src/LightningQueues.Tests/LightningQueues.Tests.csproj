@@ -38,6 +38,9 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Esent.Collections">
+      <HintPath>..\packages\ManagedEsent\lib\net40\Esent.Collections.dll</HintPath>
+    </Reference>
     <Reference Include="Esent.Interop">
       <HintPath>..\packages\ManagedEsent\lib\net40\Esent.Interop.dll</HintPath>
     </Reference>
@@ -49,6 +52,12 @@
     </Reference>
     <Reference Include="nunit.framework">
       <HintPath>..\packages\NUnit\lib\nunit.framework.dll</HintPath>
+    </Reference>
+    <Reference Include="nunit.mocks">
+      <HintPath>..\packages\NUnit\lib\nunit.mocks.dll</HintPath>
+    </Reference>
+    <Reference Include="pnunit.framework">
+      <HintPath>..\packages\NUnit\lib\pnunit.framework.dll</HintPath>
     </Reference>
     <Reference Include="Rhino.Mocks">
       <HintPath>..\packages\RhinoMocks\lib\net\Rhino.Mocks.dll</HintPath>
