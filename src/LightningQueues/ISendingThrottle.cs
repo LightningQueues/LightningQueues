@@ -66,7 +66,9 @@ namespace LightningQueues
         {
             get
             {
-                return Math.Max(MaxSendingCount - CurrentlySendingCount, 0);
+                if (CurrentlyConnectingCount >= MaxConnectingCount)
+                    return 0;
+                return MaxSendingCount - (CurrentlySendingCount - CurrentlyConnectingCount);
             }
         }
 

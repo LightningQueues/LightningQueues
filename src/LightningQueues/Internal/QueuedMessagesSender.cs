@@ -35,7 +35,7 @@ namespace LightningQueues.Internal
                 if(!_choke.ShouldBeginSend())
                     continue;
 
-                var endpoints = gatherEndpoints(allEndpoints.All());
+                var endpoints = gatherEndpoints(allEndpoints.All()).ToArray();
                 if (!endpoints.Any())
                 {
                     _choke.NoMessagesToSend();
@@ -49,10 +49,8 @@ namespace LightningQueues.Internal
 
                     _choke.StartSend();
 
-                    sendMessages(endpoint, messages).ContinueWith(x =>
-                    {
-                        allEndpoints.Remove(endpoint);
-                    });
+                    sendMessages(endpoint, messages)
+                        .ContinueWith(x => allEndpoints.Remove(endpoint));
                 });
             }
         }

@@ -90,5 +90,46 @@ namespace LightningQueues.Tests
             });
             choke.ShouldBeginSend().ShouldBeFalse();
         }
+
+        [Test]
+        public void available_sending_count_with_connecting_endpoints()
+        {
+            var choke = new SendingChoke();
+            5.Times(x => choke.StartSend());
+            choke.AvailableSendingCount.ShouldEqual(5);
+        }
+
+        [Test]
+        public void available_sending_count_with_all_connected()
+        {
+            var choke = new SendingChoke();
+            5.Times(x =>
+            {
+                choke.StartSend();
+                choke.SuccessfullyConnected();
+            });
+            choke.AvailableSendingCount.ShouldEqual(0);
+        }
+
+        [Test]
+        public void available_sending_count_some_connected_some_still_connecting()
+        {
+            var choke = new SendingChoke();
+            4.Times(x =>
+            {
+                choke.StartSend();
+                choke.SuccessfullyConnected();
+            });
+            25.Times(x => choke.StartSend());
+            choke.AvailableSendingCount.ShouldEqual(1);
+        }
+
+        [Test]
+        public void available_sending_count_with_max_connecting()
+        {
+            var choke = new SendingChoke();
+            30.Times(x => choke.StartSend());
+            choke.AvailableSendingCount.ShouldEqual(0);
+        }
     }
 }
