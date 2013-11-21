@@ -611,6 +611,16 @@ namespace LightningQueues
         {
             while (!_disposing)
             {
+                var peekedMessage = PeekMessageFromQueue(queueName, subqueue);
+                if (peekedMessage == null)
+                {
+                    lock (_newMessageArrivedLock)
+                    {
+                        Monitor.Wait(_newMessageArrivedLock, TimeSpan.FromSeconds(1));
+                        continue;
+                    }
+                }
+
                 Interlocked.Increment(ref _currentlyInsideTransaction);
                 var scope = BeginTransactionalScope();
                 var message = GetMessageFromQueue(scope.Transaction, queueName, subqueue);
@@ -620,10 +630,6 @@ namespace LightningQueues
                     continue;
                 }
                 scope.Rollback();
-                lock (_newMessageArrivedLock)
-                {
-                    Monitor.Wait(_newMessageArrivedLock, TimeSpan.FromSeconds(1));
-                }
             } 
         }
 
