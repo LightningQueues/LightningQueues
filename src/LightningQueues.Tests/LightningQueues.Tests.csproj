@@ -105,6 +105,7 @@
     <Compile Include="ReceivingFromLightningQueue.cs" />
     <Compile Include="Storage\DeliveryOptions.cs" />
     <Compile Include="Storage\RevertBackToSend.cs" />
+    <Compile Include="Protocol\SenderTester.cs" />
     <Compile Include="UsingSubQueues.cs" />
     <Compile Include="UsingTransactionalScope.cs" />
     <Compile Include="WhenPortIsInUse.cs" />

@@ -43,6 +43,7 @@ namespace LightningQueues.Protocol
             try
             {
                 await client.ConnectAsync(Destination.Host, Destination.Port);
+                Connected();
                 _logger.Debug("Successfully connected to {0}", Destination);
             }
             catch (Exception ex)
