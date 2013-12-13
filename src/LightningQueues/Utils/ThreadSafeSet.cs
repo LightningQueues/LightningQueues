@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using FubuCore;
 
@@ -28,7 +29,7 @@ namespace LightningQueues.Utils
 
         public IEnumerable<T> All()
         {
-            return rwl.Read(all);
+            return rwl.Read(all).ToList();
         }
 
         private IEnumerable<T> all()
