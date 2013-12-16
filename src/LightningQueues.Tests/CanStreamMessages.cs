@@ -70,7 +70,7 @@ namespace LightningQueues.Tests
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 var messages = _receiver.ReceiveStream("h", null);
-                Parallel.ForEach(messages, new ParallelOptions {MaxDegreeOfParallelism = 4}, x =>
+                Parallel.ForEach(messages, x =>
                 {
                     received.Add(x.Message);
                     x.TransactionalScope.Commit();
@@ -88,7 +88,7 @@ namespace LightningQueues.Tests
                 scope.Commit();
             }
 
-            Wait.Until(() => received.Count == 20, TimeSpan.FromSeconds(10).Milliseconds).ShouldBeTrue();
+            Wait.Until(() => received.Count == 20, timeoutInMilliseconds: 10000).ShouldBeTrue();
         }
     }
 }
