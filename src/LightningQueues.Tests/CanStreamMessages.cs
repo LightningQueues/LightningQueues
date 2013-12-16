@@ -67,16 +67,18 @@ namespace LightningQueues.Tests
         {
             var received = new ConcurrentBag<Message>();
 
-            ThreadPool.QueueUserWorkItem(_ =>
+            for (int i = 0; i < 4; ++i)
             {
-                var messages = _receiver.ReceiveStream("h", null);
-                Parallel.ForEach(messages, x =>
+                ThreadPool.QueueUserWorkItem(_ =>
                 {
-                    received.Add(x.Message);
-                    x.TransactionalScope.Commit();
+                    var messages = _receiver.ReceiveStream("h", null);
+                    foreach(var x in messages)
+                    {
+                        received.Add(x.Message);
+                        x.TransactionalScope.Commit();
+                    }
                 });
-            });
-
+            }
             for (int i = 0; i < 20; ++i)
             {
                 var scope = _sender.BeginTransactionalScope();
