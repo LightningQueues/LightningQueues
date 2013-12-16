@@ -88,7 +88,7 @@ namespace LightningQueues.Tests
                 scope.Commit();
             }
 
-            Wait.Until(() => received.Count == 20).ShouldBeTrue();
+            Wait.Until(() => received.Count == 20, TimeSpan.FromSeconds(10).Milliseconds).ShouldBeTrue();
         }
     }
 }
