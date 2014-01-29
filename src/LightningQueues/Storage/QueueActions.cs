@@ -201,6 +201,21 @@ namespace LightningQueues.Storage
 			}
 		}
 
+        public HistoryMessage GetProcessedMessageById(Guid id)
+        {
+            var enumerator = _messageHistory.GetEnumerator(new GuidIndex(id, "msg_id"));
+            while (enumerator.MoveNext())
+            {
+                var bookmark = enumerator.Current;
+                bookmark.QueueName = _queueName;
+                return _messageHistory.ReadMessageWithId<HistoryMessage>(bookmark, _queueName, x =>
+                {
+                    x.MovedToHistoryAt = _messageHistory.ForColumnType<DateTimeColumn>().Get("moved_to_history_at");
+                });
+            }
+            return null;
+        }
+
         public MessageBookmark MoveTo(string subQueue, PersistentMessage message)
 		{
             _messages.MoveTo(message.Bookmark);

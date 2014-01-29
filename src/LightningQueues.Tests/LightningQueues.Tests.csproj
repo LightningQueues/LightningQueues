@@ -80,6 +80,7 @@
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="ByIdTester.cs" />
     <Compile Include="CanClearQueues.cs" />
     <Compile Include="CanStreamMessages.cs" />
     <Compile Include="FromUsers\WhenPeekingMessages.cs" />

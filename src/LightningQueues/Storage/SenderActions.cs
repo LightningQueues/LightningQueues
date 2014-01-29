@@ -249,5 +249,35 @@ namespace LightningQueues.Storage
             }
             outgoing.Delete();
         }
+
+        public PersistentMessageToSend GetMessageToSendById(Guid id)
+        {
+            var enumerator = outgoing.GetEnumerator(new GuidIndex(id));
+
+            while (enumerator.MoveNext())
+            {
+                var address = outgoing.ForColumnType<StringColumn>().Get("address");
+                var port = outgoing.ForColumnType<IntColumn>().Get("port");
+
+                var bookmark = enumerator.Current;
+
+                return new PersistentMessageToSend
+                {
+                    Id = new MessageId
+                    {
+                        SourceInstanceId = instanceId,
+                        MessageIdentifier = outgoing.ForColumnType<GuidColumn>().Get("msg_id")
+                    },
+                    OutgoingStatus = (OutgoingMessageStatus)outgoing.ForColumnType<IntColumn>().Get("send_status"),
+                    Endpoint = new Endpoint(address, port),
+                    Queue = outgoing.ForColumnType<StringColumn>().Get("queue"),
+                    SubQueue = outgoing.ForColumnType<StringColumn>().Get("subqueue"),
+                    SentAt = outgoing.ForColumnType<DateTimeColumn>().Get("sent_at"),
+                    Data = outgoing.ForColumnType<BytesColumn>().Get("data"),
+                    Bookmark = bookmark
+                };
+            }
+            return null;
+        }
     }
 }

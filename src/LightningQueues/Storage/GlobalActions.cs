@@ -333,5 +333,35 @@ namespace LightningQueues.Storage
 			    yield return id;
 			}
 		}
+
+        public PersistentMessageToSend GetSentMessageById(Guid id)
+        {
+            var enumerator = outgoingHistory.GetEnumerator(new GuidIndex(id));
+
+            while (enumerator.MoveNext())
+            {
+                var address = outgoingHistory.ForColumnType<StringColumn>().Get("address");
+                var port = outgoingHistory.ForColumnType<IntColumn>().Get("port");
+
+                var bookmark = enumerator.Current;
+
+                return new PersistentMessageToSend
+                {
+                    Id = new MessageId
+                    {
+                        SourceInstanceId = instanceId,
+                        MessageIdentifier = outgoingHistory.ForColumnType<GuidColumn>().Get("msg_id"),
+                    },
+                    OutgoingStatus = (OutgoingMessageStatus)outgoingHistory.ForColumnType<IntColumn>().Get("send_status"),
+                    Endpoint = new Endpoint(address, port),
+                    Queue = outgoingHistory.ForColumnType<StringColumn>().Get("queue"),
+                    SubQueue = outgoingHistory.ForColumnType<StringColumn>().Get("subqueue"),
+                    SentAt = outgoingHistory.ForColumnType<DateTimeColumn>().Get("sent_at"),
+                    Data = outgoingHistory.ForColumnType<BytesColumn>().Get("data"),
+                    Bookmark = bookmark
+                };
+            }
+            return null;
+        }
     }
 }

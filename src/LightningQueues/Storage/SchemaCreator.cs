@@ -488,9 +488,13 @@ namespace LightningQueues.Storage
 			}, null, 0, out columnid);
 
 
-			const string indexDef = "+local_id\0\0";
+			string indexDef = "+local_id\0\0";
 			Api.JetCreateIndex(session, tableid, "pk", CreateIndexGrbit.IndexPrimary, indexDef, indexDef.Length,
 							   100);
+
+            indexDef = "+msg_id\0\0";
+            Api.JetCreateIndex(session, tableid, "msg_id", CreateIndexGrbit.IndexUnique | CreateIndexGrbit.IndexDisallowNull, indexDef, indexDef.Length,
+                               100);
 		}
     }
 }

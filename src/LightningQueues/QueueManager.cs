@@ -229,16 +229,34 @@ namespace LightningQueues
             return _queueStorage.Global(actions => actions.GetQueue(queueName).GetAllProcessedMessages().ToArray());
         }
 
+        public HistoryMessage GetProcessedMessageById(string queueName, MessageId id)
+        {
+            AssertNotDisposedOrDisposing();
+            return _queueStorage.Global(actions => actions.GetQueue(queueName).GetProcessedMessageById(id.MessageIdentifier));
+        }
+
         public PersistentMessageToSend[] GetAllSentMessages()
         {
             AssertNotDisposedOrDisposing();
             return _queueStorage.Global(actions => actions.GetSentMessages().ToArray());
         }
 
+        public PersistentMessageToSend GetSentMessageById(MessageId id)
+        {
+            AssertNotDisposedOrDisposing();
+            return _queueStorage.Global(actions => actions.GetSentMessageById(id.MessageIdentifier));
+        }
+
         public PersistentMessageToSend[] GetMessagesCurrentlySending()
         {
             AssertNotDisposedOrDisposing();
             return _queueStorage.Send(actions => actions.GetMessagesToSend().ToArray());
+        }
+
+        public PersistentMessageToSend GetMessageCurrentlySendingById(MessageId id)
+        {
+            AssertNotDisposedOrDisposing();
+            return _queueStorage.Send(actions => actions.GetMessageToSendById(id.MessageIdentifier));
         }
 
         public Message Peek(string queueName, string subqueue, TimeSpan timeout)

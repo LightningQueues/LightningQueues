@@ -17,8 +17,11 @@ namespace LightningQueues
         IQueue GetQueue(string queue);
         PersistentMessage[] GetAllMessages(string queueName, string subqueue);
         HistoryMessage[] GetAllProcessedMessages(string queueName);
+        HistoryMessage GetProcessedMessageById(string queueName, MessageId id);
         PersistentMessageToSend[] GetAllSentMessages();
+        PersistentMessageToSend GetSentMessageById(MessageId id);
         PersistentMessageToSend[] GetMessagesCurrentlySending();
+        PersistentMessageToSend GetMessageCurrentlySendingById(MessageId id);
         Message Peek(string queueName, string subqueue, TimeSpan timeout);
         Message Receive(string queueName, string subqueue, TimeSpan timeout);
         IEnumerable<StreamedMessage> ReceiveStream(string queueName);

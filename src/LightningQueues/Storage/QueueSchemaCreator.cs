@@ -87,8 +87,11 @@ namespace LightningQueues.Storage
                 grbit = ColumndefGrbit.None
             }, null, 0, out columnid);
 
-            const string indexDef = "+subqueue\0\0";
+            string indexDef = "+subqueue\0\0";
             Api.JetCreateIndex(session, tableid, "by_sub_queue", CreateIndexGrbit.None, indexDef, indexDef.Length,
+                               100);
+            indexDef = "+msg_id\0\0";
+            Api.JetCreateIndex(session, tableid, "msg_id", CreateIndexGrbit.IndexUnique | CreateIndexGrbit.IndexDisallowNull, indexDef, indexDef.Length,
                                100);
         }
 

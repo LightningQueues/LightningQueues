@@ -80,7 +80,14 @@ namespace LightningQueues.Tests
 					Destination = new Endpoint("localhost", 23456),
 					Messages = new[] { msg, },
 				};
-				sender.Send().Wait();
+			    try
+			    {
+			        sender.Send().Wait();
+			    }
+			    catch (Exception)
+			    {
+			        //don't care if the sender throws on 2nd round
+			    }
 			}
 
 			using (var tx = new TransactionScope())
