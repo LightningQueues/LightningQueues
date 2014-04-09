@@ -272,7 +272,7 @@ namespace LightningQueues.Tests.Storage
 
         private static QueueStorage CreateQueueStorage()
         {
-            return new QueueStorage("test.esent", new QueueManagerConfiguration(), ObjectMother.Logger());
+            return new QueueStorage("test.esent", new QueueManagerConfiguration());
         }
     }
 }

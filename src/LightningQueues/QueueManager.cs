@@ -56,7 +56,7 @@ namespace LightningQueues
             _endpoint = endpoint;
             _path = path;
             _logger = logger;
-            _queueStorage = new QueueStorage(path, configuration, _logger);
+            _queueStorage = new QueueStorage(path, configuration);
             _queueStorage.Initialize();
 
             _queueStorage.Global(actions =>

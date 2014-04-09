@@ -85,6 +85,7 @@
     <Compile Include="IQueue.cs" />
     <Compile Include="IQueueManager.cs" />
     <Compile Include="Logging\MessageQueuedForSend.cs" />
+    <Compile Include="LogManager.cs" />
     <Compile Include="MessageEventArgs.cs" />
     <Compile Include="MessagePayload.cs" />
     <Compile Include="Model\HistoryMessage.cs" />

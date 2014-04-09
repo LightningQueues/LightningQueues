@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Web;
-using FubuCore.Logging;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
 using Microsoft.Isam.Esent.Interop;
@@ -13,13 +11,11 @@ namespace LightningQueues.Storage
     public class SenderActions : AbstractActions
     {
         private readonly QueueManagerConfiguration configuration;
-        private readonly ILogger _logger;
 
-		public SenderActions(JET_INSTANCE instance, ColumnsInformation columnsInformation, string database, Guid instanceId, QueueManagerConfiguration configuration, ILogger logger)
-            : base(instance, columnsInformation, database, instanceId, logger)
+		public SenderActions(JET_INSTANCE instance, ColumnsInformation columnsInformation, string database, Guid instanceId, QueueManagerConfiguration configuration)
+            : base(instance, columnsInformation, database, instanceId)
 		{
 		    this.configuration = configuration;
-		    _logger = logger;
 		}
 
         public IEnumerable<Endpoint> GetEndpointsToSend(IEnumerable<Endpoint> currentlySending, int numberOfEndpoints)
@@ -53,7 +49,7 @@ namespace LightningQueues.Storage
                 var value = (OutgoingMessageStatus) outgoing.ForColumnType<IntColumn>().Get("send_status");
                 var time = outgoing.ForColumnType<DateTimeColumn>().Get("time_to_send");
 
-                _logger.Debug("Scanning message {0} with status {1} to be sent at {2}", msgId, value, time);
+                logger.Debug("Scanning message {0} with status {1} to be sent at {2}", msgId, value, time);
                 if (value != OutgoingMessageStatus.Ready)
                     continue;
 
@@ -63,7 +59,7 @@ namespace LightningQueues.Storage
                 {
                     if (deliverByTime < DateTime.Now)
                     {
-                        _logger.Info("Outgoing message {0} was not succesfully sent by its delivery time limit {1}", msgId, deliverByTime);
+                        logger.Info("Outgoing message {0} was not succesfully sent by its delivery time limit {1}", msgId, deliverByTime);
                         var numOfRetries = outgoing.ForColumnType<IntColumn>().Get("number_of_retries");
                         MoveFailedMessageToOutgoingHistory(numOfRetries, msgId);
                         continue;
@@ -76,7 +72,7 @@ namespace LightningQueues.Storage
                     var numOfRetries = outgoing.ForColumnType<IntColumn>().Get("number_of_retries");
                     if (numOfRetries > maxAttempts)
                     {
-                        _logger.Info("Outgoing message {0} has reached its max attempts of {1}", msgId, maxAttempts);
+                        logger.Info("Outgoing message {0} has reached its max attempts of {1}", msgId, maxAttempts);
                         MoveFailedMessageToOutgoingHistory(numOfRetries, msgId);
                         continue;
                     }
@@ -102,7 +98,7 @@ namespace LightningQueues.Storage
                 
                 var bookmark = enumerator.Current;
 
-                _logger.Info("Adding message {0} to returned messages", msgId);
+                logger.Info("Adding message {0} to returned messages", msgId);
             	messages.Add(new PersistentMessage
                 {
                     Id = new MessageId
@@ -120,7 +116,7 @@ namespace LightningQueues.Storage
 
                 outgoing.Update(() => outgoing.ForColumnType<IntColumn>().Set("send_status", (int)OutgoingMessageStatus.InFlight));
 
-                _logger.Debug("Marking output message {0} as InFlight", msgId);
+                logger.Debug("Marking output message {0} as InFlight", msgId);
 
                 if (maxNumberOfMessage < messages.Count)
                     break;
@@ -143,7 +139,7 @@ namespace LightningQueues.Storage
                     outgoing.ForColumnType<IntColumn>().Set("send_status", (int)OutgoingMessageStatus.Ready);
                     outgoing.ForColumnType<DateTimeColumn>().Set("time_to_send", DateTime.Now.AddSeconds(numOfRetries * numOfRetries));
                     outgoing.ForColumnType<IntColumn>().Set("number_of_retries", numOfRetries + 1);
-                    _logger.Debug("Marking outgoing message {0} as failed with retries: {1}", msgId, numOfRetries);
+                    logger.Debug("Marking outgoing message {0} as failed with retries: {1}", msgId, numOfRetries);
                 });
             }
             else
@@ -166,7 +162,7 @@ namespace LightningQueues.Storage
             });
             var msgId = outgoing.ForColumnType<GuidColumn>().Get("msg_id");
             outgoing.Delete();
-            _logger.Debug("Successfully sent output message {0}", msgId);
+            logger.Debug("Successfully sent output message {0}", msgId);
             return newBookmark;
         }
 
@@ -223,7 +219,7 @@ namespace LightningQueues.Storage
                     var previousRetry = outgoingHistory.ForColumnType<IntColumn>().Get("number_of_retries");
                     outgoing.ForColumnType<IntColumn>().Set("number_of_retries", previousRetry + 1);
 
-                    _logger.Debug("Reverting output message {0} back to Ready mode", msgId);
+                    logger.Debug("Reverting output message {0} back to Ready mode", msgId);
                 });
                 outgoingHistory.Delete();
             }
@@ -242,7 +238,7 @@ namespace LightningQueues.Storage
                     }
                     outgoingHistory.ForColumnType<IntColumn>().Set("send_status", (int)OutgoingMessageStatus.Failed);
 
-                    _logger.Debug("Marking outgoing message {0} as permenantly failed after {1} retries",
+                    logger.Debug("Marking outgoing message {0} as permenantly failed after {1} retries",
                         msgId, numOfRetries);
 
                 });
