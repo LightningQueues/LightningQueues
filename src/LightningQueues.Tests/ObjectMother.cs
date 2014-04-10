@@ -1,11 +1,10 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Text;
-using FubuCore.Logging;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
+using ILogger = LightningQueues.Logging.ILogger;
 
 namespace LightningQueues.Tests
 {
@@ -29,7 +28,7 @@ namespace LightningQueues.Tests
 
         public static Sender Sender(int port = 23456)
         {
-            return new Sender(Logger())
+            return new Sender()
             {
                 Destination = new Endpoint("localhost", port),
                 Success = () => { },
@@ -56,14 +55,9 @@ namespace LightningQueues.Tests
             if (delete && Directory.Exists(directory))
                 Directory.Delete(directory, true);
 
-            var queueManager = new QueueManager(new IPEndPoint(IPAddress.Loopback, port), directory, new QueueManagerConfiguration(), logger ?? Logger());
+            var queueManager = new QueueManager(new IPEndPoint(IPAddress.Loopback, port), directory, new QueueManagerConfiguration(), logger);
             queueManager.CreateQueues(queue);
             return queueManager;
-        }
-
-        public static ILogger Logger()
-        {
-            return new Logger(Enumerable.Empty<ILogListener>(), Enumerable.Empty<ILogModifier>());
         }
     }
 }

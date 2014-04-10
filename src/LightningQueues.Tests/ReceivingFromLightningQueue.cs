@@ -32,7 +32,7 @@ namespace LightningQueues.Tests
         [Test]
         public void CanReceiveFromQueue()
         {
-            new Sender(ObjectMother.Logger())
+            new Sender()
             {
                 Destination = new Endpoint("localhost", 23456),
                 Messages = new[]
@@ -75,7 +75,7 @@ namespace LightningQueues.Tests
 			};
 			for (int i = 0; i < 2; i++)
 			{
-				var sender = new Sender(ObjectMother.Logger())
+				var sender = new Sender()
 				{
 					Destination = new Endpoint("localhost", 23456),
 					Messages = new[] { msg, },
@@ -109,7 +109,7 @@ namespace LightningQueues.Tests
         [Test]
         public void WhenRevertingTransactionMessageGoesBackToQueue()
         {
-            new Sender(ObjectMother.Logger())
+            new Sender()
             {
 
                 Destination = new Endpoint("localhost", 23456),
@@ -141,7 +141,7 @@ namespace LightningQueues.Tests
         [Test]
         public void CanLookupProcessedMessages()
         {
-            new Sender(ObjectMother.Logger())
+            new Sender()
             {
                 Destination = new Endpoint("localhost", 23456),
                 Messages = new[]
@@ -172,7 +172,7 @@ namespace LightningQueues.Tests
         [Test]
         public void CanPeekExistingMessages()
         {
-            new Sender(ObjectMother.Logger())
+            new Sender()
             {
                 Destination = new Endpoint("localhost", 23456),
                 Messages = new[]

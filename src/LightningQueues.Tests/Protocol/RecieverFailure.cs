@@ -3,8 +3,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
-using FubuCore.Logging;
 using FubuTestingSupport;
 using LightningQueues.Exceptions;
 using LightningQueues.Model;
@@ -24,6 +22,7 @@ namespace LightningQueues.Tests.Protocol
         public void Setup()
         {
             _logger = new RecordingLogger();
+            ReceivingProtocol.Logger = _logger;
         }
 
         [Test]
@@ -38,16 +37,15 @@ namespace LightningQueues.Tests.Protocol
                     client.Connect(_endpointToListenTo);
                 }
 
-                Wait.Until(() => (from e in _logger.InfoMessages.OfType<StringMessage>()
-                            where e.Message.StartsWith("Could not process Reading Length")
-                            select e).Any()).ShouldBeTrue();
+                Wait.Until(() => _logger.InfoMessages
+                    .Any(x => x.StartsWith("Could not process Reading Length"))).ShouldBeTrue();
             }
         }
 
         [Test]
         public void CanHandleClientSendingThreeBytesAndDisconnecting()
         {
-            using (var reciever = new Receiver(_endpointToListenTo, messages => null, _logger))
+            using (var reciever = new Receiver(_endpointToListenTo, messages => null))
             {
                 reciever.Start();
 
@@ -57,16 +55,15 @@ namespace LightningQueues.Tests.Protocol
                     client.GetStream().Write(new byte[] { 1, 4, 6 }, 0, 3);
                 }
 
-                Wait.Until(() => (from e in _logger.InfoMessages.OfType<StringMessage>()
-                            where e.Message.StartsWith("Could not process Reading Length")
-                            select e).Any()).ShouldBeTrue();
+                Wait.Until(() => _logger.InfoMessages
+                    .Any(x => x.StartsWith("Could not process Reading Length"))).ShouldBeTrue();
             }
         }
 
         [Test]
         public void CanHandleClientSendingNegativeNumberForLength()
         {
-            using (var reciever = new Receiver(_endpointToListenTo, messages => null, _logger))
+            using (var reciever = new Receiver(_endpointToListenTo, messages => null))
             {
                 reciever.Start();
 
@@ -76,16 +73,15 @@ namespace LightningQueues.Tests.Protocol
                     client.GetStream().Write(BitConverter.GetBytes(-2), 0, 4);
                 }
 
-                Wait.Until(() => (from e in _logger.InfoMessages.OfType<StringMessage>()
-                            where e.Message.Contains("Got invalid length -2")
-                            select e).Any()).ShouldBeTrue();
+                Wait.Until(() => _logger.InfoMessages
+                    .Any(x => x.Contains("Got invalid length -2"))).ShouldBeTrue();
             }
         }
 
         [Test]
         public void CanHandleClientSendingBadLengthOfData()
         {
-            using (var reciever = new Receiver(_endpointToListenTo, messages => null, _logger))
+            using (var reciever = new Receiver(_endpointToListenTo, messages => null))
             {
                 reciever.Start();
 
@@ -97,16 +93,15 @@ namespace LightningQueues.Tests.Protocol
                     stream.Write(BitConverter.GetBytes(5), 0, 4);
                 }
 
-                Wait.Until(() => (from e in _logger.InfoMessages.OfType<StringMessage>()
-                            where e.Message.Contains("Could not process Reading Message")
-                            select e).Any()).ShouldBeTrue();
+                Wait.Until(() => _logger.InfoMessages
+                    .Any(x => x.Contains("Could not process Reading Message"))).ShouldBeTrue();
             }
         }
 
         [Test]
         public void CanHandleClientSendingUnseriliazableData()
         {
-            using (var reciever = new Receiver(_endpointToListenTo, messages => null, _logger))
+            using (var reciever = new Receiver(_endpointToListenTo, messages => null))
             {
                 reciever.Start();
 
@@ -118,9 +113,8 @@ namespace LightningQueues.Tests.Protocol
                     stream.Write(Guid.NewGuid().ToByteArray(), 0, 16);
                 }
 
-                Wait.Until(() => (from e in _logger.InfoMessages.OfType<StringMessage>()
-                            where e.Message.Contains("Unable to deserialize messages")
-                            select e).Any()).ShouldBeTrue();
+                Wait.Until(() =>_logger.InfoMessages
+                    .Any(x => x.Contains("Unable to deserialize messages"))).ShouldBeTrue();
             }
         }
 
@@ -130,7 +124,7 @@ namespace LightningQueues.Tests.Protocol
             using (var reciever = new Receiver(_endpointToListenTo, messages =>
             {
                 throw new InvalidOperationException();
-            }, _logger))
+            }))
             {
                 reciever.Start();
 
@@ -156,7 +150,7 @@ namespace LightningQueues.Tests.Protocol
             using (var reciever = new Receiver(_endpointToListenTo, messages =>
             {
                 throw new QueueDoesNotExistsException();
-            }, _logger))
+            }))
             {
                 reciever.Start();
 
@@ -180,7 +174,7 @@ namespace LightningQueues.Tests.Protocol
         public void WillSendConfirmationForClient()
         {
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
-            using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance, _logger))
+            using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance))
             {
                 reciever.Start();
 
@@ -207,7 +201,7 @@ namespace LightningQueues.Tests.Protocol
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
             acceptance.Expect(x => x.Abort()).WhenCalled(x => abortCalled = true);
             
-            using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance, _logger))
+            using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance))
             {
                 reciever.Start();
 
@@ -237,7 +231,7 @@ namespace LightningQueues.Tests.Protocol
             var abortCalled = false;
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
             acceptance.Expect(x => x.Abort()).WhenCalled(x => abortCalled = true);
-            using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance, _logger))
+            using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance))
             {
                 reciever.Start();
 
@@ -270,7 +264,7 @@ namespace LightningQueues.Tests.Protocol
             var commitCalled = false;
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
             acceptance.Expect(x => x.Commit()).WhenCalled(x => commitCalled = true);
-            using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance, _logger))
+            using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance))
             {
                 reciever.Start();
 
@@ -302,7 +296,7 @@ namespace LightningQueues.Tests.Protocol
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
             acceptance.Stub(x => x.Commit()).Throw(new InvalidOperationException());
 
-            using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance, _logger))
+            using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance))
             {
                 reciever.Start();
 

@@ -1,7 +1,6 @@
-using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
-using FubuCore.Logging;
+using FubuCore;
 using LightningQueues.Exceptions;
 using LightningQueues.Logging;
 using LightningQueues.Model;
@@ -63,33 +62,33 @@ namespace LightningQueues.Internal
             try
             {
                 await sender.Send();
-                _logger.DebugMessage(() => new MessagesSent(messages, destination));
+                _logger.MessagesSent(messages, destination);
             }
             catch (FailedToConnectException ex)
             {
-                _logger.InfoMessage(new FailedToSend(destination, "Failed to connect", ex));
+                _logger.FailedToSend(destination, "Failed to connect", ex);
                 failedToConnect(messages);
             }
             catch (QueueDoesNotExistsException)
             {
-                _logger.InfoMessage(new FailedToSend(destination, "Queue doesn't exist"));
+                _logger.FailedToSend(destination, "Queue doesn't exist");
                 failedToSend(messages, true);
             }
             catch (RevertSendException)
             {
-                _logger.InfoMessage(new FailedToSend(destination, "Revert was received"));
+                _logger.FailedToSend(destination, "Revert was received");
                 revert(sendHistoryBookmarks, messages);
             }
             catch (Exception ex)
             {
-                _logger.InfoMessage(new FailedToSend(destination, "Exception was thrown", ex));
+                _logger.FailedToSend(destination, "Exception was thrown", ex);
                 failedToSend(messages);
             }
         }
 
         private Sender createSender(Endpoint destination, PersistentMessage[] messages)
         {
-            return new Sender(_logger)
+            return new Sender
             {
                 Connected = () => _choke.SuccessfullyConnected(),
                 Destination = destination,

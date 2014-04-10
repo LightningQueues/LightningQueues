@@ -2,14 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using LightningQueues.Exceptions;
+using LightningQueues.Logging;
 using Microsoft.Isam.Esent.Interop;
-using NLog;
 
 namespace LightningQueues.Storage
 {
     public abstract class AbstractActions : IDisposable
     {
-        protected readonly Logger logger;
+        protected readonly ILogger logger;
         protected readonly Guid instanceId;
 		protected readonly ColumnsInformation ColumnsInformation;
     	protected JET_DBID dbid;

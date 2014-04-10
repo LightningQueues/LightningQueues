@@ -1,13 +1,7 @@
 using System;
-using System.IO;
 using System.Linq;
-using System.Net;
-using System.Threading;
 using System.Transactions;
-using FubuCore.Logging;
 using FubuTestingSupport;
-using LightningQueues.Logging;
-using LightningQueues.Protocol;
 using NUnit.Framework;
 
 namespace LightningQueues.Tests
@@ -38,9 +32,9 @@ namespace LightningQueues.Tests
 				tx.Complete();
 			}
 
-		    Wait.Until(() => _logger.InfoMessages.OfType<FailedToSend>().Any()).ShouldBeTrue();
+		    Wait.Until(() => _logger.SendFailures.Any()).ShouldBeTrue();
 
-		    var log = _logger.InfoMessages.OfType<FailedToSend>().First();
+		    var log = _logger.SendFailures.First();
 		    "255.255.255.255".ShouldEqual(log.Destination.Host);
 		    2200.ShouldEqual(log.Destination.Port);
 		}

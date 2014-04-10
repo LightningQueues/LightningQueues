@@ -4,9 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Runtime.ConstrainedExecution;
 using System.Threading;
+using LightningQueues.Logging;
 using LightningQueues.Model;
 using Microsoft.Isam.Esent.Interop;
-using NLog;
 
 namespace LightningQueues.Storage
 {
@@ -17,7 +17,7 @@ namespace LightningQueues.Storage
 	    private readonly string _path;
 	    private ColumnsInformation _columnsInformation;
 	    private readonly QueueManagerConfiguration _configuration;
-	    private readonly Logger _logger = LogManager.GetLogger<QueueStorage>();
+	    private readonly ILogger _logger = LogManager.GetLogger<QueueStorage>();
 
 	    private readonly ReaderWriterLockSlim _usageLock = new ReaderWriterLockSlim();
 

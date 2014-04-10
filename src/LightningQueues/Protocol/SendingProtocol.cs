@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Threading.Tasks;
-using FubuCore.Logging;
+using LightningQueues.Logging;
 using LightningQueues.Model;
 using LightningQueues.Protocol.Chunks;
 
@@ -9,12 +9,7 @@ namespace LightningQueues.Protocol
 {
     public class SendingProtocol
     {
-        private readonly ILogger _logger;
-
-        public SendingProtocol(ILogger logger)
-        {
-            _logger = logger;
-        }
+        private static readonly ILogger _logger = LogManager.GetLogger<SendingProtocol>();
 
         public async Task Send(Stream stream, Action success, Message[] messages, string destination)
         {

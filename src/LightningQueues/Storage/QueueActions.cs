@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using LightningQueues.Logging;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
 using Microsoft.Isam.Esent.Interop;
-using NLog;
 
 namespace LightningQueues.Storage
 {
@@ -14,7 +14,7 @@ namespace LightningQueues.Storage
 		private string[] _subqueues;
 		private readonly AbstractActions _actions;
 		private readonly Action<int> _changeNumberOfMessages;
-        private readonly Logger _logger = LogManager.GetLogger<QueueActions>();
+        private readonly ILogger _logger = LogManager.GetLogger<QueueActions>();
         private readonly EsentTable _messages;
         private readonly EsentTable _messageHistory;
 

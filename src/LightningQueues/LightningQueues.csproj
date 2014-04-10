@@ -76,16 +76,14 @@
     <Compile Include="Exceptions\RevertSendException.cs" />
     <Compile Include="Exceptions\UnexpectedReceivedMessageFormatException.cs" />
     <Compile Include="Internal\ITransaction.cs" />
-    <Compile Include="Logging\FailedToSend.cs" />
-    <Compile Include="Logging\MessageQueuedForReceive.cs" />
-    <Compile Include="Logging\MessageReceived.cs" />
+    <Compile Include="Logging\ILogger.cs" />
+    <Compile Include="Logging\LogManager.cs" />
     <Compile Include="Internal\QueueTransaction.cs" />
     <Compile Include="ISendingThrottle.cs" />
     <Compile Include="ITransactionalScope.cs" />
     <Compile Include="IQueue.cs" />
     <Compile Include="IQueueManager.cs" />
-    <Compile Include="Logging\MessageQueuedForSend.cs" />
-    <Compile Include="LogManager.cs" />
+    <Compile Include="Logging\NLogLogger.cs" />
     <Compile Include="MessageEventArgs.cs" />
     <Compile Include="MessagePayload.cs" />
     <Compile Include="Model\HistoryMessage.cs" />
@@ -110,7 +108,6 @@
     <Compile Include="Model\Message.cs" />
     <Compile Include="Model\MessageId.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Logging\MessagesSent.cs" />
     <Compile Include="Protocol\ProtocolConstants.cs" />
     <Compile Include="Protocol\IMessageAcceptance.cs" />
     <Compile Include="Protocol\Receiver.cs" />

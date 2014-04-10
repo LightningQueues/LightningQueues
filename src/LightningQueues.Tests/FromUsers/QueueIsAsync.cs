@@ -28,7 +28,7 @@ namespace LightningQueues.Tests.FromUsers
 		{
 			for (int i = 0; i < 2; i++)
 			{
-				new Sender(ObjectMother.Logger())
+				new Sender()
 				{
 					Destination = new Endpoint("localhost", 23456),
 					Messages = new[]
