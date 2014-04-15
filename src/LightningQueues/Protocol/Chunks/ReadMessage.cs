@@ -2,7 +2,7 @@
 using System.IO;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using FubuCore.Logging;
+using LightningQueues.Logging;
 using LightningQueues.Model;
 
 namespace LightningQueues.Protocol.Chunks

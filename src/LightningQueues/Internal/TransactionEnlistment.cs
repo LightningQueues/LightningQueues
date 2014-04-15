@@ -1,20 +1,19 @@
 using System;
 using System.Transactions;
-using FubuCore.Logging;
+using LightningQueues.Logging;
 using LightningQueues.Storage;
 
 namespace LightningQueues.Internal
 {
 	public class TransactionEnlistment : QueueTransaction, ISinglePhaseNotification
 	{
-	    private readonly ILogger _logger;
+	    private static readonly ILogger _logger = LogManager.GetLogger<TransactionEnlistment>();
 	    private readonly QueueStorage _queueStorage;
 		private readonly Action _assertNotDisposed;
 
-		public TransactionEnlistment(ILogger logger, QueueStorage queueStorage, Action onComplete, Action assertNotDisposed)
-            : base(logger, queueStorage, assertNotDisposed, onComplete)
+		public TransactionEnlistment(QueueStorage queueStorage, Action onComplete, Action assertNotDisposed)
+            : base(queueStorage, assertNotDisposed, onComplete)
 		{
-		    _logger = logger;
 		    _queueStorage = queueStorage;
 			_assertNotDisposed = assertNotDisposed;
 

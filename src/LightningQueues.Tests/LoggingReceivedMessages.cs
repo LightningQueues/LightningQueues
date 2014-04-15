@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Threading;
 using System.Transactions;
-using FubuCore.Logging;
 using FubuTestingSupport;
 using LightningQueues.Logging;
 using LightningQueues.Model;
@@ -30,7 +29,7 @@ namespace LightningQueues.Tests
         }
 
         [Test]
-        public void MessageQueuedForReceive_EventIsRaised()
+        public void MessageQueuedForReceive_IsLogged()
         {
             using (var tx = new TransactionScope())
             {
@@ -44,32 +43,32 @@ namespace LightningQueues.Tests
                 tx.Complete();
             }
 
-            Wait.Until(() => _logger.DebugMessages.OfType<MessageQueuedForReceive>().Any()).ShouldBeTrue();
+            Wait.Until(() => _logger.MessagesQueuedForReceive.Any()).ShouldBeTrue();
 
-            var log = _logger.DebugMessages.OfType<MessageQueuedForReceive>().First();
-            log.Message.Queue.ShouldEqual("h");
+            var msg = _logger.MessagesQueuedForReceive.First();
+            msg.Queue.ShouldEqual("h");
         }
 
         [Test]
-        public void MessageQueuedForReceive_EventIsRaised_DirectEnqueuing()
+        public void MessageQueuedForReceive_IsLogged_DirectEnqueuing()
         {
             using (var tx = new TransactionScope())
             {
                 _receiver.EnqueueDirectlyTo("h", null, new MessagePayload {Data = new byte[] {1, 2, 3}});
                 tx.Complete();
             }
-            Wait.Until(() => _logger.DebugMessages.OfType<MessageQueuedForReceive>().Any()).ShouldBeTrue();
+            Wait.Until(() => _logger.MessagesQueuedForReceive.Any()).ShouldBeTrue();
 
-            var log = _logger.DebugMessages.OfType<MessageQueuedForReceive>().First();
-            "h".ShouldEqual(log.Message.Queue);
+            var msg = _logger.MessagesQueuedForReceive.First();
+            msg.Queue.ShouldEqual("h");
         }
 
         [Test]
-        public void MessageQueuedForReceive_EventNotRaised_IfReceiveAborts()
+        public void MessageQueuedForReceive_IsNotLogged_IfReceiveAborts()
         {
             ManualResetEvent wait = new ManualResetEvent(false);
 
-            var sender = new FakeSender(ObjectMother.Logger())
+            var sender = new FakeSender
             {
                 Destination = new Endpoint("localhost", 23457),
                 Messages = new[]
@@ -93,14 +92,14 @@ namespace LightningQueues.Tests
             var logger = new RecordingLogger();
             sender.Send();
             wait.WaitOne(TimeSpan.FromSeconds(1));
-            Wait.Until(() => logger.DebugMessages.OfType<MessageQueuedForReceive>().Any(),
+            Wait.Until(() => logger.MessagesQueuedForReceive.Any(),
                 timeoutInMilliseconds: 1000)
                 .ShouldBeFalse();
 
         }
 
         [Test]
-        public void MessageReceived_EventIsRaised()
+        public void MessageReceived_IsLogged()
         {
             using (var tx = new TransactionScope())
             {
@@ -121,14 +120,14 @@ namespace LightningQueues.Tests
                 tx.Complete();
             }
 
-            Wait.Until(() => _logger.DebugMessages.OfType<MessageReceived>().Any()).ShouldBeTrue();
+            Wait.Until(() => _logger.ReceivedMessages.Any()).ShouldBeTrue();
 
-            var log = _logger.DebugMessages.OfType<MessageReceived>().First();
-            "h".ShouldEqual(log.Message.Queue);
+            var message = _logger.ReceivedMessages.First();
+            "h".ShouldEqual(message.Queue);
         }
 
         [Test]
-        public void MessageReceived_EventNotRaised_IfMessageNotReceived()
+        public void MessageReceived_IsNotLogged_IfMessageNotReceived()
         {
             using (var tx = new TransactionScope())
             {
@@ -141,12 +140,12 @@ namespace LightningQueues.Tests
 
                 tx.Complete();
             }
-            Wait.Until(() => _logger.DebugMessages.OfType<MessageReceived>().Any(), timeoutInMilliseconds: 1000)
+            Wait.Until(() => _logger.DebugMessages.Any(), timeoutInMilliseconds: 1000)
                 .ShouldBeFalse();
         }
 
         [Test]
-        public void MessageReceived_and_MessageQueuedForReceive_events_raised_when_message_removed_and_moved()
+        public void MessageReceived_and_MessageQueuedForReceive_logged_when_message_removed_and_moved()
         {
             using (var tx = new TransactionScope())
             {
@@ -168,20 +167,20 @@ namespace LightningQueues.Tests
                 tx.Complete();
             }
 
-            Wait.Until(() => _logger.DebugMessages.OfType<MessageQueuedForReceive>().Count() == 2).ShouldBeTrue();
+            Wait.Until(() => _logger.MessagesQueuedForReceive.Count() == 2).ShouldBeTrue();
 
-            var messageReceived = _logger.DebugMessages.OfType<MessageReceived>().First();
-            "h".ShouldEqual(messageReceived.Message.Queue);
-            messageReceived.Message.SubQueue.ShouldEqual("b");
+            var messageReceived = _logger.ReceivedMessages.First();
+            "h".ShouldEqual(messageReceived.Queue);
+            messageReceived.SubQueue.ShouldEqual("b");
 
-            var messageQueuedForReceive = _logger.DebugMessages.OfType<MessageQueuedForReceive>().Last();
+            var messageQueuedForReceive = _logger.MessagesQueuedForReceive.Last();
 
-            "h".ShouldEqual(messageQueuedForReceive.Message.Queue);
-            "b".ShouldEqual(messageQueuedForReceive.Message.SubQueue);
+            "h".ShouldEqual(messageQueuedForReceive.Queue);
+            "b".ShouldEqual(messageQueuedForReceive.SubQueue);
         }
 
         [Test]
-        public void MessageReceived_and_MessageQueuedForReceive_events_raised_when_message_peeked_and_moved()
+        public void MessageReceived_and_MessageQueuedForReceive_logged_when_message_peeked_and_moved()
         {
             using (var tx = new TransactionScope())
             {
@@ -204,16 +203,16 @@ namespace LightningQueues.Tests
                 tx.Complete();
             }
 
-            Wait.Until(() => _logger.DebugMessages.OfType<MessageQueuedForReceive>().Any()).ShouldBeTrue();
+            Wait.Until(() => _logger.MessagesQueuedForReceive.Any()).ShouldBeTrue();
 
-            var messageReceived = _logger.DebugMessages.OfType<MessageReceived>().Last();
-            "h".ShouldEqual(messageReceived.Message.Queue);
-            messageReceived.Message.SubQueue.ShouldEqual("b");
+            var messageReceived = _logger.ReceivedMessages.Last();
+            "h".ShouldEqual(messageReceived.Queue);
+            messageReceived.SubQueue.ShouldEqual("b");
 
-            var messageQueuedForReceive = _logger.DebugMessages.OfType<MessageQueuedForReceive>().Last();
+            var messageQueuedForReceive = _logger.MessagesQueuedForReceive.Last();
 
-            "h".ShouldEqual(messageQueuedForReceive.Message.Queue);
-            "b".ShouldEqual(messageQueuedForReceive.Message.SubQueue);
+            "h".ShouldEqual(messageQueuedForReceive.Queue);
+            "b".ShouldEqual(messageQueuedForReceive.SubQueue);
         }
 
         [TearDown]

@@ -16,7 +16,7 @@ namespace LightningQueues.Tests.Storage
         [Test]
         public void MovesExpiredMessageToOutgoingHistory()
         {
-            using (var qf = new QueueStorage("test.esent", new QueueManagerConfiguration(), ObjectMother.Logger()))
+            using (var qf = new QueueStorage("test.esent", new QueueManagerConfiguration()))
             {
                 qf.Initialize();
 
@@ -56,7 +56,7 @@ namespace LightningQueues.Tests.Storage
         public void MovesMessageToOutgoingHistoryAfterMaxAttempts()
         {
             Directory.Delete("test.esent", true);
-            using (var qf = new QueueStorage("test.esent", new QueueManagerConfiguration(), ObjectMother.Logger()))
+            using (var qf = new QueueStorage("test.esent", new QueueManagerConfiguration()))
             {
                 qf.Initialize();
                 qf.Global(actions => actions.CreateQueueIfDoesNotExists("test"));

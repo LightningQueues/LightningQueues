@@ -1,8 +1,8 @@
 ﻿using System.IO;
 using System.Text;
 using System.Threading.Tasks;
-using FubuCore.Logging;
 using LightningQueues.Exceptions;
+using LightningQueues.Logging;
 
 namespace LightningQueues.Protocol.Chunks
 {

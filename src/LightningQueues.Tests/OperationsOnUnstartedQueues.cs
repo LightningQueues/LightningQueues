@@ -1,12 +1,6 @@
 ﻿using System;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Threading;
 using System.Transactions;
-using FubuCore.Logging;
 using FubuTestingSupport;
-using LightningQueues.Logging;
 using NUnit.Framework;
 
 namespace LightningQueues.Tests

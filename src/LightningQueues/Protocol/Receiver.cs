@@ -2,8 +2,8 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using FubuCore.Logging;
 using LightningQueues.Exceptions;
+using LightningQueues.Logging;
 using LightningQueues.Model;
 
 namespace LightningQueues.Protocol
@@ -16,11 +16,11 @@ namespace LightningQueues.Protocol
         private TcpListener _listener;
         private bool _disposed;
 
-        public Receiver(IPEndPoint endpointToListenTo, Func<Message[], IMessageAcceptance> acceptMessages, ILogger logger)
+        public Receiver(IPEndPoint endpointToListenTo, Func<Message[], IMessageAcceptance> acceptMessages, ILogger logger = null)
         {
             _endpointToListenTo = endpointToListenTo;
             _acceptMessages = acceptMessages;
-            _logger = logger;
+            _logger = logger ?? LogManager.GetLogger<Receiver>();
         }
 
         public void Start()
@@ -78,7 +78,7 @@ namespace LightningQueues.Protocol
             using (var stream = client.GetStream())
             {
                 var sender = client.Client.RemoteEndPoint.ToString();
-                await new ReceivingProtocol(_logger).ReadMessagesAsync(sender, stream, _acceptMessages);
+                await new ReceivingProtocol().ReadMessagesAsync(sender, stream, _acceptMessages);
             }
         }
 

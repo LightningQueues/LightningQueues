@@ -50,6 +50,9 @@
     <Reference Include="FubuTestingSupport">
       <HintPath>..\packages\FubuTestingSupport\lib\FubuTestingSupport.dll</HintPath>
     </Reference>
+    <Reference Include="NLog">
+      <HintPath>..\packages\NLog\lib\net45\NLog.dll</HintPath>
+    </Reference>
     <Reference Include="nunit.framework">
       <HintPath>..\packages\NUnit\lib\nunit.framework.dll</HintPath>
     </Reference>
@@ -99,6 +102,7 @@
     <Compile Include="Protocol\FakeReceiver.cs" />
     <Compile Include="FromUsers\QueueIsAsync.cs" />
     <Compile Include="RaisingSendEvents.cs" />
+    <Compile Include="RecordingLogger.cs" />
     <Compile Include="SendingChokeTester.cs" />
     <Compile Include="SendingToLightningQueue.cs" />
     <Compile Include="StartingLightningQueues.cs" />

@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using FubuCore.Logging;
 using LightningQueues.Exceptions;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
@@ -14,13 +12,11 @@ namespace LightningQueues.Storage
     public class GlobalActions : AbstractActions
     {
 	    private readonly QueueManagerConfiguration configuration;
-        private readonly ILogger _logger;
 
-        public GlobalActions(JET_INSTANCE instance, ColumnsInformation columnsInformation, string database, Guid instanceId, QueueManagerConfiguration configuration, ILogger logger)
-			: base(instance, columnsInformation, database, instanceId, logger)
+        public GlobalActions(JET_INSTANCE instance, ColumnsInformation columnsInformation, string database, Guid instanceId, QueueManagerConfiguration configuration)
+			: base(instance, columnsInformation, database, instanceId)
         {
             this.configuration = configuration;
-            _logger = logger;
         }
 
         public void CreateQueueIfDoesNotExists(string queueName)
@@ -139,7 +135,7 @@ namespace LightningQueues.Storage
                     outgoing.ForColumnType<IntColumn>().Set("max_attempts", payload.MaxAttempts.Value);
             });
             outgoing.MoveTo(bookmark);
-            _logger.Debug("Created output message '{0}' for 'lq.tcp://{1}:{2}/{3}/{4}' as NotReady",
+            logger.Debug("Created output message '{0}' for 'lq.tcp://{1}:{2}/{3}/{4}' as NotReady",
                 msgId,
                 destination.Host,
                 destination.Port,
@@ -156,7 +152,7 @@ namespace LightningQueues.Storage
             {
                 outgoing.Update(() => outgoing.ForColumnType<IntColumn>().Set("send_status", (int)OutgoingMessageStatus.Ready));
                 var id = outgoing.ForColumnType<GuidColumn>().Get("msg_id");
-                _logger.Debug("Marking output message {0} as Ready", id);
+                logger.Debug("Marking output message {0} as Ready", id);
             }
         }
 
@@ -166,7 +162,7 @@ namespace LightningQueues.Storage
         	while(enumerator.MoveNext())
         	{
         	    var id = outgoing.ForColumnType<GuidColumn>().Get("msg_id");
-        	    _logger.Debug("Deleting output message {0}", id);
+        	    logger.Debug("Deleting output message {0}", id);
                 outgoing.Delete();
             }
         }

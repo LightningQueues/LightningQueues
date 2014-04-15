@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using System.Net.Sockets;
-using FubuCore.Logging;
 using FubuTestingSupport;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
@@ -18,7 +17,7 @@ namespace LightningQueues.Tests.Protocol
             listener.Start();
             listener.AcceptTcpClientAsync();
             bool connected = false;
-            new Sender(new RecordingLogger())
+            new Sender()
             {
                 Connected = () => connected = true,
                 Destination = new Endpoint("localhost", 5500),

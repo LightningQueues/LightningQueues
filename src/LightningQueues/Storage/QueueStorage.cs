@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.ConstrainedExecution;
 using System.Threading;
-using FubuCore.Logging;
+using LightningQueues.Logging;
 using LightningQueues.Model;
 using Microsoft.Isam.Esent.Interop;
 
@@ -17,16 +17,15 @@ namespace LightningQueues.Storage
 	    private readonly string _path;
 	    private ColumnsInformation _columnsInformation;
 	    private readonly QueueManagerConfiguration _configuration;
-	    private readonly ILogger _logger;
+	    private readonly ILogger _logger = LogManager.GetLogger<QueueStorage>();
 
 	    private readonly ReaderWriterLockSlim _usageLock = new ReaderWriterLockSlim();
 
 		public Guid Id { get; private set; }
 
-		public QueueStorage(string database, QueueManagerConfiguration configuration, ILogger logger)
+		public QueueStorage(string database, QueueManagerConfiguration configuration)
 		{
 		    _configuration = configuration;
-		    _logger = logger;
 		    _database = database;
 		    _path = database;
 			if (Path.IsPathRooted(database) == false)
@@ -256,12 +255,12 @@ namespace LightningQueues.Storage
 
 	    private SenderActions GetSender()
 	    {
-	        return new SenderActions(_instance, _columnsInformation, _database, Id, _configuration, _logger);
+	        return new SenderActions(_instance, _columnsInformation, _database, Id, _configuration);
 	    }
 
 	    private GlobalActions GetGlobal()
 	    {
-	        return new GlobalActions(_instance, _columnsInformation, _database, Id, _configuration, _logger);
+	        return new GlobalActions(_instance, _columnsInformation, _database, Id, _configuration);
 	    }
 
 	    private TResult ScopedActions<T,TResult>(Func<T> constructor, Func<T, TResult> selector) where T : AbstractActions

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Threading.Tasks;
-using FubuCore.Logging;
+using LightningQueues.Logging;
 
 namespace LightningQueues.Protocol.Chunks
 {
@@ -26,7 +26,7 @@ namespace LightningQueues.Protocol.Chunks
             }
             catch (Exception exception)
             {
-                _logger.Info("Could not process {0} for Endpoint: {1}", ToString(), _endpoint, exception);
+                _logger.Info("Could not process {0} for Endpoint: {1}", exception, ToString(), _endpoint);
                 throw;
             }
         }
@@ -51,7 +51,7 @@ namespace LightningQueues.Protocol.Chunks
             }
             catch (Exception exception)
             {
-                _logger.Info("Could not process {0} for Endpoint: {1}", ToString(), _endpoint, exception);
+                _logger.Info("Could not process {0} for Endpoint: {1}", exception, ToString(), _endpoint);
                 throw;
             }
             return retVal;

@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using FubuCore.Logging;
 using FubuTestingSupport;
 using LightningQueues.Exceptions;
 using LightningQueues.Model;
@@ -24,7 +23,7 @@ namespace LightningQueues.Tests.Protocol
             _logger = new RecordingLogger();
             wasSuccessful = false;
             error = null;
-            sender = new Sender(_logger)
+            sender = new Sender()
             {
                 Destination = new Endpoint("localhost", 23456),
                 Messages = new[]

@@ -20,11 +20,11 @@ namespace LightningQueues.Tests.Protocol
             {
                 recievedMsgs = messages;
                 return MockRepository.GenerateStub<IMessageAcceptance>();
-            }, ObjectMother.Logger()))
+            }))
             {
                 reciever.Start();
 
-                new Sender(ObjectMother.Logger())
+                new Sender()
                 {
                     Destination = endPoint,
                     Messages = new[]
@@ -57,11 +57,11 @@ namespace LightningQueues.Tests.Protocol
             {
                 recievedMsgs = messages;
                 return MockRepository.GenerateStub<IMessageAcceptance>();
-            }, ObjectMother.Logger()))
+            }))
             {
                 reciever.Start();
 
-                new Sender(ObjectMother.Logger())
+                new Sender()
                 {
                     Destination = new Endpoint("localhost", 23456),
                     Messages = new[]
@@ -81,7 +81,7 @@ namespace LightningQueues.Tests.Protocol
 
                 recievedMsgs = null;
 
-                new Sender(ObjectMother.Logger())
+                new Sender()
                 {
                     Destination = new Endpoint("localhost", 23456),
                     Messages = new[]
@@ -111,11 +111,11 @@ namespace LightningQueues.Tests.Protocol
             {
                 recievedMsgs = messages;
                 return MockRepository.GenerateStub<IMessageAcceptance>();
-            }, ObjectMother.Logger()))
+            }))
             {
                 reciever.Start();
 
-                new Sender(ObjectMother.Logger())
+                new Sender()
                 {
                     Destination = new Endpoint("localhost", 23456),
                     Messages = new[]

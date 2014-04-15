@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Net;
 using System.Transactions;
-using FubuCore.Logging;
 using FubuTestingSupport;
 using LightningQueues.Logging;
 using LightningQueues.Model;
@@ -34,7 +33,7 @@ namespace LightningQueues.Tests
         }
 
         [Test]
-        public void MessageQueuedForSend_EventIsRaised()
+        public void MessageQueuedForSend_IsLogged()
         {
             using (var tx = new TransactionScope())
             {
@@ -48,7 +47,7 @@ namespace LightningQueues.Tests
                 tx.Complete();
             }
 
-            var log = _logger.DebugMessages.OfType<MessageQueuedForSend>().FirstOrDefault();
+            var log = _logger.MessagesQueuedForSend.FirstOrDefault();
 
             log.ShouldNotBeNull();
             "localhost".ShouldEqual(log.Destination.Host);
@@ -57,7 +56,7 @@ namespace LightningQueues.Tests
         }
 
         [Test]
-        public void MessageQueuedForSend_EventIsRaised_EvenIfTransactionFails()
+        public void MessageQueuedForSend_IsLogged_EvenIfTransactionFails()
         {
             using (new TransactionScope())
             {
@@ -69,7 +68,7 @@ namespace LightningQueues.Tests
                     });
             }
 
-            var log = _logger.DebugMessages.OfType<MessageQueuedForSend>().FirstOrDefault();
+            var log = _logger.MessagesQueuedForSend.FirstOrDefault();
             log.ShouldNotBeNull();
             "localhost".ShouldEqual(log.Destination.Host);
             23999.ShouldEqual(log.Destination.Port);
@@ -77,7 +76,7 @@ namespace LightningQueues.Tests
         }
 
         [Test]
-        public void MessageSent_EventIsRaised()
+        public void MessageSent_IsLogged()
         {
             using (var receiver = ObjectMother.QueueManager(TEST_QUEUE_2, 23457))
             {
@@ -97,7 +96,7 @@ namespace LightningQueues.Tests
                 _sender.WaitForAllMessagesToBeSent();
             }
 
-            var log = _logger.DebugMessages.OfType<MessagesSent>().FirstOrDefault();
+            var log = _logger.SentMessages.FirstOrDefault();
             log.ShouldNotBeNull();
             "localhost".ShouldEqual(log.Destination.Host);
             23457.ShouldEqual(log.Destination.Port);
@@ -105,7 +104,7 @@ namespace LightningQueues.Tests
         }
 
         [Test]
-        public void MessageSent_EventNotRaised_IfNotSent()
+        public void MessageSent_IsNotLogged_IfNotSent()
         {
             using (var tx = new TransactionScope())
             {
@@ -119,14 +118,14 @@ namespace LightningQueues.Tests
                 tx.Complete();
             }
 
-            var log = _logger.DebugMessages.OfType<MessagesSent>().FirstOrDefault();
+            var log = _logger.SentMessages.FirstOrDefault();
             log.ShouldBeNull();
         }
 
         [Test]
-        public void MessageSent_EventNotRaised_IfReceiverReverts()
+        public void MessageSent_IsNotLogged_IfReceiverReverts()
         {
-            using (var receiver = new RevertingQueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2, new QueueManagerConfiguration(), ObjectMother.Logger()))
+            using (var receiver = new RevertingQueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2, new QueueManagerConfiguration()))
             {
                 receiver.CreateQueues("h");
                 receiver.Start();
@@ -144,14 +143,14 @@ namespace LightningQueues.Tests
                 }
             }
 
-            var log = _logger.DebugMessages.OfType<MessagesSent>().FirstOrDefault();
+            var log = _logger.SentMessages.FirstOrDefault();
             log.ShouldBeNull();
         }
 
         private class RevertingQueueManager : QueueManager
         {
-            public RevertingQueueManager(IPEndPoint endpoint, string path, QueueManagerConfiguration configuration, ILogger logger)
-                : base(endpoint, path, configuration, logger)
+            public RevertingQueueManager(IPEndPoint endpoint, string path, QueueManagerConfiguration configuration)
+                : base(endpoint, path, configuration)
             {
             }
 

@@ -21,7 +21,7 @@ namespace LightningQueues.Tests.Storage
         [Test]
         public void MovesMessageToOutgoingFromHistory()
         {
-            using (var qf = new QueueStorage("test.esent", new QueueManagerConfiguration(), ObjectMother.Logger()))
+            using (var qf = new QueueStorage("test.esent", new QueueManagerConfiguration()))
             {
                 qf.Initialize();
                 qf.Global(actions => actions.CreateQueueIfDoesNotExists("test"));

@@ -5,7 +5,6 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Transactions;
-using FubuCore.Logging;
 using LightningQueues.Exceptions;
 using LightningQueues.Internal;
 using LightningQueues.Logging;
@@ -49,14 +48,14 @@ namespace LightningQueues
 
         public ISendingThrottle SendingThrottle { get { return _choke; } }
 
-        public QueueManager(IPEndPoint endpoint, string path, QueueManagerConfiguration configuration, ILogger logger)
+        public QueueManager(IPEndPoint endpoint, string path, QueueManagerConfiguration configuration, ILogger logger = null)
         {
             Configuration = configuration;
 
             _endpoint = endpoint;
             _path = path;
-            _logger = logger;
-            _queueStorage = new QueueStorage(path, configuration, _logger);
+            _logger = logger ?? LogManager.GetLogger(GetType());
+            _queueStorage = new QueueStorage(path, configuration);
             _queueStorage.Initialize();
 
             _queueStorage.Global(actions =>
@@ -74,7 +73,7 @@ namespace LightningQueues
             if (_wasStarted)
                 throw new InvalidOperationException("The Start method may not be invoked more than once.");
 
-            _receiver = new Receiver(_endpoint, AcceptMessages, _logger);
+            _receiver = new Receiver(_endpoint, AcceptMessages);
             _receiver.Start();
 
             _choke = new SendingChoke();
@@ -105,7 +104,7 @@ namespace LightningQueues
                 {
                     recoveryRequired = true;
                     TransactionManager.Reenlist(_queueStorage.Id, bytes,
-                        new TransactionEnlistment(_logger, _queueStorage, () => { }, () => { }));
+                        new TransactionEnlistment(_queueStorage, () => { }, () => { }));
                 }
             });
             if (recoveryRequired)
@@ -114,7 +113,7 @@ namespace LightningQueues
 
         public ITransactionalScope BeginTransactionalScope()
         {
-            return new TransactionalScope(this, new QueueTransaction(_logger, _queueStorage, OnTransactionComplete, AssertNotDisposed));
+            return new TransactionalScope(this, new QueueTransaction(_queueStorage, OnTransactionComplete, AssertNotDisposed));
         }
 
         public string Path
@@ -277,7 +276,7 @@ namespace LightningQueues
                     var sp = Stopwatch.StartNew();
                     if (Monitor.Wait(_newMessageArrivedLock, remaining) == false)
                         throw new TimeoutException("No message arrived in the specified timeframe " + timeout);
-                    remaining = (new[] {TimeSpan.Zero, remaining - sp.Elapsed}).Max();
+                    remaining = (new[] { TimeSpan.Zero, remaining - sp.Elapsed }).Max();
                 }
             }
         }
@@ -334,7 +333,7 @@ namespace LightningQueues
                 return;
             // need to change the enlistment
             Interlocked.Increment(ref _currentlyInsideTransaction);
-            _enlistment = new TransactionEnlistment(_logger, _queueStorage, OnTransactionComplete, AssertNotDisposed);
+            _enlistment = new TransactionEnlistment(_queueStorage, OnTransactionComplete, AssertNotDisposed);
             _currentlyEnslistedTransaction = Transaction.Current;
         }
 
@@ -355,7 +354,9 @@ namespace LightningQueues
                 }
                 return msg;
             });
-            _logger.DebugMessage(new MessageReceived(message));
+
+            if (message != null)
+                _logger.MessageReceived(message);
             return message;
         }
 
@@ -416,14 +417,14 @@ namespace LightningQueues
                     _parent.AssertNotDisposed();
                     _queueStorage.Global(actions =>
                     {
-                        _bookmarks.Select(bookmark => new {Queue = actions.GetQueue(bookmark.QueueName), bookmark})
+                        _bookmarks.Select(bookmark => new { Queue = actions.GetQueue(bookmark.QueueName), bookmark })
                             .Each(x => x.Queue.SetMessageStatus(x.bookmark, MessageStatus.ReadyToDeliver));
 
                         _messages.Each(x => actions.MarkReceived(x.Id));
                     });
                     _parent._receivedMsgs.Add(_messages.Select(m => m.Id));
 
-                    _messages.Each(x => _parent._logger.DebugMessage(() => new MessageQueuedForReceive(x)));
+                    _messages.Each(x => _parent._logger.QueuedForReceive(x));
 
                     lock (_parent._newMessageArrivedLock)
                     {
@@ -507,9 +508,9 @@ namespace LightningQueues
             });
 
             if (((PersistentMessage)message).Status == MessageStatus.ReadyToDeliver)
-                _logger.DebugMessage(() => new MessageReceived(message));
-            
-            _logger.DebugMessage(() => new MessageQueuedForReceive(message));
+                _logger.MessageReceived(message);
+
+            _logger.QueuedForReceive(message);
         }
 
         public void ClearAllMessages()
@@ -550,7 +551,7 @@ namespace LightningQueues
 
             });
 
-            _logger.DebugMessage(() => new MessageQueuedForReceive(message));
+            _logger.QueuedForReceive(message);
 
             lock (_newMessageArrivedLock)
             {
@@ -644,11 +645,11 @@ namespace LightningQueues
                 var message = GetMessageFromQueue(scope.Transaction, queueName, subqueue);
                 if (message != null)
                 {
-                    yield return new StreamedMessage {Message = message, TransactionalScope = scope};
+                    yield return new StreamedMessage { Message = message, TransactionalScope = scope };
                     continue;
                 }
                 scope.Rollback();
-            } 
+            }
         }
 
         public MessageId Send(ITransaction transaction, Uri uri, MessagePayload payload)
@@ -679,10 +680,10 @@ namespace LightningQueues
             });
 
             var messageId = new MessageId
-                                {
-                                    SourceInstanceId = _queueStorage.Id,
-                                    MessageIdentifier = msgId
-                                };
+            {
+                SourceInstanceId = _queueStorage.Id,
+                MessageIdentifier = msgId
+            };
             var message = new Message
             {
                 Id = messageId,
@@ -692,7 +693,7 @@ namespace LightningQueues
                 SubQueue = subqueue
             };
 
-            _logger.DebugMessage(() => new MessageQueuedForSend(destination, message));
+            _logger.QueuedForSend(message, destination);
 
             return messageId;
         }

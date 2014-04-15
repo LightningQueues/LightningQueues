@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web;
-using FubuCore.Logging;
+using LightningQueues.Logging;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
 using Microsoft.Isam.Esent.Interop;
@@ -15,17 +14,16 @@ namespace LightningQueues.Storage
 		private string[] _subqueues;
 		private readonly AbstractActions _actions;
 		private readonly Action<int> _changeNumberOfMessages;
-        private readonly ILogger _logger;
+        private readonly ILogger _logger = LogManager.GetLogger<QueueActions>();
         private readonly EsentTable _messages;
         private readonly EsentTable _messageHistory;
 
-		public QueueActions(Session session, JET_DBID dbid, string queueName, string[] subqueues, AbstractActions actions, Action<int> changeNumberOfMessages, ILogger logger)
+		public QueueActions(Session session, JET_DBID dbid, string queueName, string[] subqueues, AbstractActions actions, Action<int> changeNumberOfMessages)
 		{
 			_queueName = queueName;
 			_subqueues = subqueues;
 			_actions = actions;
 			_changeNumberOfMessages = changeNumberOfMessages;
-		    _logger = logger;
 		    var msgs = new Table(session, dbid, queueName, OpenTableGrbit.None);
 			var msgsHistory = new Table(session, dbid, queueName + "_history", OpenTableGrbit.None);
             _messages = new EsentTable(session, msgs);

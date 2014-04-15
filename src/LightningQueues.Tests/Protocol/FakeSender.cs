@@ -1,18 +1,19 @@
 using System;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using FubuCore.Logging;
 using LightningQueues.Exceptions;
+using LightningQueues.Logging;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
 using LightningQueues.Protocol.Chunks;
 using LightningQueues.Storage;
+using LogManager = LightningQueues.Logging.LogManager;
 
 namespace LightningQueues.Tests.Protocol
 {
     public class FakeSender
     {
-        private readonly ILogger _logger;
+        private readonly ILogger _logger = LogManager.GetLogger<FakeSender>();
         public event Action SendCompleted;
         public Func<MessageBookmark[]> Success { get; set; }
         public Action<Exception> Failure { get; set; }
@@ -23,9 +24,8 @@ namespace LightningQueues.Tests.Protocol
         public Endpoint Destination { get; set; }
         public Message[] Messages { get; set; }
 
-        public FakeSender(ILogger logger)
+        public FakeSender()
         {
-            _logger = logger;
             Connected = () => { };
             FailureToConnect = e => { };
             Failure = e => { };

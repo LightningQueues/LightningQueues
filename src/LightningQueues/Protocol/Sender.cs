@@ -1,24 +1,23 @@
 using System;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using FubuCore.Logging;
 using LightningQueues.Exceptions;
+using LightningQueues.Logging;
 using LightningQueues.Model;
 
 namespace LightningQueues.Protocol
 {
     public class Sender
     {
-        private readonly ILogger _logger;
+        private static readonly ILogger _logger = LogManager.GetLogger<Sender>();
 
         public Action Success { get; set; }
         public Action Connected { get; set; }
         public Endpoint Destination { get; set; }
         public Message[] Messages { get; set; }
 
-        public Sender(ILogger logger)
+        public Sender()
         {
-            _logger = logger;
             Connected = () => { };
             Success = () => { };
         }
@@ -32,7 +31,7 @@ namespace LightningQueues.Protocol
 
                 using (var stream = client.GetStream())
                 {
-                    await new SendingProtocol(_logger)
+                    await new SendingProtocol()
                         .Send(stream, Success, Messages, Destination.ToString());
                 }
             }

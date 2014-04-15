@@ -1,15 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using FubuCore.Logging;
 using LightningQueues.Exceptions;
+using LightningQueues.Logging;
 using Microsoft.Isam.Esent.Interop;
 
 namespace LightningQueues.Storage
 {
     public abstract class AbstractActions : IDisposable
     {
-        private readonly ILogger _logger;
+        protected readonly ILogger logger;
         protected readonly Guid instanceId;
 		protected readonly ColumnsInformation ColumnsInformation;
     	protected JET_DBID dbid;
@@ -25,9 +25,9 @@ namespace LightningQueues.Storage
 
         protected readonly Dictionary<string, QueueActions> queuesByName = new Dictionary<string, QueueActions>();
 
-		protected AbstractActions(JET_INSTANCE instance, ColumnsInformation columnsInformation, string database, Guid instanceId, ILogger logger)
+		protected AbstractActions(JET_INSTANCE instance, ColumnsInformation columnsInformation, string database, Guid instanceId)
 		{
-		    _logger = logger;
+		    logger = LogManager.GetLogger(GetType());
 		    try
 			{
 				this.instanceId = instanceId;
@@ -83,7 +83,7 @@ namespace LightningQueues.Storage
 
             queuesByName[queueName] = actions =
 				new QueueActions(session, dbid, queueName, GetSubqueues(queueName), this,
-					i => AddToNumberOfMessagesIn(queueName, i), _logger);
+					i => AddToNumberOfMessagesIn(queueName, i));
             return actions;
         }
 

@@ -1,19 +1,18 @@
 ﻿using System;
-using FubuCore.Logging;
+using LightningQueues.Logging;
 using LightningQueues.Storage;
 
 namespace LightningQueues.Internal
 {
     public class QueueTransaction : ITransaction
     {
-        private readonly ILogger _logger;
+        private readonly ILogger _logger = LogManager.GetLogger<QueueTransaction>();
         private readonly QueueStorage _queueStorage;
         private readonly Action _assertNotDisposed;
         private readonly Action _onComplete;
 
-        public QueueTransaction(ILogger logger, QueueStorage queueStorage, Action onComplete, Action assertNotDisposed)
+        public QueueTransaction(QueueStorage queueStorage, Action onComplete, Action assertNotDisposed)
         {
-            _logger = logger;
             _queueStorage = queueStorage;
             _assertNotDisposed = assertNotDisposed;
             _onComplete = onComplete;
@@ -37,7 +36,7 @@ namespace LightningQueues.Internal
             }
             catch (Exception e)
 			{
-				_logger.Info("Failed to rollback transaction {0} {1}", Id, e);
+				_logger.Info("Failed to rollback transaction {0}", e, Id);
 			    throw;
 			}
             finally
@@ -54,7 +53,7 @@ namespace LightningQueues.Internal
             }
             catch (Exception e)
             {
-                _logger.Info("Failed to commit transaction {0} {1}", Id, e);
+                _logger.Info("Failed to commit transaction {0}", e, Id);
                 throw;
             }
             finally
