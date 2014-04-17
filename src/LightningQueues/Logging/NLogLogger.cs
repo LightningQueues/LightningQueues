@@ -44,7 +44,8 @@ namespace LightningQueues.Logging
 
         public void FailedToSend(Endpoint destination, string reason, Exception exception = null)
         {
-            _logger.InfoException("Failed to send to {0}: {1}".ToFormat(destination, reason), exception);
+            _logger.Info("Failed to send to {0}: {1}", destination, reason);
+            _logger.DebugException("Details:", exception);
         }
 
         public void QueuedForReceive(Message message)
