@@ -38,5 +38,6 @@ namespace LightningQueues
         PersistentMessage PeekById(string queueName, MessageId id);
         string[] GetSubqueues(string queueName);
         int GetNumberOfMessages(string queueName);
+        void PurgeOldData();
     }
 }
