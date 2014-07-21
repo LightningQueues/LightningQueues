@@ -98,7 +98,7 @@ namespace LightningQueues.Storage
                 
                 var bookmark = enumerator.Current;
 
-                logger.Info("Adding message {0} to returned messages", msgId);
+                logger.Debug("Adding message {0} to returned messages", msgId);
             	messages.Add(new PersistentMessage
                 {
                     Id = new MessageId
