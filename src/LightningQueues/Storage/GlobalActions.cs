@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Web;
 using LightningQueues.Exceptions;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
@@ -280,6 +281,7 @@ namespace LightningQueues.Storage
                     SubQueue = outgoingHistory.ForColumnType<StringColumn>().Get("subqueue"),
                     SentAt = outgoingHistory.ForColumnType<DateTimeColumn>().Get("sent_at"),
                     Data = outgoingHistory.ForColumnType<BytesColumn>().Get("data"),
+                    Headers = HttpUtility.ParseQueryString(outgoingHistory.ForColumnType<StringColumn>().Get("headers")),
                     Bookmark = bookmark
                 };
             }
@@ -354,6 +356,7 @@ namespace LightningQueues.Storage
                     SubQueue = outgoingHistory.ForColumnType<StringColumn>().Get("subqueue"),
                     SentAt = outgoingHistory.ForColumnType<DateTimeColumn>().Get("sent_at"),
                     Data = outgoingHistory.ForColumnType<BytesColumn>().Get("data"),
+                    Headers = HttpUtility.ParseQueryString(outgoingHistory.ForColumnType<StringColumn>().Get("headers")),
                     Bookmark = bookmark
                 };
             }
