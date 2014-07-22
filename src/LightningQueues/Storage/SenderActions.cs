@@ -196,6 +196,7 @@ namespace LightningQueues.Storage
                     SubQueue = outgoing.ForColumnType<StringColumn>().Get("subqueue"),
                     SentAt = outgoing.ForColumnType<DateTimeColumn>().Get("sent_at"),
                     Data = outgoing.ForColumnType<BytesColumn>().Get("data"),
+                    Headers = HttpUtility.ParseQueryString(outgoing.ForColumnType<StringColumn>().Get("headers")),
                     Bookmark = bookmark
                 };
             }
@@ -270,6 +271,7 @@ namespace LightningQueues.Storage
                     SubQueue = outgoing.ForColumnType<StringColumn>().Get("subqueue"),
                     SentAt = outgoing.ForColumnType<DateTimeColumn>().Get("sent_at"),
                     Data = outgoing.ForColumnType<BytesColumn>().Get("data"),
+                    Headers = HttpUtility.ParseQueryString(outgoing.ForColumnType<StringColumn>().Get("headers")),
                     Bookmark = bookmark
                 };
             }
