@@ -45,6 +45,8 @@ namespace LightningQueues.Internal
                 endpoints.Each(endpoint =>
                 {
                     var messages = gatherMessagesToSend(endpoint);
+                    if (!messages.Any())
+                        return;
 
                     _choke.StartSend();
 
