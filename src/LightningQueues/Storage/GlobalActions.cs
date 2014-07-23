@@ -211,29 +211,36 @@ namespace LightningQueues.Storage
 
             while(enumerator.MoveNext())
             {
-                var oldStatus = (MessageStatus) txs.ForColumnType<IntColumn>().Get("value_to_restore");
-                var queue = txs.ForColumnType<StringColumn>().Get("queue");
-                var subqueue = txs.ForColumnType<StringColumn>().Get("subqueue");
+                try
+                {
+                    var oldStatus = (MessageStatus)txs.ForColumnType<IntColumn>().Get("value_to_restore");
+                    var queue = txs.ForColumnType<StringColumn>().Get("queue");
+                    var subqueue = txs.ForColumnType<StringColumn>().Get("subqueue");
 
-                var bookmark = new MessageBookmark
+                    var bookmark = new MessageBookmark
+                    {
+                        QueueName = queue,
+                        Bookmark = txs.ForColumnType<BytesColumn>().Get("bookmark_data"),
+                        Size = txs.ForColumnType<IntColumn>().Get("bookmark_size")
+                    };
+                    var actions = GetQueue(queue);
+                    var newStatus = actions.GetMessageStatus(bookmark);
+                    switch (newStatus)
+                    {
+                        case MessageStatus.SubqueueChanged:
+                            actions.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver, subqueue);
+                            break;
+                        case MessageStatus.EnqueueWait:
+                            actions.Delete(bookmark);
+                            break;
+                        default:
+                            actions.SetMessageStatus(bookmark, oldStatus);
+                            break;
+                    }
+                }
+                catch (Exception ex)
                 {
-                    QueueName = queue,
-                    Bookmark = txs.ForColumnType<BytesColumn>().Get("bookmark_data"),
-                    Size = txs.ForColumnType<IntColumn>().Get("bookmark_size")
-                };
-                var actions = GetQueue(queue);
-                var newStatus = actions.GetMessageStatus(bookmark);
-                switch (newStatus)
-                {
-                    case MessageStatus.SubqueueChanged:
-                        actions.SetMessageStatus(bookmark, MessageStatus.ReadyToDeliver, subqueue);
-                        break;
-                    case MessageStatus.EnqueueWait:
-                        actions.Delete(bookmark);
-                        break;
-                    default:
-                        actions.SetMessageStatus(bookmark, oldStatus);
-                        break;
+                    logger.Error("Failed to reverse a transaction", ex);
                 }
             }
         }
