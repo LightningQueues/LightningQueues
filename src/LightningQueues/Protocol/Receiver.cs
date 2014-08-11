@@ -31,12 +31,15 @@ namespace LightningQueues.Protocol
             _logger.Debug("Now listen on {0}", _endpointToListenTo);
         }
 
-        private async void StartAccepting()
+        private void StartAccepting()
         {
-            while (!_disposed)
+            Task.Factory.StartNew(async () =>
             {
-                await AcceptTcpClientAsync();
-            }
+                while (!_disposed)
+                {
+                    await AcceptTcpClientAsync();
+                }
+            }, TaskCreationOptions.LongRunning);
         }
 
         private void TryStart(IPEndPoint endpointToListenTo)
