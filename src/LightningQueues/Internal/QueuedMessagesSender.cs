@@ -66,7 +66,7 @@ namespace LightningQueues.Internal
             sender.Success = () => sendHistoryBookmarks = success(messages);
             try
             {
-                await sender.Send();
+                await sender.Send().ConfigureAwait(false);
                 _logger.MessagesSent(messages, destination);
             }
             catch (FailedToConnectException ex)

@@ -27,12 +27,12 @@ namespace LightningQueues.Protocol
             _logger.Debug("Starting to send {0} messages to {1}", Messages.Length, Destination);
             using (var client = new TcpClient())
             {
-                await Connect(client);
+                await Connect(client).ConfigureAwait(false);
 
                 using (var stream = client.GetStream())
                 {
                     await new SendingProtocol()
-                        .Send(stream, Success, Messages, Destination.ToString());
+                        .Send(stream, Success, Messages, Destination.ToString()).ConfigureAwait(false);
                 }
             }
         }
@@ -41,7 +41,7 @@ namespace LightningQueues.Protocol
         {
             try
             {
-                await client.ConnectAsync(Destination.Host, Destination.Port);
+                await client.ConnectAsync(Destination.Host, Destination.Port).ConfigureAwait(false);
                 Connected();
                 _logger.Debug("Successfully connected to {0}", Destination);
             }

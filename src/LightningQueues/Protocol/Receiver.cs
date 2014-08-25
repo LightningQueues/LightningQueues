@@ -40,7 +40,7 @@ namespace LightningQueues.Protocol
             {
                 while (!_disposed)
                 {
-                    await AcceptTcpClientAsync();
+                    await AcceptTcpClientAsync().ConfigureAwait(false);
                 }
             }, TaskCreationOptions.LongRunning);
         }
@@ -65,9 +65,9 @@ namespace LightningQueues.Protocol
         {
             try
             {
-                var client = await _listener.AcceptTcpClientAsync();
+                var client = await _listener.AcceptTcpClientAsync().ConfigureAwait(false);
                 _logger.Debug("Accepting connection from {0}", client.Client.RemoteEndPoint);
-                await ProcessRequest(client);
+                await ProcessRequest(client).ConfigureAwait(false);
             }
             catch (ObjectDisposedException)
             {
@@ -88,7 +88,7 @@ namespace LightningQueues.Protocol
                 var sender = client.Client.RemoteEndPoint.ToString();
                 try
                 {
-                    await new ReceivingProtocol().ReadMessagesAsync(sender, stream, _acceptMessages);
+                    await new ReceivingProtocol().ReadMessagesAsync(sender, stream, _acceptMessages).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {

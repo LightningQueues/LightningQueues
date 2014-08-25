@@ -19,7 +19,7 @@ namespace LightningQueues.Protocol.Chunks
         protected override async Task<int> GetInternalAsync(Stream stream)
         {
             var lenOfDataToReadBuffer = new byte[sizeof(int)];
-            await stream.ReadBytesAsync(lenOfDataToReadBuffer, "length data", false);
+            await stream.ReadBytesAsync(lenOfDataToReadBuffer, "length data", false).ConfigureAwait(false);
 
             var lengthOfDataToRead = BitConverter.ToInt32(lenOfDataToReadBuffer, 0);
             if (lengthOfDataToRead < 0)

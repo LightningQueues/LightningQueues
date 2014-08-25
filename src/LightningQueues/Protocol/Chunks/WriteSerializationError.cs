@@ -13,7 +13,7 @@ namespace LightningQueues.Protocol.Chunks
 
         protected override async Task ProcessInternalAsync(Stream stream)
         {
-            await stream.WriteAsync(ProtocolConstants.SerializationFailureBuffer, 0, ProtocolConstants.SerializationFailureBuffer.Length);
+            await stream.WriteAsync(ProtocolConstants.SerializationFailureBuffer, 0, ProtocolConstants.SerializationFailureBuffer.Length).ConfigureAwait(false);
         }
     }
 }

@@ -22,7 +22,7 @@ namespace LightningQueues.Protocol.Chunks
             var buffer = new byte[ProtocolConstants.RevertBuffer.Length];
             try
             {
-                await stream.ReadBytesAsync(buffer, "revert", true);
+                await stream.ReadBytesAsync(buffer, "revert", true).ConfigureAwait(false);
             }
             catch (Exception)
             {

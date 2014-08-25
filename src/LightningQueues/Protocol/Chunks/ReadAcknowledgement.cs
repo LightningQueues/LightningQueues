@@ -22,7 +22,7 @@ namespace LightningQueues.Protocol.Chunks
         {
             _logger.Debug("Reading acknowledgement about accepting messages to {0}", _endpoint);
             var recieveBuffer = new byte[ProtocolConstants.AcknowledgedBuffer.Length];
-            await stream.ReadBytesAsync(recieveBuffer, "receive confirmation", false);
+            await stream.ReadBytesAsync(recieveBuffer, "receive confirmation", false).ConfigureAwait(false);
             var recieveRespone = Encoding.Unicode.GetString(recieveBuffer);
             if (recieveRespone != ProtocolConstants.Acknowledged)
             {

@@ -21,8 +21,8 @@ namespace LightningQueues.Protocol
             Message[] messages = null;
             try
             {
-                var length = await new ReadLength(Logger, endpoint).GetAsync(stream);
-                messages = await new ReadMessage(Logger, length, endpoint).GetAsync(stream);
+                var length = await new ReadLength(Logger, endpoint).GetAsync(stream).ConfigureAwait(false);
+                messages = await new ReadMessage(Logger, length, endpoint).GetAsync(stream).ConfigureAwait(false);
             }
             catch (SerializationException exception)
             {
@@ -32,7 +32,7 @@ namespace LightningQueues.Protocol
 
             if (serializationErrorOccurred)
             {
-                await new WriteSerializationError(Logger).ProcessAsync(stream);
+                await new WriteSerializationError(Logger).ProcessAsync(stream).ConfigureAwait(false);
             }
 
             IMessageAcceptance acceptance = null;
@@ -55,13 +55,13 @@ namespace LightningQueues.Protocol
 
             if (errorBytes != null)
             {
-                await new WriteProcessingError(Logger, errorBytes, endpoint).ProcessAsync(stream);
+                await new WriteProcessingError(Logger, errorBytes, endpoint).ProcessAsync(stream).ConfigureAwait(false);
                 return;
             }
 
             try
             {
-                await new WriteReceived(Logger, endpoint).ProcessAsync(stream);
+                await new WriteReceived(Logger, endpoint).ProcessAsync(stream).ConfigureAwait(false);
             }
             catch (Exception)
             {
@@ -71,7 +71,7 @@ namespace LightningQueues.Protocol
 
             try
             {
-                await new ReadAcknowledgement(Logger, endpoint).ProcessAsync(stream);
+                await new ReadAcknowledgement(Logger, endpoint).ProcessAsync(stream).ConfigureAwait(false);
             }
             catch (Exception)
             {
@@ -93,7 +93,7 @@ namespace LightningQueues.Protocol
 
             if (commitSuccessful == false)
             {
-                await new WriteRevert(Logger, endpoint).ProcessAsync(stream);
+                await new WriteRevert(Logger, endpoint).ProcessAsync(stream).ConfigureAwait(false);
             }
         }
     }

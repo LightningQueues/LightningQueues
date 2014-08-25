@@ -19,7 +19,7 @@ namespace LightningQueues.Protocol.Chunks
         protected override async Task ProcessInternalAsync(Stream stream)
         {
             var recieveBuffer = new byte[ProtocolConstants.RecievedBuffer.Length];
-            await stream.ReadBytesAsync(recieveBuffer, "receive confirmation", false);
+            await stream.ReadBytesAsync(recieveBuffer, "receive confirmation", false).ConfigureAwait(false);
             var recieveRespone = Encoding.Unicode.GetString(recieveBuffer);
             if (recieveRespone == ProtocolConstants.QueueDoesNotExists)
             {

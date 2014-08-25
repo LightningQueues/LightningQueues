@@ -21,7 +21,7 @@ namespace LightningQueues.Protocol.Chunks
             try
             {
                 _logger.Debug("{0} with Endpoint: {1}", ToString(), _endpoint);
-                await ProcessInternalAsync(stream);
+                await ProcessInternalAsync(stream).ConfigureAwait(false);
                 _logger.Debug("Successfully {0} with Endpoint: {1}", ToString(), _endpoint);
             }
             catch (Exception exception)
@@ -46,7 +46,7 @@ namespace LightningQueues.Protocol.Chunks
             try
             {
                 _logger.Debug("{0} with Endpoint: {1}", ToString(), _endpoint);
-                 retVal = await GetInternalAsync(stream);
+                 retVal = await GetInternalAsync(stream).ConfigureAwait(false);
                 _logger.Debug("Successfully {0} with Endpoint: {1}", ToString(), _endpoint);
             }
             catch (Exception exception)

@@ -25,7 +25,7 @@ namespace LightningQueues.Protocol.Chunks
             var buffer = new byte[_length];
             try
             {
-                await stream.ReadBytesAsync(buffer, "message data", false);
+                await stream.ReadBytesAsync(buffer, "message data", false).ConfigureAwait(false);
                 var messages = SerializationExtensions.ToMessages(buffer);
                 _logger.Debug("Deserialized {0} messages from {1}", messages.Length, _endpoint);
                 return messages;

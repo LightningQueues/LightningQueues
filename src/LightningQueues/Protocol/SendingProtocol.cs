@@ -14,12 +14,12 @@ namespace LightningQueues.Protocol
         public async Task Send(Stream stream, Action success, Message[] messages, string destination)
         {
             var buffer = messages.Serialize();
-            await new WriteLength(_logger, buffer.Length, destination).ProcessAsync(stream);
-            await new WriteMessage(_logger, buffer, destination).ProcessAsync(stream);
-            await new ReadReceived(_logger, destination).ProcessAsync(stream);
-            await new WriteAcknowledgement(_logger, destination).ProcessAsync(stream);
+            await new WriteLength(_logger, buffer.Length, destination).ProcessAsync(stream).ConfigureAwait(false);
+            await new WriteMessage(_logger, buffer, destination).ProcessAsync(stream).ConfigureAwait(false);
+            await new ReadReceived(_logger, destination).ProcessAsync(stream).ConfigureAwait(false);
+            await new WriteAcknowledgement(_logger, destination).ProcessAsync(stream).ConfigureAwait(false);
             success();
-            await new ReadRevert(_logger, destination).ProcessAsync(stream);
+            await new ReadRevert(_logger, destination).ProcessAsync(stream).ConfigureAwait(false);
         }
     }
 }

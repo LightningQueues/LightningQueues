@@ -11,7 +11,7 @@ namespace LightningQueues.Protocol
 
             while (totalBytesRead < buffer.Length)
             {
-                int bytesRead = await stream.ReadAsync(buffer, totalBytesRead, buffer.Length - totalBytesRead);
+                int bytesRead = await stream.ReadAsync(buffer, totalBytesRead, buffer.Length - totalBytesRead).ConfigureAwait(false);
 
                 if (bytesRead == 0)
                 {
