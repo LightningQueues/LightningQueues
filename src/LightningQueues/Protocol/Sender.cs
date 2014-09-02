@@ -32,7 +32,9 @@ namespace LightningQueues.Protocol
                 using (var stream = client.GetStream())
                 {
                     await new SendingProtocol()
-                        .Send(stream, Success, Messages, Destination.ToString()).ConfigureAwait(false);
+                        .Send(stream, Success, Messages, Destination.ToString())
+                        .WithTimeout(TimeSpan.FromSeconds(5))
+                        .ConfigureAwait(false);
                 }
             }
         }

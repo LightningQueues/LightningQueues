@@ -88,7 +88,9 @@ namespace LightningQueues.Protocol
                 var sender = client.Client.RemoteEndPoint.ToString();
                 try
                 {
-                    await new ReceivingProtocol().ReadMessagesAsync(sender, stream, _acceptMessages).ConfigureAwait(false);
+                    await new ReceivingProtocol().ReadMessagesAsync(sender, stream, _acceptMessages)
+                        .WithTimeout(TimeSpan.FromSeconds(5))
+                        .ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {

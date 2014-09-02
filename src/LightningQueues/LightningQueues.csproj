@@ -116,6 +116,7 @@
     <Compile Include="Protocol\SendingProtocol.cs" />
     <Compile Include="Protocol\SerializationExtensions.cs" />
     <Compile Include="Protocol\StreamExtensions.cs" />
+    <Compile Include="Protocol\TaskExtensions.cs" />
     <Compile Include="Queue.cs" />
     <Compile Include="QueueExtensions.cs" />
     <Compile Include="QueueManager.cs" />
