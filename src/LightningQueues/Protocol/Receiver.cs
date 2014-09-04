@@ -67,35 +67,34 @@ namespace LightningQueues.Protocol
             {
                 var client = await _listener.AcceptTcpClientAsync().ConfigureAwait(false);
                 _logger.Debug("Accepting connection from {0}", client.Client.RemoteEndPoint);
-                await ProcessRequest(client).ConfigureAwait(false);
+                ProcessRequest(client);
             }
             catch (ObjectDisposedException)
             {
             }
             catch (Exception ex)
             {
-                _logger.Info("Error on ProcessRequest " + ex.Message, ex);
+                _logger.Info("Error on AcceptTcpClientAsync" + ex.Message, ex);
             }
         }
 
         private async Task ProcessRequest(TcpClient client)
         {
-            using (client)
-            using (var stream = client.GetStream())
+            var sender = client.Client.RemoteEndPoint.ToString();
+            try
             {
-                var sender = client.Client.RemoteEndPoint.ToString();
-                try
+                using (client)
+                using (var stream = client.GetStream())
                 {
                     await new ReceivingProtocol().ReadMessagesAsync(sender, stream, _acceptMessages)
                         .WithTimeout(Timeout)
                         .ConfigureAwait(false);
                 }
-                catch (Exception ex)
-                {
-                    _logger.Info("Error on ProcessRequest for endpoint {0}", ex, sender);
-                }
             }
-            
+            catch (Exception ex)
+            {
+                _logger.Info("Error on ProcessRequest for endpoint {0}", ex, sender);
+            }
         }
 
         public void Dispose()
