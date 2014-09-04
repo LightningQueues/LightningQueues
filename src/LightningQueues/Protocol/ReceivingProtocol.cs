@@ -15,7 +15,20 @@ namespace LightningQueues.Protocol
         public static ILogger Logger = LogManager.GetLogger<ReceivingProtocol>();
 
         public async Task ReadMessagesAsync(string endpoint, Stream stream,
-                                            Func<Message[], IMessageAcceptance> acceptMessages)
+            Func<Message[], IMessageAcceptance> acceptMessages)
+        {
+            try
+            {
+                await readMessageAsync(endpoint, stream, acceptMessages).ConfigureAwait(false);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Swallowing this so we don't have unobserved task exceptions in the finalizer when we timeout.
+            }
+        }
+
+        private async Task readMessageAsync(string endpoint, Stream stream, 
+            Func<Message[], IMessageAcceptance> acceptMessages)
         {
             bool serializationErrorOccurred = false;
             Message[] messages = null;

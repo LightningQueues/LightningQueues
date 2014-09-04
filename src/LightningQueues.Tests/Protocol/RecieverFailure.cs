@@ -3,6 +3,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using FubuTestingSupport;
 using LightningQueues.Exceptions;
 using LightningQueues.Model;
@@ -115,6 +116,28 @@ namespace LightningQueues.Tests.Protocol
 
                 Wait.Until(() =>_logger.InfoMessages
                     .Any(x => x.Contains("Unable to deserialize messages"))).ShouldBeTrue();
+            }
+        }
+
+        [Test]
+        public void CanHandleSlowClients()
+        {
+            using (var reciever = new Receiver(_endpointToListenTo, messages => null, _logger))
+            {
+                reciever.Timeout = TimeSpan.FromMilliseconds(500);
+                reciever.Start();
+
+                using (var client = new TcpClient())
+                {
+                    client.Connect(_endpointToListenTo);
+                    var stream = client.GetStream();
+                    stream.Write(BitConverter.GetBytes(16), 0, 4);
+                    Thread.Sleep(1000);
+                    stream.Write(Guid.NewGuid().ToByteArray(), 0, 16);
+                }
+
+                Wait.Until(() => _logger.InfoMessages
+                    .Any(x => x.Contains("TimeoutException"))).ShouldBeTrue();
             }
         }
 

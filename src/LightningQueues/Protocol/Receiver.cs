@@ -21,10 +21,10 @@ namespace LightningQueues.Protocol
             _endpointToListenTo = endpointToListenTo;
             _acceptMessages = acceptMessages;
             _logger = logger ?? LogManager.GetLogger<Receiver>();
-            Timeout = 5000;
+            Timeout = TimeSpan.FromSeconds(5);
         }
 
-        public int Timeout { get; set; }
+        public TimeSpan Timeout { get; set; }
 
         public void Start()
         {
@@ -80,8 +80,6 @@ namespace LightningQueues.Protocol
 
         private async Task ProcessRequest(TcpClient client)
         {
-            client.ReceiveTimeout = Timeout;
-            client.SendTimeout = Timeout;
             using (client)
             using (var stream = client.GetStream())
             {
@@ -89,7 +87,7 @@ namespace LightningQueues.Protocol
                 try
                 {
                     await new ReceivingProtocol().ReadMessagesAsync(sender, stream, _acceptMessages)
-                        .WithTimeout(TimeSpan.FromSeconds(5))
+                        .WithTimeout(Timeout)
                         .ConfigureAwait(false);
                 }
                 catch (Exception ex)

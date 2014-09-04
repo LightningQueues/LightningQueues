@@ -24,6 +24,11 @@ namespace LightningQueues.Protocol.Chunks
                 await ProcessInternalAsync(stream).ConfigureAwait(false);
                 _logger.Debug("Successfully {0} with Endpoint: {1}", ToString(), _endpoint);
             }
+            catch (ObjectDisposedException)
+            {
+                // This will be thrown if the operation timed out and the stream was disposed.
+                throw;
+            }
             catch (Exception exception)
             {
                 _logger.Info("Could not process {0} for Endpoint: {1}", exception, ToString(), _endpoint);
@@ -46,8 +51,13 @@ namespace LightningQueues.Protocol.Chunks
             try
             {
                 _logger.Debug("{0} with Endpoint: {1}", ToString(), _endpoint);
-                 retVal = await GetInternalAsync(stream).ConfigureAwait(false);
+                retVal = await GetInternalAsync(stream).ConfigureAwait(false);
                 _logger.Debug("Successfully {0} with Endpoint: {1}", ToString(), _endpoint);
+            }
+            catch (ObjectDisposedException)
+            {
+                // This will be thrown if the operation timed out and the stream was disposed.
+                throw;
             }
             catch (Exception exception)
             {

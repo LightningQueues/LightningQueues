@@ -84,6 +84,11 @@ namespace LightningQueues.Internal
                 _logger.FailedToSend(destination, "Revert was received");
                 revert(sendHistoryBookmarks, messages);
             }
+            catch (TimeoutException)
+            {
+                _logger.FailedToSend(destination, "Timed out");
+                failedToSend(messages);
+            }
             catch (Exception ex)
             {
                 _logger.FailedToSend(destination, "Exception was thrown", ex);
