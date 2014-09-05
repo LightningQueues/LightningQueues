@@ -67,6 +67,10 @@ namespace LightningQueues.Protocol
             {
                 await client.ConnectAsync(Destination.Host, Destination.Port).ConfigureAwait(false);
             }
+            catch (NullReferenceException)
+            {
+                // TcpClient can throw this if it's disposed while connecting.
+            }
             catch (ObjectDisposedException)
             {
                 // Swallowing this so we don't have unobserved task exceptions in the finalizer when we timeout.
