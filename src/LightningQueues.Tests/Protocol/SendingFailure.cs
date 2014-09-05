@@ -73,18 +73,20 @@ namespace LightningQueues.Tests.Protocol
 
         private void StartReceiver(Action<FakeReceiver> receiverAction)
         {
-            var receiver = new FakeReceiver();
-            receiverAction(receiver);
-            receiver.Start();
+            using (var receiver = new FakeReceiver())
+            {
+                receiverAction(receiver);
+                receiver.Start();
 
-            try
-            {
-                var task = sender.Send();
-                task.Wait();
-            }
-            catch (AggregateException ex)
-            {
-                error = ex.InnerExceptions.First();
+                try
+                {
+                    var task = sender.Send();
+                    task.Wait();
+                }
+                catch (AggregateException ex)
+                {
+                    error = ex.InnerExceptions.First();
+                }
             }
         }
 
@@ -131,6 +133,27 @@ namespace LightningQueues.Tests.Protocol
 
             error.ShouldBeOfType<RevertSendException>();
             wasSuccessful.ShouldBeTrue();
+        }
+
+        [Test]
+        public void CanHandleConnectTimeouts()
+        {
+            sender.Timeout = TimeSpan.FromMilliseconds(500);
+            StartReceiver(x => x.AcceptConnections = false);
+
+            error.ShouldBeOfType<FailedToConnectException>();
+            error.InnerException.ShouldBeOfType<TimeoutException>();
+            wasSuccessful.ShouldBeFalse();
+        }
+
+        [Test]
+        public void CanHandleSendTimeouts()
+        {
+            sender.Timeout = TimeSpan.FromMilliseconds(500);
+            StartReceiver(x => x.TimeoutOnReceive = true);
+
+            error.ShouldBeOfType<TimeoutException>();
+            wasSuccessful.ShouldBeFalse();
         }
     }
 }

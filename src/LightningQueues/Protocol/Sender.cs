@@ -15,11 +15,13 @@ namespace LightningQueues.Protocol
         public Action Connected { get; set; }
         public Endpoint Destination { get; set; }
         public Message[] Messages { get; set; }
+        public TimeSpan Timeout { get; set; }
 
         public Sender()
         {
             Connected = () => { };
             Success = () => { };
+            Timeout = TimeSpan.FromSeconds(5);
         }
 
         public async Task Send()
@@ -33,7 +35,7 @@ namespace LightningQueues.Protocol
                 {
                     await new SendingProtocol()
                         .Send(stream, Success, Messages, Destination.ToString())
-                        .WithTimeout(TimeSpan.FromSeconds(5))
+                        .WithTimeout(Timeout)
                         .ConfigureAwait(false);
                 }
             }
@@ -43,15 +45,31 @@ namespace LightningQueues.Protocol
         {
             try
             {
-                await client.ConnectAsync(Destination.Host, Destination.Port)
-                    .WithTimeout(TimeSpan.FromSeconds(5))
+                await CancellableConnect(client)
+                    .WithTimeout(Timeout)
                     .ConfigureAwait(false);
                 Connected();
                 _logger.Debug("Successfully connected to {0}", Destination);
             }
+            catch (TimeoutException ex)
+            {
+                throw new FailedToConnectException("Failed to connect, timed out", ex);
+            }
             catch (Exception ex)
             {
                 throw new FailedToConnectException("Failed to connect", ex);
+            }
+        }
+
+        private async Task CancellableConnect(TcpClient client)
+        {
+            try
+            {
+                await client.ConnectAsync(Destination.Host, Destination.Port).ConfigureAwait(false);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Swallowing this so we don't have unobserved task exceptions in the finalizer when we timeout.
             }
         }
     }
