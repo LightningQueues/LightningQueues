@@ -9,6 +9,7 @@ using LightningQueues.Storage;
 using System;
 using System.Collections.Generic;
 using LightningQueues.Utils;
+using Microsoft.Isam.Esent;
 
 namespace LightningQueues.Internal
 {
@@ -86,8 +87,16 @@ namespace LightningQueues.Internal
             }
             catch (TimeoutException)
             {
-                _logger.FailedToSend(destination, "Timed out");
-                failedToSend(messages);
+                try
+                {
+                    _logger.FailedToSend(destination, "Timed out");
+                    failedToSend(messages);
+                }
+                catch (EsentException)
+                {
+                    // This will occur if the task completed as the TimeoutException was thrown, and 
+                    // the message was moved to history.  Swallow it to prevent unobserved task exceptions.
+                }
             }
             catch (Exception ex)
             {
