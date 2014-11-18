@@ -162,8 +162,7 @@ namespace LightningQueues.Storage
         	}
         	catch (Exception e)
         	{
-				Trace.WriteLine(e.ToString());
-        		Debugger.Break();
+				logger.Error("Error occurred while disposing " + GetType().Name, e);
         	}
         }
 
