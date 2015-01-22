@@ -24,6 +24,10 @@ namespace LightningQueues.Storage
             var enumerator = outgoing.GetEnumerator();
             while (enumerator.MoveNext())
             {
+                var time = outgoing.ForColumnType<DateTimeColumn>().Get("time_to_send");
+                if (time > DateTime.Now)
+                    continue;
+
                 var endpoint = new Endpoint( outgoing.ForColumnType<StringColumn>().Get("address"),
                     outgoing.ForColumnType<IntColumn>().Get("port"));
                 if (!endpoints.Contains(endpoint) && !currentlySending.Contains(endpoint))
