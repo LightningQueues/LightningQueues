@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Net;
-using FubuTestingSupport;
+using Should;
 using LightningQueues.Exceptions;
 using Xunit;
+using Assert = Should.Core.Assertions.Assert;
 
 namespace LightningQueues.Tests
 {
@@ -14,7 +15,7 @@ namespace LightningQueues.Tests
             var one = ObjectMother.QueueManager();
             var two = ObjectMother.QueueManager("test2");
             one.Start();
-            typeof(EndpointInUseException).ShouldBeThrownBy(two.Start);
+            Assert.Throws<EndpointInUseException>(() => two.Start());
         }
 
         [Fact(Skip = "Not on mono")]

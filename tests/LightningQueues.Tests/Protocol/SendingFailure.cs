@@ -1,11 +1,12 @@
 using System;
 using System.IO;
 using System.Linq;
-using FubuTestingSupport;
+using Should;
 using LightningQueues.Exceptions;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
 using Xunit;
+using Assert = Should.Core.Assertions.Assert;
 
 namespace LightningQueues.Tests.Protocol
 {
@@ -45,7 +46,7 @@ namespace LightningQueues.Tests.Protocol
         public void CanHandleItWhenReceiverDoesNotExists()
         {
             var task = sender.Send();
-            var aggregateException = FubuTestingSupport.Exception<AggregateException>.ShouldBeThrownBy(task.Wait);
+            var aggregateException = Assert.Throws<AggregateException>(() => task.Wait());
             aggregateException.InnerExceptions.OfType<FailedToConnectException>().Any().ShouldBeTrue();
 
             wasSuccessful.ShouldBeFalse();
@@ -56,7 +57,7 @@ namespace LightningQueues.Tests.Protocol
         {
             StartReceiver(x => x.DisconnectAfterConnect = true);
 
-            error.ShouldBeOfType<IOException>();
+            error.ShouldBeType<IOException>();
             wasSuccessful.ShouldBeFalse();
         }
 
@@ -65,7 +66,7 @@ namespace LightningQueues.Tests.Protocol
         {
             StartReceiver(x => x.DisconnectDuringMessageSend = true);
 
-            error.ShouldBeOfType<IOException>();
+            error.ShouldBeType<IOException>();
             wasSuccessful.ShouldBeFalse();
         }
 
@@ -93,7 +94,7 @@ namespace LightningQueues.Tests.Protocol
         {
             StartReceiver(x => x.DisconnectAfterMessageSend = true);
 
-            error.ShouldBeOfType<IOException>();
+            error.ShouldBeType<IOException>();
             wasSuccessful.ShouldBeFalse();
         }
 
@@ -102,7 +103,7 @@ namespace LightningQueues.Tests.Protocol
         {
             StartReceiver(x => x.SendBadResponse = true);
 
-            error.ShouldBeOfType<UnexpectedReceivedMessageFormatException>();
+            error.ShouldBeType<UnexpectedReceivedMessageFormatException>();
             wasSuccessful.ShouldBeFalse();
         }
 
@@ -129,7 +130,7 @@ namespace LightningQueues.Tests.Protocol
             // this is a case where we create compensation
             // for reported failure on the Receiver side
 
-            error.ShouldBeOfType<RevertSendException>();
+            error.ShouldBeType<RevertSendException>();
             wasSuccessful.ShouldBeTrue();
         }
 
@@ -139,8 +140,8 @@ namespace LightningQueues.Tests.Protocol
             sender.Timeout = TimeSpan.FromMilliseconds(500);
             StartReceiver(x => x.AcceptConnections = false);
 
-            error.ShouldBeOfType<FailedToConnectException>();
-            error.InnerException.ShouldBeOfType<TimeoutException>();
+            error.ShouldBeType<FailedToConnectException>();
+            error.InnerException.ShouldBeType<TimeoutException>();
             wasSuccessful.ShouldBeFalse();
         }
 
@@ -150,7 +151,7 @@ namespace LightningQueues.Tests.Protocol
             sender.Timeout = TimeSpan.FromMilliseconds(500);
             StartReceiver(x => x.TimeoutOnReceive = true);
 
-            error.ShouldBeOfType<TimeoutException>();
+            error.ShouldBeType<TimeoutException>();
             wasSuccessful.ShouldBeFalse();
         }
     }

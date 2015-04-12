@@ -1,6 +1,6 @@
 using System;
 using System.Net;
-using FubuTestingSupport;
+using Should;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
 using Xunit;
@@ -41,7 +41,7 @@ namespace LightningQueues.Tests.Protocol
 
                 Wait.Until(() => recievedMsgs != null).ShouldBeTrue();
 
-                recievedMsgs.ShouldHaveCount(1);
+                recievedMsgs.ShouldBeEmpty();
                 "hello doggy".ShouldEqual(recievedMsgs[0].Queue);
                 new byte[] { 1, 2, 4, 5, 6 }.ShouldEqual(recievedMsgs[0].Data);
                 new DateTime(2001, 1, 1).ShouldEqual(recievedMsgs[0].SentAt);
@@ -76,7 +76,7 @@ namespace LightningQueues.Tests.Protocol
                 }.Send();
 
                 Wait.Until(() => recievedMsgs != null).ShouldBeTrue();
-                recievedMsgs.ShouldHaveCount(1);
+                recievedMsgs.ShouldBeEmpty();
 
                 recievedMsgs = null;
 
@@ -97,7 +97,7 @@ namespace LightningQueues.Tests.Protocol
 
                 Wait.Until(() => recievedMsgs != null).ShouldBeTrue();
 
-                recievedMsgs.ShouldHaveCount(1);
+                recievedMsgs.ShouldBeEmpty();
                 "hello doggy2".ShouldEqual(recievedMsgs[0].Queue);
             }
         }
@@ -138,7 +138,7 @@ namespace LightningQueues.Tests.Protocol
 
                 Wait.Until(() => recievedMsgs != null).ShouldBeTrue();
 
-                recievedMsgs.ShouldHaveCount(2);
+                recievedMsgs.Length.ShouldEqual(2);
                 "hello doggy".ShouldEqual(recievedMsgs[0].Queue);
                 "hello doggy2".ShouldEqual(recievedMsgs[1].Queue);
             }

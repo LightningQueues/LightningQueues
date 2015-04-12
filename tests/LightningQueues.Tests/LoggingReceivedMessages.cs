@@ -2,11 +2,11 @@
 using System.Linq;
 using System.Threading;
 using System.Transactions;
-using FubuTestingSupport;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
 using LightningQueues.Tests.Protocol;
 using Xunit;
+using Should;
 
 namespace LightningQueues.Tests
 {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Transactions;
-using FubuTestingSupport;
+using Should;
 using Xunit;
 
 namespace LightningQueues.Tests

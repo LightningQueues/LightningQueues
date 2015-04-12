@@ -1,5 +1,5 @@
 ﻿using System;
-using FubuTestingSupport;
+using Should;
 using Xunit;
 
 namespace LightningQueues.Tests
@@ -26,9 +26,9 @@ namespace LightningQueues.Tests
         {
             _sender.Start();
             sendMessages();
-            _sender.GetMessagesCurrentlySending().ShouldHaveCount(50);
+            _sender.GetMessagesCurrentlySending().Length.ShouldEqual(50);
             _sender.ClearAllMessages();
-            _sender.GetMessagesCurrentlySending().ShouldHaveCount(0);
+            _sender.GetMessagesCurrentlySending().Length.ShouldEqual(0);
         }
 
         [Fact(Skip="Not on mono")]
@@ -42,10 +42,10 @@ namespace LightningQueues.Tests
             var scope = _receiver.BeginTransactionalScope();
             scope.Receive("h");
             scope.Commit();
-            _receiver.GetAllProcessedMessages("h").ShouldHaveCount(1);
+            _receiver.GetAllProcessedMessages("h").Length.ShouldEqual(1);
             _receiver.ClearAllMessages();
-            _receiver.GetAllMessages("h", null).ShouldHaveCount(0);
-            _receiver.GetAllProcessedMessages("h").ShouldHaveCount(0);
+            _receiver.GetAllMessages("h", null).ShouldBeEmpty();
+            _receiver.GetAllProcessedMessages("h").ShouldBeEmpty();
         }
 
         private void sendMessages()

@@ -2,7 +2,7 @@
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
-using FubuTestingSupport;
+using Should;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
 using LightningQueues.Storage;
@@ -40,7 +40,7 @@ namespace LightningQueues.Tests.Storage
                 qf.Send(actions =>
                 {
                     var msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue, new Endpoint("localhost", 0));
-                    msgs.ShouldHaveCount(0);
+                    msgs.ShouldBeEmpty();
                 });
 
                 qf.Global(actions =>
@@ -87,7 +87,7 @@ namespace LightningQueues.Tests.Storage
                     actions.MarkOutgoingMessageAsFailedTransmission(msgs.First().Bookmark, false);
 
                     msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue, new Endpoint("localhost", 0));
-                    msgs.ShouldHaveCount(0);
+                    msgs.ShouldBeEmpty();
                 });
 
                 qf.Global(actions =>

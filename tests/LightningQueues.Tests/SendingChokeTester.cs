@@ -1,5 +1,5 @@
 ﻿using FubuCore;
-using FubuTestingSupport;
+using Should;
 using Xunit;
 
 namespace LightningQueues.Tests

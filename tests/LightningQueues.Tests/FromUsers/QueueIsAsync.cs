@@ -2,10 +2,10 @@ using System;
 using System.Text;
 using System.Threading;
 using System.Transactions;
-using FubuTestingSupport;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
 using Xunit;
+using Should;
 
 namespace LightningQueues.Tests.FromUsers
 {

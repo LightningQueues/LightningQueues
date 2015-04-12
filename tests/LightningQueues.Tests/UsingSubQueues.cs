@@ -1,8 +1,9 @@
 using System;
 using System.Text;
 using System.Transactions;
-using FubuTestingSupport;
+using Should;
 using Xunit;
+using Assert = Should.Core.Assertions.Assert;
 
 namespace LightningQueues.Tests
 {

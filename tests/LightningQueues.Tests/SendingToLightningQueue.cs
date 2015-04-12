@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Transactions;
-using FubuTestingSupport;
+using Should;
 using Xunit;
 
 namespace LightningQueues.Tests

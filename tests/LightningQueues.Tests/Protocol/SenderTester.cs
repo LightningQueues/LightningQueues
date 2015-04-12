@@ -1,9 +1,9 @@
 ﻿using System.Net;
 using System.Net.Sockets;
-using FubuTestingSupport;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
 using Xunit;
+using Should;
 
 namespace LightningQueues.Tests.Protocol
 {

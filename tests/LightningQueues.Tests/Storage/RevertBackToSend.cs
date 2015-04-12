@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Specialized;
 using System.IO;
-using FubuTestingSupport;
+using Should;
 using LightningQueues.Protocol;
 using LightningQueues.Storage;
 using Xunit;
@@ -49,13 +49,13 @@ namespace LightningQueues.Tests.Storage
 
                     msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue, new Endpoint("localhost", 0));
                     msgs.ShouldNotBeNull();
-                    msgs.ShouldHaveCount(1);
+                    msgs.ShouldBeEmpty();
                 });
 
                 qf.Global(actions =>
                 {
                     var messages = actions.GetSentMessages();
-                    messages.ShouldHaveCount(0);
+                    messages.ShouldBeEmpty();
                 });
             }
         }

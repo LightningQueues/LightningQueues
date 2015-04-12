@@ -3,9 +3,9 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Transactions;
-using FubuTestingSupport;
 using LightningQueues.Model;
 using Xunit;
+using Should;
 
 namespace LightningQueues.Tests
 {

@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 using System.Transactions;
-using FubuTestingSupport;
+using Should;
 using Xunit;
 
 namespace LightningQueues.Tests

@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Transactions;
-using FubuTestingSupport;
+using Should;
 using Xunit;
 
 namespace LightningQueues.Tests

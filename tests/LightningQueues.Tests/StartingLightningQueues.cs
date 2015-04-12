@@ -1,5 +1,6 @@
 ﻿using System;
 using Xunit;
+using Assert = Should.Core.Assertions.Assert;
 
 namespace LightningQueues.Tests
 {
