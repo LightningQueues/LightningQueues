@@ -3,6 +3,7 @@
     "dependencies": {
         "ManagedEsent": "1.9.2",
         "FubuCore": "1.3.0.278",
+        "Rx-Main": "2.2.5",
         "NLog": "2.1.0.0"
     },
 
