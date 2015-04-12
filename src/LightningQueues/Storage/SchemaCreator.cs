@@ -24,12 +24,12 @@ namespace LightningQueues.Storage
                 {
                     CreateDetailsTable(dbid);
                     CreateQueuesTable(dbid);
-					CreateSubQueuesTable(dbid);
+                    CreateSubQueuesTable(dbid);
                     CreateTransactionTable(dbid);
                     CreateRecoveryTable(dbid);
                     CreateOutgoingTable(dbid);
                     CreateOutgoingHistoryTable(dbid);
-                	CreateReceivedMessagesTable(dbid);
+                    CreateReceivedMessagesTable(dbid);
 
                     tx.Commit(CommitTransactionGrbit.None);
                 }
@@ -40,39 +40,39 @@ namespace LightningQueues.Storage
             }
         }
 
-    	private void CreateSubQueuesTable(JET_DBID dbid)
-    	{
-			JET_TABLEID tableid;
-			Api.JetCreateTable(session, dbid, "subqueues", 16, 100, out tableid);
-			JET_COLUMNID columnid;
+        private void CreateSubQueuesTable(JET_DBID dbid)
+        {
+            JET_TABLEID tableid;
+            Api.JetCreateTable(session, dbid, "subqueues", 16, 100, out tableid);
+            JET_COLUMNID columnid;
 
-			Api.JetAddColumn(session, tableid, "queue", new JET_COLUMNDEF
-			{
+            Api.JetAddColumn(session, tableid, "queue", new JET_COLUMNDEF
+            {
                 cbMax = 255,
-				coltyp = JET_coltyp.Text,
+                coltyp = JET_coltyp.Text,
                 cp = JET_CP.Unicode,
-				grbit = ColumndefGrbit.ColumnNotNULL
-			}, null, 0, out columnid);
+                grbit = ColumndefGrbit.ColumnNotNULL
+            }, null, 0, out columnid);
 
 
-			Api.JetAddColumn(session, tableid, "subqueue", new JET_COLUMNDEF
-			{
-				cbMax = 255,
-				coltyp = JET_coltyp.Text,
-				cp = JET_CP.Unicode,
-				grbit = ColumndefGrbit.ColumnNotNULL
-			}, null, 0, out columnid);
+            Api.JetAddColumn(session, tableid, "subqueue", new JET_COLUMNDEF
+            {
+                cbMax = 255,
+                coltyp = JET_coltyp.Text,
+                cp = JET_CP.Unicode,
+                grbit = ColumndefGrbit.ColumnNotNULL
+            }, null, 0, out columnid);
 
-			var indexDef = "+queue\0subqueue\0\0";
-			Api.JetCreateIndex(session, tableid, "pk", CreateIndexGrbit.IndexPrimary, indexDef, indexDef.Length,
-							   100);
+            var indexDef = "+queue\0subqueue\0\0";
+            Api.JetCreateIndex(session, tableid, "pk", CreateIndexGrbit.IndexPrimary, indexDef, indexDef.Length,
+                               100);
 
-			indexDef = "+queue\0\0";
-			Api.JetCreateIndex(session, tableid, "by_queue", CreateIndexGrbit.IndexDisallowNull, indexDef, indexDef.Length,
-							   100);
-    	}
+            indexDef = "+queue\0\0";
+            Api.JetCreateIndex(session, tableid, "by_queue", CreateIndexGrbit.IndexDisallowNull, indexDef, indexDef.Length,
+                               100);
+        }
 
-    	private void CreateOutgoingHistoryTable(JET_DBID dbid)
+        private void CreateOutgoingHistoryTable(JET_DBID dbid)
         {
             JET_TABLEID tableid;
             Api.JetCreateTable(session, dbid, "outgoing_history", 16, 100, out tableid);
@@ -80,8 +80,8 @@ namespace LightningQueues.Storage
 
             Api.JetAddColumn(session, tableid, "msg_id", new JET_COLUMNDEF
             {
-				coltyp = JET_coltyp.Binary,
-				cbMax = 16,
+                coltyp = JET_coltyp.Binary,
+                cbMax = 16,
                 grbit = ColumndefGrbit.ColumnNotNULL | ColumndefGrbit.ColumnFixed
             }, null, 0, out columnid);
 
@@ -164,8 +164,8 @@ namespace LightningQueues.Storage
             Api.JetAddColumn(session, tableid, "data", new JET_COLUMNDEF
             {
                 coltyp = JET_coltyp.LongBinary,
-				// For Win2k3 support, it doesn't support long binary columsn that are not null
-				grbit = ColumndefGrbit.None
+                // For Win2k3 support, it doesn't support long binary columsn that are not null
+                grbit = ColumndefGrbit.None
             }, null, 0, out columnid);
 
             Api.JetAddColumn(session, tableid, "deliver_by", new JET_COLUMNDEF
@@ -199,8 +199,8 @@ namespace LightningQueues.Storage
             {
                 coltyp = JET_coltyp.Binary,
                 cbMax = 16,
-                grbit = ColumndefGrbit.ColumnNotNULL | 
-						ColumndefGrbit.ColumnFixed
+                grbit = ColumndefGrbit.ColumnNotNULL |
+                        ColumndefGrbit.ColumnFixed
             }, null, 0, out columnid);
 
 
@@ -241,7 +241,7 @@ namespace LightningQueues.Storage
             {
                 coltyp = JET_coltyp.DateTime,
                 grbit = ColumndefGrbit.ColumnNotNULL | ColumndefGrbit.ColumnFixed
-            },null, 0, out columnid);
+            }, null, 0, out columnid);
 
             Api.JetAddColumn(session, tableid, "sent_at", new JET_COLUMNDEF
             {
@@ -282,8 +282,8 @@ namespace LightningQueues.Storage
             Api.JetAddColumn(session, tableid, "data", new JET_COLUMNDEF
             {
                 coltyp = JET_coltyp.LongBinary,
-				// For Win2k3 support, it doesn't support long binary columsn that are not null
-				grbit = ColumndefGrbit.None
+                // For Win2k3 support, it doesn't support long binary columsn that are not null
+                grbit = ColumndefGrbit.None
             }, null, 0, out columnid);
 
             Api.JetAddColumn(session, tableid, "deliver_by", new JET_COLUMNDEF
@@ -324,8 +324,8 @@ namespace LightningQueues.Storage
             {
                 cbMax = 1024,
                 coltyp = JET_coltyp.LongBinary,
-				// For Win2k3 support, it doesn't support long binary columsn that are not null
-				grbit = ColumndefGrbit.None
+                // For Win2k3 support, it doesn't support long binary columsn that are not null
+                grbit = ColumndefGrbit.None
             }, null, 0, out columnid);
 
             const string indexDef = "+tx_id\0\0";
@@ -373,7 +373,7 @@ namespace LightningQueues.Storage
             {
                 cbMax = 16,
                 coltyp = JET_coltyp.Binary,
-                grbit = ColumndefGrbit.ColumnNotNULL|ColumndefGrbit.ColumnFixed
+                grbit = ColumndefGrbit.ColumnNotNULL | ColumndefGrbit.ColumnFixed
             }, null, 0, out columnid);
 
             Api.JetAddColumn(session, tableid, "local_id", new JET_COLUMNDEF
@@ -425,9 +425,9 @@ namespace LightningQueues.Storage
             Api.JetCreateIndex(session, tableid, "by_tx_id", CreateIndexGrbit.IndexDisallowNull, indexDef, indexDef.Length,
                                100);
 
-			indexDef = "+bookmark_size\0bookmark_data\0\0";
-			Api.JetCreateIndex(session, tableid, "by_bookmark", CreateIndexGrbit.IndexDisallowNull | CreateIndexGrbit.IndexUnique, indexDef, indexDef.Length,
-							  100);
+            indexDef = "+bookmark_size\0bookmark_data\0\0";
+            Api.JetCreateIndex(session, tableid, "by_bookmark", CreateIndexGrbit.IndexDisallowNull | CreateIndexGrbit.IndexUnique, indexDef, indexDef.Length,
+                              100);
         }
         private void CreateQueuesTable(JET_DBID dbid)
         {
@@ -461,40 +461,40 @@ namespace LightningQueues.Storage
                                100);
         }
 
-		private void CreateReceivedMessagesTable(JET_DBID dbid)
-		{
-			JET_TABLEID tableid;
-			Api.JetCreateTable(session, dbid, "recveived_msgs", 16, 100, out tableid);
-			JET_COLUMNID columnid;
+        private void CreateReceivedMessagesTable(JET_DBID dbid)
+        {
+            JET_TABLEID tableid;
+            Api.JetCreateTable(session, dbid, "recveived_msgs", 16, 100, out tableid);
+            JET_COLUMNID columnid;
 
-			Api.JetAddColumn(session, tableid, "local_id", new JET_COLUMNDEF
-			{
-				coltyp = JET_coltyp.Long,
-				grbit = ColumndefGrbit.ColumnFixed | ColumndefGrbit.ColumnNotNULL | ColumndefGrbit.ColumnAutoincrement
-			}, null, 0, out columnid);
+            Api.JetAddColumn(session, tableid, "local_id", new JET_COLUMNDEF
+            {
+                coltyp = JET_coltyp.Long,
+                grbit = ColumndefGrbit.ColumnFixed | ColumndefGrbit.ColumnNotNULL | ColumndefGrbit.ColumnAutoincrement
+            }, null, 0, out columnid);
 
-			Api.JetAddColumn(session, tableid, "instance_id", new JET_COLUMNDEF
-			{
-				coltyp = JET_coltyp.Binary,
-				cbMax = 16,
-				grbit = ColumndefGrbit.ColumnFixed | ColumndefGrbit.ColumnNotNULL
-			}, null, 0, out columnid);
+            Api.JetAddColumn(session, tableid, "instance_id", new JET_COLUMNDEF
+            {
+                coltyp = JET_coltyp.Binary,
+                cbMax = 16,
+                grbit = ColumndefGrbit.ColumnFixed | ColumndefGrbit.ColumnNotNULL
+            }, null, 0, out columnid);
 
-			Api.JetAddColumn(session, tableid, "msg_id", new JET_COLUMNDEF
-			{
-				coltyp = JET_coltyp.Binary,
-				cbMax = 16,
-				grbit = ColumndefGrbit.ColumnFixed | ColumndefGrbit.ColumnNotNULL
-			}, null, 0, out columnid);
+            Api.JetAddColumn(session, tableid, "msg_id", new JET_COLUMNDEF
+            {
+                coltyp = JET_coltyp.Binary,
+                cbMax = 16,
+                grbit = ColumndefGrbit.ColumnFixed | ColumndefGrbit.ColumnNotNULL
+            }, null, 0, out columnid);
 
 
-			string indexDef = "+local_id\0\0";
-			Api.JetCreateIndex(session, tableid, "pk", CreateIndexGrbit.IndexPrimary, indexDef, indexDef.Length,
-							   100);
+            string indexDef = "+local_id\0\0";
+            Api.JetCreateIndex(session, tableid, "pk", CreateIndexGrbit.IndexPrimary, indexDef, indexDef.Length,
+                               100);
 
             indexDef = "+msg_id\0\0";
             Api.JetCreateIndex(session, tableid, "msg_id", CreateIndexGrbit.IndexUnique | CreateIndexGrbit.IndexDisallowNull, indexDef, indexDef.Length,
                                100);
-		}
+        }
     }
 }

@@ -35,10 +35,10 @@ namespace LightningQueues.Internal
                 _logger.Debug("Rolledback transaction with id: {0}", Id);
             }
             catch (Exception e)
-			{
-				_logger.Info("Failed to rollback transaction {0}", e, Id);
-			    throw;
-			}
+            {
+                _logger.Info("Failed to rollback transaction {0}", e, Id);
+                throw;
+            }
             finally
             {
                 _onComplete();
@@ -72,7 +72,7 @@ namespace LightningQueues.Internal
                 actions.MarkAsReadyToSend(Id);
                 actions.DeleteRecoveryInformation(Id);
             });
-            _logger.Debug("Commited transaction with id: {0}", Id); 
+            _logger.Debug("Commited transaction with id: {0}", Id);
         }
     }
 }

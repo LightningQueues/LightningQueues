@@ -12,11 +12,11 @@ namespace LightningQueues.Storage
     {
         private readonly QueueManagerConfiguration configuration;
 
-		public SenderActions(JET_INSTANCE instance, ColumnsInformation columnsInformation, string database, Guid instanceId, QueueManagerConfiguration configuration)
+        public SenderActions(JET_INSTANCE instance, ColumnsInformation columnsInformation, string database, Guid instanceId, QueueManagerConfiguration configuration)
             : base(instance, columnsInformation, database, instanceId)
-		{
-		    this.configuration = configuration;
-		}
+        {
+            this.configuration = configuration;
+        }
 
         public IEnumerable<Endpoint> GetEndpointsToSend(IEnumerable<Endpoint> currentlySending, int numberOfEndpoints)
         {
@@ -28,7 +28,7 @@ namespace LightningQueues.Storage
                 if (time > DateTime.Now)
                     continue;
 
-                var endpoint = new Endpoint( outgoing.ForColumnType<StringColumn>().Get("address"),
+                var endpoint = new Endpoint(outgoing.ForColumnType<StringColumn>().Get("address"),
                     outgoing.ForColumnType<IntColumn>().Get("port"));
                 if (!endpoints.Contains(endpoint) && !currentlySending.Contains(endpoint))
                 {
@@ -44,13 +44,13 @@ namespace LightningQueues.Storage
         {
             var enumerator = outgoing.GetEnumerator();
 
-        	string queue = null;
+            string queue = null;
             var messages = new List<PersistentMessage>();
 
             while (enumerator.MoveNext())
             {
                 var msgId = outgoing.ForColumnType<GuidColumn>().Get("msg_id");
-                var value = (OutgoingMessageStatus) outgoing.ForColumnType<IntColumn>().Get("send_status");
+                var value = (OutgoingMessageStatus)outgoing.ForColumnType<IntColumn>().Get("send_status");
                 var time = outgoing.ForColumnType<DateTimeColumn>().Get("time_to_send");
 
                 logger.Debug("Scanning message {0} with status {1} to be sent at {2}", msgId, value, time);
@@ -94,16 +94,16 @@ namespace LightningQueues.Storage
 
                 var rowQueue = outgoing.ForColumnType<StringColumn>().Get("queue");
 
-				if (queue == null) 
-					queue = rowQueue;
+                if (queue == null)
+                    queue = rowQueue;
 
-				if(queue != rowQueue)
-					continue;
-                
+                if (queue != rowQueue)
+                    continue;
+
                 var bookmark = enumerator.Current;
 
                 logger.Debug("Adding message {0} to returned messages", msgId);
-            	messages.Add(new PersistentMessage
+                messages.Add(new PersistentMessage
                 {
                     Id = new MessageId
                     {
@@ -174,7 +174,7 @@ namespace LightningQueues.Storage
         {
             var enumerator = outgoing.GetEnumerator();
             return enumerator.MoveNext();
-		}
+        }
 
         public IEnumerable<PersistentMessageToSend> GetMessagesToSend()
         {
@@ -192,7 +192,7 @@ namespace LightningQueues.Storage
                     Id = new MessageId
                     {
                         SourceInstanceId = instanceId,
-						MessageIdentifier = outgoing.ForColumnType<GuidColumn>().Get("msg_id")
+                        MessageIdentifier = outgoing.ForColumnType<GuidColumn>().Get("msg_id")
                     },
                     OutgoingStatus = (OutgoingMessageStatus)outgoing.ForColumnType<IntColumn>().Get("send_status"),
                     Endpoint = new Endpoint(address, port),
@@ -220,7 +220,7 @@ namespace LightningQueues.Storage
                         var bytes = outgoingHistory.ForColumnType<BytesColumn>().Get(column);
                         outgoing.ForColumnType<BytesColumn>().Set(column, bytes);
                     }
-                    outgoing.ForColumnType<IntColumn>().Set("send_status", (int) OutgoingMessageStatus.Ready);
+                    outgoing.ForColumnType<IntColumn>().Set("send_status", (int)OutgoingMessageStatus.Ready);
                     var previousRetry = outgoingHistory.ForColumnType<IntColumn>().Get("number_of_retries");
                     outgoing.ForColumnType<IntColumn>().Set("number_of_retries", previousRetry + 1);
 

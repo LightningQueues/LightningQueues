@@ -8,7 +8,7 @@ namespace LightningQueues.Protocol.Chunks
     {
         public WriteSerializationError(ILogger logger) : base(logger)
         {
-            
+
         }
 
         protected override async Task ProcessInternalAsync(Stream stream)

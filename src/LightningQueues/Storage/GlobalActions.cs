@@ -12,10 +12,10 @@ namespace LightningQueues.Storage
 {
     public class GlobalActions : AbstractActions
     {
-	    private readonly QueueManagerConfiguration configuration;
+        private readonly QueueManagerConfiguration configuration;
 
         public GlobalActions(JET_INSTANCE instance, ColumnsInformation columnsInformation, string database, Guid instanceId, QueueManagerConfiguration configuration)
-			: base(instance, columnsInformation, database, instanceId)
+            : base(instance, columnsInformation, database, instanceId)
         {
             this.configuration = configuration;
         }
@@ -46,7 +46,7 @@ namespace LightningQueues.Storage
         public void DeleteRecoveryInformation(Guid transactionId)
         {
             var enumerator = recovery.GetEnumerator(new GuidIndex(transactionId));
-            if(enumerator.MoveNext())
+            if (enumerator.MoveNext())
                 recovery.Delete();
         }
 
@@ -62,10 +62,10 @@ namespace LightningQueues.Storage
             var actualBookmark = bookmark.Bookmark.Take(bookmark.Size).ToArray();
             var enumerator = txs.GetEnumerator(new BookmarkIndex(bookmark.Size, actualBookmark));
 
-			if(enumerator.MoveNext())
-			{
+            if (enumerator.MoveNext())
+            {
                 txs.Delete();
-			}
+            }
 
             txs.Insert(() =>
             {
@@ -81,7 +81,7 @@ namespace LightningQueues.Storage
         public void RemoveReversalsMoveCompletedMessagesAndFinishSubQueueMove(Guid transactionId)
         {
             var enumerator = txs.GetEnumerator(new GuidIndex(transactionId, "by_tx_id"));
-            while(enumerator.MoveNext())
+            while (enumerator.MoveNext())
             {
                 var queue = txs.ForColumnType<StringColumn>().Get("queue");
 
@@ -114,7 +114,7 @@ namespace LightningQueues.Storage
 
         public Guid RegisterToSend(Endpoint destination, string queue, string subQueue, MessagePayload payload, Guid transactionId)
         {
-			var msgId = GuidCombGenerator.Generate();
+            var msgId = GuidCombGenerator.Generate();
             var bookmark = outgoing.Insert(() =>
             {
                 outgoing.ForColumnType<GuidColumn>().Set("msg_id", msgId);
@@ -130,9 +130,9 @@ namespace LightningQueues.Storage
                 outgoing.ForColumnType<BytesColumn>().Set("data", payload.Data);
                 outgoing.ForColumnType<IntColumn>().Set("number_of_retries", 1);
                 outgoing.ForColumnType<IntColumn>().Set("size_of_data", payload.Data.Length);
-                if(payload.DeliverBy.HasValue)
+                if (payload.DeliverBy.HasValue)
                     outgoing.ForColumnType<DateTimeColumn>().Set("deliver_by", payload.DeliverBy.Value);
-                if(payload.MaxAttempts.HasValue)
+                if (payload.MaxAttempts.HasValue)
                     outgoing.ForColumnType<IntColumn>().Set("max_attempts", payload.MaxAttempts.Value);
             });
             outgoing.MoveTo(bookmark);
@@ -149,7 +149,7 @@ namespace LightningQueues.Storage
         public void MarkAsReadyToSend(Guid transactionId)
         {
             var enumerator = outgoing.GetEnumerator(new GuidIndex(transactionId, "by_tx_id"));
-            while(enumerator.MoveNext())
+            while (enumerator.MoveNext())
             {
                 outgoing.Update(() => outgoing.ForColumnType<IntColumn>().Set("send_status", (int)OutgoingMessageStatus.Ready));
                 var id = outgoing.ForColumnType<GuidColumn>().Get("msg_id");
@@ -160,10 +160,10 @@ namespace LightningQueues.Storage
         public void DeleteMessageToSend(Guid transactionId)
         {
             var enumerator = outgoing.GetEnumerator(new GuidIndex(transactionId, "by_tx_id"));
-        	while(enumerator.MoveNext())
-        	{
-        	    var id = outgoing.ForColumnType<GuidColumn>().Get("msg_id");
-        	    logger.Debug("Deleting output message {0}", id);
+            while (enumerator.MoveNext())
+            {
+                var id = outgoing.ForColumnType<GuidColumn>().Get("msg_id");
+                logger.Debug("Deleting output message {0}", id);
                 outgoing.Delete();
             }
         }
@@ -173,7 +173,7 @@ namespace LightningQueues.Storage
             var enumerator = outgoing.GetEnumerator();
             while (enumerator.MoveNext())
             {
-                var status = (OutgoingMessageStatus) outgoing.ForColumnType<IntColumn>().Get("send_status");
+                var status = (OutgoingMessageStatus)outgoing.ForColumnType<IntColumn>().Get("send_status");
                 if (status != OutgoingMessageStatus.InFlight)
                     continue;
 
@@ -209,7 +209,7 @@ namespace LightningQueues.Storage
         {
             var enumerator = txs.GetEnumerator(new GuidIndex(transactionId, "by_tx_id"));
 
-            while(enumerator.MoveNext())
+            while (enumerator.MoveNext())
             {
                 try
                 {
@@ -256,16 +256,16 @@ namespace LightningQueues.Storage
             return names.ToArray();
         }
 
-	    public MessageBookmark GetSentMessageBookmarkAtPosition(int positionFromNewestSentMessage)
-	    {
-	        var enumerator = outgoingHistory.GetEnumerator(new PositionalIndexFromLast(positionFromNewestSentMessage));
+        public MessageBookmark GetSentMessageBookmarkAtPosition(int positionFromNewestSentMessage)
+        {
+            var enumerator = outgoingHistory.GetEnumerator(new PositionalIndexFromLast(positionFromNewestSentMessage));
 
-	        return !enumerator.MoveNext() ? null : enumerator.Current;
-	    }
+            return !enumerator.MoveNext() ? null : enumerator.Current;
+        }
 
-	    public IEnumerable<PersistentMessageToSend> GetSentMessages(int? batchSize = null)
-	    {
-	        var enumerator = outgoingHistory.GetEnumerator();
+        public IEnumerable<PersistentMessageToSend> GetSentMessages(int? batchSize = null)
+        {
+            var enumerator = outgoingHistory.GetEnumerator();
 
             int count = 0;
             while (enumerator.MoveNext() && count++ != batchSize)
@@ -282,7 +282,7 @@ namespace LightningQueues.Storage
                         SourceInstanceId = instanceId,
                         MessageIdentifier = outgoingHistory.ForColumnType<GuidColumn>().Get("msg_id"),
                     },
-                    OutgoingStatus = (OutgoingMessageStatus) outgoingHistory.ForColumnType<IntColumn>().Get("send_status"),
+                    OutgoingStatus = (OutgoingMessageStatus)outgoingHistory.ForColumnType<IntColumn>().Get("send_status"),
                     Endpoint = new Endpoint(address, port),
                     Queue = outgoingHistory.ForColumnType<StringColumn>().Get("queue"),
                     SubQueue = outgoingHistory.ForColumnType<StringColumn>().Get("subqueue"),
@@ -300,44 +300,44 @@ namespace LightningQueues.Storage
             outgoingHistory.Delete();
         }
 
-    	public int GetNumberOfMessages(string queueName)
-    	{
-    	    var enumerator = queues.GetEnumerator(new StringValueIndex("pk", queueName));
+        public int GetNumberOfMessages(string queueName)
+        {
+            var enumerator = queues.GetEnumerator(new StringValueIndex("pk", queueName));
 
-			if (!enumerator.MoveNext())
+            if (!enumerator.MoveNext())
                 throw new QueueDoesNotExistsException(queueName);
 
-    	    return queues.ForColumnType<IntColumn>().InterlockedRead("number_of_messages");
-    	}
+            return queues.ForColumnType<IntColumn>().InterlockedRead("number_of_messages");
+        }
 
-		public IEnumerable<MessageId> GetAlreadyReceivedMessageIds()
-		{
-		    var enumerator = recveivedMsgs.GetEnumerator();
-			while(enumerator.MoveNext())
-			{
-			    yield return recveivedMsgs.GetMessageId();
-			}
-		}
+        public IEnumerable<MessageId> GetAlreadyReceivedMessageIds()
+        {
+            var enumerator = recveivedMsgs.GetEnumerator();
+            while (enumerator.MoveNext())
+            {
+                yield return recveivedMsgs.GetMessageId();
+            }
+        }
 
-		public void MarkReceived(MessageId id)
-		{
-		    recveivedMsgs.Insert(() =>
-		    {
+        public void MarkReceived(MessageId id)
+        {
+            recveivedMsgs.Insert(() =>
+            {
                 recveivedMsgs.ForColumnType<GuidColumn>().Set("instance_id", id.SourceInstanceId);
                 recveivedMsgs.ForColumnType<GuidColumn>().Set("msg_id", id.MessageIdentifier);
-		    });
-		}
+            });
+        }
 
-		public IEnumerable<MessageId> DeleteOldestReceivedMessageIds(int numberOfItemsToKeep, int numberOfItemsToDelete)
-		{
-		    var enumerator = recveivedMsgs.GetEnumerator(new PositionalIndexFromLast(numberOfItemsToKeep + 1), true);
-			while(enumerator.MoveNext() && numberOfItemsToDelete-- > 0)
-			{
-			    var id = recveivedMsgs.GetMessageId();
+        public IEnumerable<MessageId> DeleteOldestReceivedMessageIds(int numberOfItemsToKeep, int numberOfItemsToDelete)
+        {
+            var enumerator = recveivedMsgs.GetEnumerator(new PositionalIndexFromLast(numberOfItemsToKeep + 1), true);
+            while (enumerator.MoveNext() && numberOfItemsToDelete-- > 0)
+            {
+                var id = recveivedMsgs.GetMessageId();
                 recveivedMsgs.Delete();
-			    yield return id;
-			}
-		}
+                yield return id;
+            }
+        }
 
         public PersistentMessageToSend GetSentMessageById(Guid id)
         {

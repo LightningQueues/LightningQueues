@@ -1,6 +1,4 @@
-﻿using System;
-using LightningQueues.Internal;
-using LightningQueues.Model;
+﻿using LightningQueues.Internal;
 
 namespace LightningQueues
 {

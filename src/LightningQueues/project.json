@@ -12,6 +12,7 @@
             },
             "frameworkAssemblies": {
                 "System.Transactions": "",
+                "System.Runtime": "",
                 "System.Web": ""
             }
         }

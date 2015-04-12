@@ -17,10 +17,10 @@ namespace LightningQueues.Storage
             _columns = Api.GetColumnDictionary(session, table);
         }
 
-        public Session Session {get { return _session; }}
-        public Table Table {get { return _table; }}
+        public Session Session { get { return _session; } }
+        public Table Table { get { return _table; } }
 
-        public IEnumerable<string> ColumnNames {get { return _columns.Keys; }} 
+        public IEnumerable<string> ColumnNames { get { return _columns.Keys; } }
 
         public IEnumerator<MessageBookmark> GetEnumerator(IEsentIndex index, bool reverse = false)
         {
@@ -36,7 +36,7 @@ namespace LightningQueues.Storage
 
         public void MoveTo(MessageBookmark bookmark)
         {
-			Api.JetGotoBookmark(_session, _table, bookmark.Bookmark, bookmark.Size);
+            Api.JetGotoBookmark(_session, _table, bookmark.Bookmark, bookmark.Size);
         }
 
         public MessageBookmark Insert(Action insertBlock)
@@ -68,7 +68,7 @@ namespace LightningQueues.Storage
 
         public T ForColumnType<T>() where T : IColumn, new()
         {
-            return new T {Session = _session, Table = _table, Columns = _columns};
+            return new T { Session = _session, Table = _table, Columns = _columns };
         }
 
         public void Dispose()

@@ -1,6 +1,5 @@
 using System.Linq;
 using System.Threading.Tasks;
-using FubuCore;
 using LightningQueues.Exceptions;
 using LightningQueues.Logging;
 using LightningQueues.Model;
@@ -22,7 +21,7 @@ namespace LightningQueues.Internal
 
         public QueuedMessagesSender(QueueStorage queueStorage, SendingChoke choke, ILogger logger)
         {
-        	_queueStorage = queueStorage;
+            _queueStorage = queueStorage;
             _logger = logger;
             _choke = choke;
         }
@@ -32,7 +31,7 @@ namespace LightningQueues.Internal
             var allEndpoints = new ThreadSafeSet<Endpoint>();
             while (_continueSending)
             {
-                if(!_choke.ShouldBeginSend())
+                if (!_choke.ShouldBeginSend())
                     continue;
 
                 var endpoints = gatherEndpoints(allEndpoints.All()).ToArray();
@@ -159,7 +158,7 @@ namespace LightningQueues.Internal
         {
             try
             {
-                var newBookmarks = _queueStorage.Send(actions => 
+                var newBookmarks = _queueStorage.Send(actions =>
                     messages.Select(message => actions.MarkOutgoingMessageAsSuccessfullySent(message.Bookmark)).ToArray());
                 return newBookmarks;
             }

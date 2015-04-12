@@ -27,7 +27,7 @@ namespace LightningQueues.Protocol
             }
         }
 
-        private async Task readMessageAsync(string endpoint, Stream stream, 
+        private async Task readMessageAsync(string endpoint, Stream stream,
             Func<Message[], IMessageAcceptance> acceptMessages)
         {
             bool serializationErrorOccurred = false;
