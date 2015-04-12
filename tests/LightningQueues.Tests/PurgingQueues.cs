@@ -1,29 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net;
 using System.Threading;
 using System.Transactions;
 using FubuTestingSupport;
-using NUnit.Framework;
+using Xunit;
 
 namespace LightningQueues.Tests
 {
-    [TestFixture]
     public class PurgingQueues
     {
         private const string EsentFileName = "test.esent";
         private QueueManager queueManager;
 
-        [SetUp]
-        public void Setup()
+        public PurgingQueues()
         {
             if (Directory.Exists(EsentFileName))
                 Directory.Delete(EsentFileName, true);
         }
 
-        [Test]
-        [Explicit]
+        [Fact(Skip="Not on mono")]
         public void CanPurgeLargeSetsOfOldData()
         {
             queueManager = ObjectMother.QueueManager();

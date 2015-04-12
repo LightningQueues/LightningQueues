@@ -2,23 +2,21 @@
 using System.Text;
 using FubuTestingSupport;
 using LightningQueues.Model;
-using NUnit.Framework;
+using Xunit;
 
 namespace LightningQueues.Tests
 {
-    [TestFixture]
-    public class UsingTransactionalScope
+    public class UsingTransactionalScope : IDisposable
     {
         private QueueManager queueManager;
 
-        [SetUp]
-        public void Setup()
+        public UsingTransactionalScope()
         {
             queueManager = ObjectMother.QueueManager();
             queueManager.Start();
         }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void can_receive_message()
         {
             var sender = ObjectMother.Sender();
@@ -33,7 +31,7 @@ namespace LightningQueues.Tests
             Assert.Throws<TimeoutException>(() => transactionalScope2.Receive("h", TimeSpan.Zero));
         }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void previous_dequeue_with_rollback_can_be_dequeued_again()
         {
             var sender = ObjectMother.Sender();
@@ -49,7 +47,7 @@ namespace LightningQueues.Tests
             "hello".ShouldEqual(Encoding.Unicode.GetString(message.Data));
         }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void dequeue_success_moves_to_history()
         {
             var sender = ObjectMother.Sender();
@@ -65,7 +63,7 @@ namespace LightningQueues.Tests
             "hello".ShouldEqual(Encoding.Unicode.GetString(messages[0].Data));
         }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void rollback_on_send_does_not_send_message()
         {
             var sender = ObjectMother.QueueManager("test2", 23457);
@@ -78,7 +76,7 @@ namespace LightningQueues.Tests
             sender.Dispose();
         }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void can_receive_on_one_queue_move_to_another()
         {
             var sender = ObjectMother.Sender();
@@ -93,7 +91,7 @@ namespace LightningQueues.Tests
             });
             var receivingScope = queueManager.BeginTransactionalScope();
             message = receivingScope.ReceiveById("h", message.Id);
-            receivingScope.EnqueueDirectlyTo("a", new MessagePayload{Data = message.Data, Headers = message.Headers});
+            receivingScope.EnqueueDirectlyTo("a", new MessagePayload { Data = message.Data, Headers = message.Headers });
             receivingScope.Commit();
             receivingScope = queueManager.BeginTransactionalScope();
             Assert.Throws<TimeoutException>(() => receivingScope.Receive("h", TimeSpan.FromSeconds(1)));
@@ -102,7 +100,7 @@ namespace LightningQueues.Tests
             "hello".ShouldEqual(Encoding.Unicode.GetString(message.Data));
         }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void can_receive_on_one_queue_move_to_another_preserving_id()
         {
             var sender = ObjectMother.Sender();
@@ -126,7 +124,7 @@ namespace LightningQueues.Tests
             "hello".ShouldEqual(Encoding.Unicode.GetString(message.Data));
         }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void calling_receive_by_id_should_return_null_if_not_found()
         {
             var receivingScope = queueManager.BeginTransactionalScope();
@@ -134,8 +132,7 @@ namespace LightningQueues.Tests
             message.ShouldBeNull();
         }
 
-        [TearDown]
-        public void Teardown()
+        public void Dispose()
         {
             queueManager.Dispose();
         }

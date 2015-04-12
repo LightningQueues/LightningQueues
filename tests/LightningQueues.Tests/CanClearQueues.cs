@@ -1,29 +1,27 @@
 ﻿using System;
 using FubuTestingSupport;
-using NUnit.Framework;
+using Xunit;
 
 namespace LightningQueues.Tests
 {
-    public class CanClearQueues
+    public class CanClearQueues : IDisposable
     {
         private QueueManager _sender;
         private QueueManager _receiver;
 
-        [SetUp]
-        public void Setup()
+        public CanClearQueues()
         {
             _sender = ObjectMother.QueueManager();
             _receiver = ObjectMother.QueueManager("test2", 23457);
         }
 
-        [TearDown]
-        public void Teardown()
+        public void Dispose()
         {
             _sender.Dispose();
             _receiver.Dispose();
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void ClearsOutgoingMessages()
         {
             _sender.Start();
@@ -33,7 +31,7 @@ namespace LightningQueues.Tests
             _sender.GetMessagesCurrentlySending().ShouldHaveCount(0);
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void ClearsQueueMessages()
         {
             _sender.Start();

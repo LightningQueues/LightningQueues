@@ -4,21 +4,19 @@ using System.Linq;
 using FubuTestingSupport;
 using LightningQueues.Model;
 using LightningQueues.Storage;
-using NUnit.Framework;
+using Xunit;
 
 namespace LightningQueues.Tests.Storage
 {
-    [TestFixture]
     public class CanUseQueue
     {
-        [SetUp]
-        public void Setup()
+        public CanUseQueue()
         {
             if (Directory.Exists("test.esent"))
                 Directory.Delete("test.esent", true);
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void CanCreateNewQueueFactory()
         {
             using (var qf = CreateQueueStorage())
@@ -27,93 +25,93 @@ namespace LightningQueues.Tests.Storage
             }
         }
 
-	    [Test]
-		public void CanRegisterReceivedMessageIds()
-		{
-			using (var qf = CreateQueueStorage())
-			{
-				qf.Initialize();
+        [Fact(Skip="Not on mono")]
+        public void CanRegisterReceivedMessageIds()
+        {
+            using (var qf = CreateQueueStorage())
+            {
+                qf.Initialize();
 
-					var random = MessageId.GenerateRandom();
-				qf.Global(actions => actions.MarkReceived(random));
+                var random = MessageId.GenerateRandom();
+                qf.Global(actions => actions.MarkReceived(random));
 
-				qf.Global(actions => actions.GetAlreadyReceivedMessageIds().Contains(random).ShouldBeTrue());
-			}
-		}
-
-
-		[Test]
-		public void CanDeleteOldEntries()
-		{
-			using (var qf = CreateQueueStorage())
-			{
-				qf.Initialize();
-
-				var random = MessageId.GenerateRandom();
-				qf.Global(actions =>
-				{
-					for (int i = 0; i < 5; i++)
-					{
-						actions.MarkReceived(MessageId.GenerateRandom());
-					} 
-					actions.MarkReceived(random);
-
-					for (int i = 0; i < 5; i++)
-					{
-						actions.MarkReceived(MessageId.GenerateRandom());
-					}
-				});
-
-				
-				qf.Global(actions =>
-				{
-					actions.DeleteOldestReceivedMessageIds(6, 10).ToArray();//consume & activate
-				});
-
-				qf.Global(actions =>
-				{
-					var array = actions.GetAlreadyReceivedMessageIds().ToArray();
-					6.ShouldEqual(array.Length);
-					random.ShouldEqual(array[0]);
-				});
-			}
-		}
-
-		[Test]
-		public void CallingDeleteOldEntriesIsSafeIfThereAreNotEnoughEntries()
-		{
-			using (var qf = CreateQueueStorage())
-			{
-				qf.Initialize();
-
-				var random = MessageId.GenerateRandom();
-				qf.Global(actions =>
-				{
-					for (int i = 0; i < 5; i++)
-					{
-						actions.MarkReceived(MessageId.GenerateRandom());
-					}
-					actions.MarkReceived(random);
-				});
+                qf.Global(actions => actions.GetAlreadyReceivedMessageIds().Contains(random).ShouldBeTrue());
+            }
+        }
 
 
-				qf.Global(actions =>
-				{
-					actions.DeleteOldestReceivedMessageIds(10, 10).ToArray();//consume & activate
-				});
+        [Fact(Skip="Not on mono")]
+        public void CanDeleteOldEntries()
+        {
+            using (var qf = CreateQueueStorage())
+            {
+                qf.Initialize();
 
-				qf.Global(actions =>
-				{
-					var array = actions.GetAlreadyReceivedMessageIds().ToArray();
-					6.ShouldEqual(array.Length);
-					random.ShouldEqual(array[5]);
-				});
+                var random = MessageId.GenerateRandom();
+                qf.Global(actions =>
+                {
+                    for (int i = 0; i < 5; i++)
+                    {
+                        actions.MarkReceived(MessageId.GenerateRandom());
+                    }
+                    actions.MarkReceived(random);
+
+                    for (int i = 0; i < 5; i++)
+                    {
+                        actions.MarkReceived(MessageId.GenerateRandom());
+                    }
+                });
 
 
-			}
-		}
+                qf.Global(actions =>
+                {
+                    actions.DeleteOldestReceivedMessageIds(6, 10).ToArray();//consume & activate
+                });
 
-        [Test]
+                qf.Global(actions =>
+                {
+                    var array = actions.GetAlreadyReceivedMessageIds().ToArray();
+                    6.ShouldEqual(array.Length);
+                    random.ShouldEqual(array[0]);
+                });
+            }
+        }
+
+        [Fact(Skip="Not on mono")]
+        public void CallingDeleteOldEntriesIsSafeIfThereAreNotEnoughEntries()
+        {
+            using (var qf = CreateQueueStorage())
+            {
+                qf.Initialize();
+
+                var random = MessageId.GenerateRandom();
+                qf.Global(actions =>
+                {
+                    for (int i = 0; i < 5; i++)
+                    {
+                        actions.MarkReceived(MessageId.GenerateRandom());
+                    }
+                    actions.MarkReceived(random);
+                });
+
+
+                qf.Global(actions =>
+                {
+                    actions.DeleteOldestReceivedMessageIds(10, 10).ToArray();//consume & activate
+                });
+
+                qf.Global(actions =>
+                {
+                    var array = actions.GetAlreadyReceivedMessageIds().ToArray();
+                    6.ShouldEqual(array.Length);
+                    random.ShouldEqual(array[5]);
+                });
+
+
+            }
+        }
+
+        [Fact(Skip="Not on mono")]
         public void CanPutSingleMessageInQueue()
         {
             using (var qf = CreateQueueStorage())
@@ -124,10 +122,10 @@ namespace LightningQueues.Tests.Storage
 
                 MessageBookmark bookmark = null;
                 var guid = Guid.NewGuid();
-				var identifier = Guid.NewGuid();
-				qf.Global(actions =>
+                var identifier = Guid.NewGuid();
+                qf.Global(actions =>
                 {
-                	bookmark = actions.GetQueue("h").Enqueue(new Message
+                    bookmark = actions.GetQueue("h").Enqueue(new Message
                     {
                         Queue = "h",
                         Data = new byte[] { 13, 12, 43, 5 },
@@ -146,7 +144,7 @@ namespace LightningQueues.Tests.Storage
                     var message = actions.GetQueue("h").Dequeue(null);
 
                     new byte[] { 13, 12, 43, 5 }.ShouldEqual(message.Data);
-					identifier.ShouldEqual(message.Id.MessageIdentifier);
+                    identifier.ShouldEqual(message.Id.MessageIdentifier);
                     guid.ShouldEqual(message.Id.SourceInstanceId);
                     "h".ShouldEqual(message.Queue);
                     new DateTime(2004, 5, 5).ShouldEqual(message.SentAt);
@@ -154,7 +152,7 @@ namespace LightningQueues.Tests.Storage
             }
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void WillGetMessagesBackInOrder()
         {
             using (var qf = CreateQueueStorage())
@@ -208,7 +206,7 @@ namespace LightningQueues.Tests.Storage
             }
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void WillNotGiveMessageToTwoClient()
         {
             using (var qf = CreateQueueStorage())
@@ -244,22 +242,22 @@ namespace LightningQueues.Tests.Storage
                     qf.Global(queuesActions =>
                     {
                         var m2 = queuesActions.GetQueue("h").Dequeue(null);
-                        
+
                         new byte[] { 2 }.ShouldEqual(m2.Data);
                     });
 
-                   new byte[] { 1 }.ShouldEqual(m1.Data);
+                    new byte[] { 1 }.ShouldEqual(m1.Data);
                 });
             }
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void WillGiveNullWhenNoItemsAreInQueue()
         {
             using (var qf = CreateQueueStorage())
             {
                 qf.Initialize();
-               
+
                 qf.Global(actions => actions.CreateQueueIfDoesNotExists("h"));
 
                 qf.Global(actions =>

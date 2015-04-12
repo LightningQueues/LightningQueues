@@ -5,20 +5,18 @@ using FubuTestingSupport;
 using LightningQueues.Exceptions;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
-using NUnit.Framework;
+using Xunit;
 
 namespace LightningQueues.Tests.Protocol
 {
-    [TestFixture]
-    public class SendingFailure 
+    public class SendingFailure
     {
         private Exception error;
         private bool wasSuccessful;
         private Sender sender;
         private RecordingLogger _logger;
 
-        [SetUp]
-        public void Setup()
+        public SendingFailure()
         {
             _logger = new RecordingLogger();
             wasSuccessful = false;
@@ -43,17 +41,17 @@ namespace LightningQueues.Tests.Protocol
             };
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void CanHandleItWhenReceiverDoesNotExists()
         {
             var task = sender.Send();
-            var aggregateException = Assert.Throws<AggregateException>(task.Wait);
+            var aggregateException = FubuTestingSupport.Exception<AggregateException>.ShouldBeThrownBy(task.Wait);
             aggregateException.InnerExceptions.OfType<FailedToConnectException>().Any().ShouldBeTrue();
 
             wasSuccessful.ShouldBeFalse();
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void CanHandleItWhenReceiverConnectAndDisconnect()
         {
             StartReceiver(x => x.DisconnectAfterConnect = true);
@@ -62,7 +60,7 @@ namespace LightningQueues.Tests.Protocol
             wasSuccessful.ShouldBeFalse();
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void CanHandleItWhenReceiverDisconnectDuringRecieve()
         {
             StartReceiver(x => x.DisconnectDuringMessageSend = true);
@@ -90,7 +88,7 @@ namespace LightningQueues.Tests.Protocol
             }
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void CanHandleItWhenReceiverDisconnectAfterRecieve()
         {
             StartReceiver(x => x.DisconnectAfterMessageSend = true);
@@ -99,7 +97,7 @@ namespace LightningQueues.Tests.Protocol
             wasSuccessful.ShouldBeFalse();
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void CanHandleItWhenReceiverSendingBadResponse()
         {
             StartReceiver(x => x.SendBadResponse = true);
@@ -108,7 +106,7 @@ namespace LightningQueues.Tests.Protocol
             wasSuccessful.ShouldBeFalse();
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void CanHandleItWhenReceiverDisconnectAfterSendingRecieved()
         {
             StartReceiver(x => x.DisconnectAfterSendingReciept = true);
@@ -123,7 +121,7 @@ namespace LightningQueues.Tests.Protocol
             wasSuccessful.ShouldBeTrue();
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void CanHandleItWhenReceiverSendRevert()
         {
             StartReceiver(x => x.FailOnAcknowledgement = true);
@@ -135,7 +133,7 @@ namespace LightningQueues.Tests.Protocol
             wasSuccessful.ShouldBeTrue();
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void CanHandleConnectTimeouts()
         {
             sender.Timeout = TimeSpan.FromMilliseconds(500);
@@ -146,7 +144,7 @@ namespace LightningQueues.Tests.Protocol
             wasSuccessful.ShouldBeFalse();
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void CanHandleSendTimeouts()
         {
             sender.Timeout = TimeSpan.FromMilliseconds(500);

@@ -1,17 +1,16 @@
 using System;
 using System.Net;
-using System.Threading;
 using FubuTestingSupport;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
-using NUnit.Framework;
+using Xunit;
 using Rhino.Mocks;
 
 namespace LightningQueues.Tests.Protocol
 {
     public class CanSendAndReceive 
     {
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void OneMessage()
         {
             Message[] recievedMsgs = null;
@@ -49,7 +48,7 @@ namespace LightningQueues.Tests.Protocol
             }
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void TwoMessagesInSeparateCalls()
         {
             Message[] recievedMsgs = null;
@@ -103,7 +102,7 @@ namespace LightningQueues.Tests.Protocol
             }
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void TwoMessagesInOneCall()
         {
             Message[] recievedMsgs = null;

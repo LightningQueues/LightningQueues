@@ -6,14 +6,13 @@ using FubuTestingSupport;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
 using LightningQueues.Storage;
-using NUnit.Framework;
+using Xunit;
 
 namespace LightningQueues.Tests.Storage
 {
-    [TestFixture]
     public class DeliveryOptions
     {
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void MovesExpiredMessageToOutgoingHistory()
         {
             using (var qf = new QueueStorage("test.esent", new QueueManagerConfiguration()))
@@ -22,7 +21,8 @@ namespace LightningQueues.Tests.Storage
 
                 qf.Global(actions => actions.CreateQueueIfDoesNotExists("test"));
 
-                var testMessage = new MessagePayload{
+                var testMessage = new MessagePayload
+                {
                     Data = new byte[0],
                     DeliverBy = DateTime.Now.AddSeconds(-1),
                     Headers = new NameValueCollection(),
@@ -52,7 +52,7 @@ namespace LightningQueues.Tests.Storage
             }
         }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void MovesMessageToOutgoingHistoryAfterMaxAttempts()
         {
             Directory.Delete("test.esent", true);
@@ -85,7 +85,7 @@ namespace LightningQueues.Tests.Storage
                 {
                     var msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue, new Endpoint("localhost", 0));
                     actions.MarkOutgoingMessageAsFailedTransmission(msgs.First().Bookmark, false);
-                    
+
                     msgs = actions.GetMessagesToSendAndMarkThemAsInFlight(int.MaxValue, int.MaxValue, new Endpoint("localhost", 0));
                     msgs.ShouldHaveCount(0);
                 });

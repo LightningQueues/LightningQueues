@@ -2,14 +2,13 @@
 using System.Net;
 using FubuTestingSupport;
 using LightningQueues.Exceptions;
-using NUnit.Framework;
+using Xunit;
 
 namespace LightningQueues.Tests
 {
-    [TestFixture]
     public class WhenPortIsInUse
     {
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void ThrowsWhenAlreadyInUse()
         {
             var one = ObjectMother.QueueManager();
@@ -18,7 +17,7 @@ namespace LightningQueues.Tests
             typeof(EndpointInUseException).ShouldBeThrownBy(two.Start);
         }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void ExceptionMessageIsCorrect()
         {
             var exception = new EndpointInUseException(new IPEndPoint(IPAddress.Loopback, 2200), new Exception());

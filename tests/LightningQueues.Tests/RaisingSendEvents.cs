@@ -3,36 +3,32 @@ using System.Linq;
 using System.Net;
 using System.Transactions;
 using FubuTestingSupport;
-using LightningQueues.Logging;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
-using NUnit.Framework;
+using Xunit;
 
 namespace LightningQueues.Tests
 {
-    [TestFixture]
-    public class RaisingSendEvents
+    public class RaisingSendEvents : IDisposable
     {
         private const string TEST_QUEUE_1 = "testA.esent";
         private const string TEST_QUEUE_2 = "testB.esent";
         private QueueManager _sender;
         private RecordingLogger _logger;
 
-        [SetUp]
-        public void Setup()
+        public RaisingSendEvents()
         {
             _logger = new RecordingLogger();
             _sender = ObjectMother.QueueManager(TEST_QUEUE_1, logger:_logger);
             _sender.Start();
         }
 
-        [TearDown]
-        public void Teardown()
+        public void Dispose()
         {
             _sender.Dispose();
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void MessageQueuedForSend_IsLogged()
         {
             using (var tx = new TransactionScope())
@@ -55,7 +51,7 @@ namespace LightningQueues.Tests
             "h".ShouldEqual(log.Message.Queue);
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void MessageQueuedForSend_IsLogged_EvenIfTransactionFails()
         {
             using (new TransactionScope())
@@ -75,7 +71,7 @@ namespace LightningQueues.Tests
             "h".ShouldEqual(log.Message.Queue);
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void MessageSent_IsLogged()
         {
             using (var receiver = ObjectMother.QueueManager(TEST_QUEUE_2, 23457))
@@ -103,7 +99,7 @@ namespace LightningQueues.Tests
             "h".ShouldEqual(log.Messages[0].Queue);
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void MessageSent_IsNotLogged_IfNotSent()
         {
             using (var tx = new TransactionScope())
@@ -122,7 +118,7 @@ namespace LightningQueues.Tests
             log.ShouldBeNull();
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void MessageSent_IsNotLogged_IfReceiverReverts()
         {
             using (var receiver = new RevertingQueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2, new QueueManagerConfiguration()))

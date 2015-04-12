@@ -1,25 +1,21 @@
 ﻿using System;
-using System.IO;
-using System.Net;
 using System.Transactions;
 using FubuTestingSupport;
-using NUnit.Framework;
+using Xunit;
 
 namespace LightningQueues.Tests.FromUsers
 {
-    [TestFixture]
-    public class WhenPeekingMessages 
+    public class WhenPeekingMessages : IDisposable
     {
         private QueueManager queueManager;
 
-        [SetUp]
-        public void Setup()
+        public WhenPeekingMessages()
         {
             queueManager = ObjectMother.QueueManager();
             queueManager.Start();
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void ItShouldNotDecrementMessageCount()
         {
             using (var tx = new TransactionScope())
@@ -38,8 +34,7 @@ namespace LightningQueues.Tests.FromUsers
             1.ShouldEqual(count); 
         }
 
-        [TearDown]
-        public void Teardown()
+        public void Dispose()
         {
             queueManager.Dispose();
         }

@@ -1,35 +1,29 @@
 using System;
-using System.IO;
-using System.Net;
 using System.Text;
-using System.Threading;
 using System.Transactions;
 using FubuTestingSupport;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
-using NUnit.Framework;
+using Xunit;
 
 namespace LightningQueues.Tests
 {
-    [TestFixture]
-    public class ReceivingFromLightningQueue
+    public class ReceivingFromLightningQueue : IDisposable
     {
         private QueueManager queueManager;
 
-        [SetUp]
-        public void SetUp()
+        public ReceivingFromLightningQueue()
         {
             queueManager = ObjectMother.QueueManager();
             queueManager.Start();
         }
 
-        [TearDown]
-        public void Teardown()
+        public void Dispose()
         {
             queueManager.Dispose();
         }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void CanReceiveFromQueue()
         {
             new Sender()
@@ -63,50 +57,50 @@ namespace LightningQueues.Tests
             }
         }
 
-		[Test]
-		public void WhenSendingDuplicateMessageTwiceWillGetItOnlyOnce()
-		{
-			var msg = new Message
-			{
-				Id = MessageId.GenerateRandom(),
-				Queue = "h",
-				Data = Encoding.Unicode.GetBytes("hello"),
-				SentAt = DateTime.Now
-			};
-			for (int i = 0; i < 2; i++)
-			{
-				var sender = new Sender()
-				{
-					Destination = new Endpoint("localhost", 23456),
-					Messages = new[] { msg, },
-				};
-			    try
-			    {
-			        sender.Send().Wait();
-			    }
-			    catch (Exception)
-			    {
-			        //don't care if the sender throws on 2nd round
-			    }
-			}
+        [Fact(Skip = "Not on mono")]
+        public void WhenSendingDuplicateMessageTwiceWillGetItOnlyOnce()
+        {
+            var msg = new Message
+            {
+                Id = MessageId.GenerateRandom(),
+                Queue = "h",
+                Data = Encoding.Unicode.GetBytes("hello"),
+                SentAt = DateTime.Now
+            };
+            for (int i = 0; i < 2; i++)
+            {
+                var sender = new Sender()
+                {
+                    Destination = new Endpoint("localhost", 23456),
+                    Messages = new[] { msg, },
+                };
+                try
+                {
+                    sender.Send().Wait();
+                }
+                catch (Exception)
+                {
+                    //don't care if the sender throws on 2nd round
+                }
+            }
 
-			using (var tx = new TransactionScope())
-			{
-				var message = queueManager.Receive("h", null);
-				"hello".ShouldEqual(Encoding.Unicode.GetString(message.Data));
+            using (var tx = new TransactionScope())
+            {
+                var message = queueManager.Receive("h", null);
+                "hello".ShouldEqual(Encoding.Unicode.GetString(message.Data));
 
-				tx.Complete();
-			}
+                tx.Complete();
+            }
 
-			using (var tx = new TransactionScope())
-			{
-				Assert.Throws<TimeoutException>(() => queueManager.Receive("h", null, TimeSpan.Zero));
+            using (var tx = new TransactionScope())
+            {
+                Assert.Throws<TimeoutException>(() => queueManager.Receive("h", null, TimeSpan.Zero));
 
-				tx.Complete();
-			}
-		}
+                tx.Complete();
+            }
+        }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void WhenRevertingTransactionMessageGoesBackToQueue()
         {
             new Sender()
@@ -138,7 +132,7 @@ namespace LightningQueues.Tests
             }
         }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void CanLookupProcessedMessages()
         {
             new Sender()
@@ -169,7 +163,7 @@ namespace LightningQueues.Tests
             "hello".ShouldEqual(Encoding.Unicode.GetString(messages[0].Data));
         }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void CanPeekExistingMessages()
         {
             new Sender()
@@ -187,7 +181,7 @@ namespace LightningQueues.Tests
                 }
             }.Send().Wait();
 
-            using(new TransactionScope())
+            using (new TransactionScope())
             {
                 // force a wait until we receive the message
                 queueManager.Receive("h", null);

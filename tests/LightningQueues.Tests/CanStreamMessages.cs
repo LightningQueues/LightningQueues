@@ -2,21 +2,19 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Transactions;
 using FubuTestingSupport;
 using LightningQueues.Model;
-using NUnit.Framework;
+using Xunit;
 
 namespace LightningQueues.Tests
 {
-    public class CanStreamMessages
+    public class CanStreamMessages : IDisposable
     {
         private QueueManager _sender;
         private QueueManager _receiver;
 
-        [SetUp]
-        public void Setup()
+        public CanStreamMessages()
         {
             _sender = ObjectMother.QueueManager();
             _sender.Start();
@@ -26,14 +24,13 @@ namespace LightningQueues.Tests
             _receiver.Start();
         }
 
-        [TearDown]
-        public void Teardown()
+        public void Dispose()
         {
             _sender.Dispose();
             _receiver.Dispose();
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void CanReceiveSingleMessageInAStream()
         {
             var handle = new ManualResetEvent(false);
@@ -62,7 +59,7 @@ namespace LightningQueues.Tests
             new byte[] {1, 2, 4, 5}.ShouldEqual(data);
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void CanReceiveSeveralMessagesInAStreamConcurrently()
         {
             var received = new ConcurrentBag<Message>();

@@ -4,21 +4,19 @@ using System.IO;
 using FubuTestingSupport;
 using LightningQueues.Protocol;
 using LightningQueues.Storage;
-using NUnit.Framework;
+using Xunit;
 
 namespace LightningQueues.Tests.Storage
 {
-    [TestFixture]
     public class RevertBackToSend
     {
-        [SetUp]
-        public void Setup()
+        public RevertBackToSend()
         {
             if (Directory.Exists("test.esent"))
                 Directory.Delete("test.esent", true);
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void MovesMessageToOutgoingFromHistory()
         {
             using (var qf = new QueueStorage("test.esent", new QueueManagerConfiguration()))

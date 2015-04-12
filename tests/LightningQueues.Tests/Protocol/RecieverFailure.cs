@@ -8,25 +8,23 @@ using FubuTestingSupport;
 using LightningQueues.Exceptions;
 using LightningQueues.Model;
 using LightningQueues.Protocol;
-using NUnit.Framework;
+using Xunit;
 using Rhino.Mocks;
 
 namespace LightningQueues.Tests.Protocol
 {
-    [TestFixture]
     public class RecieverFailure
     {
         private readonly IPEndPoint _endpointToListenTo = new IPEndPoint(IPAddress.Loopback, 23456);
         private RecordingLogger _logger;
 
-        [SetUp]
-        public void Setup()
+        public RecieverFailure()
         {
             _logger = new RecordingLogger();
             ReceivingProtocol.Logger = _logger;
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void CanHandleClientConnectAndDisconnect()
         {
             using (var reciever = new Receiver(_endpointToListenTo, messages => null, _logger))
@@ -43,7 +41,7 @@ namespace LightningQueues.Tests.Protocol
             }
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void CanHandleClientSendingThreeBytesAndDisconnecting()
         {
             using (var reciever = new Receiver(_endpointToListenTo, messages => null))
@@ -61,7 +59,7 @@ namespace LightningQueues.Tests.Protocol
             }
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void CanHandleClientSendingNegativeNumberForLength()
         {
             using (var reciever = new Receiver(_endpointToListenTo, messages => null))
@@ -79,7 +77,7 @@ namespace LightningQueues.Tests.Protocol
             }
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void CanHandleClientSendingBadLengthOfData()
         {
             using (var reciever = new Receiver(_endpointToListenTo, messages => null))
@@ -99,7 +97,7 @@ namespace LightningQueues.Tests.Protocol
             }
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void CanHandleClientSendingUnseriliazableData()
         {
             using (var reciever = new Receiver(_endpointToListenTo, messages => null))
@@ -114,12 +112,12 @@ namespace LightningQueues.Tests.Protocol
                     stream.Write(Guid.NewGuid().ToByteArray(), 0, 16);
                 }
 
-                Wait.Until(() =>_logger.InfoMessages
+                Wait.Until(() => _logger.InfoMessages
                     .Any(x => x.Contains("Unable to deserialize messages"))).ShouldBeTrue();
             }
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void CanHandleSlowClients()
         {
             using (var reciever = new Receiver(_endpointToListenTo, messages => null, _logger))
@@ -141,7 +139,7 @@ namespace LightningQueues.Tests.Protocol
             }
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void WillLetSenderKnowThatMessagesWereNotProcessed()
         {
             using (var reciever = new Receiver(_endpointToListenTo, messages =>
@@ -167,7 +165,7 @@ namespace LightningQueues.Tests.Protocol
             }
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void WillLetSenderKnowThatMessagesWereSentToInvalidQueue()
         {
             using (var reciever = new Receiver(_endpointToListenTo, messages =>
@@ -193,7 +191,7 @@ namespace LightningQueues.Tests.Protocol
             }
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void WillSendConfirmationForClient()
         {
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
@@ -217,13 +215,13 @@ namespace LightningQueues.Tests.Protocol
             }
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void WillCallAbortAcceptanceIfSenderDoesNotConfirm()
         {
             var abortCalled = false;
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();
             acceptance.Expect(x => x.Abort()).WhenCalled(x => abortCalled = true);
-            
+
             using (var reciever = new Receiver(_endpointToListenTo, messages => acceptance))
             {
                 reciever.Start();
@@ -248,7 +246,7 @@ namespace LightningQueues.Tests.Protocol
             acceptance.VerifyAllExpectations();
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void WillCallAbortAcceptanceIfSenderSendNonConfirmation()
         {
             var abortCalled = false;
@@ -281,7 +279,7 @@ namespace LightningQueues.Tests.Protocol
             acceptance.VerifyAllExpectations();
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void WillCallCommitAcceptanceIfSenderSendConfirmation()
         {
             var commitCalled = false;
@@ -313,7 +311,7 @@ namespace LightningQueues.Tests.Protocol
             acceptance.VerifyAllExpectations();
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void WillTellSenderIfCommitFailed()
         {
             var acceptance = MockRepository.GenerateStub<IMessageAcceptance>();

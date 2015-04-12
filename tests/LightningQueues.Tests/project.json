@@ -4,7 +4,6 @@
     "FubuTestingSupport": "1.1.0.257",
     "FubuCore": "1.3.0.278",
     "LightningQueues": "1.0.0-*",
-    "NUnit": "2.5.10.11092",
     "xunit": "2.1.0-beta1-*",
     "xunit.runner.aspnet": "2.1.0-beta1-*",
     "kmon": "0.3.0",

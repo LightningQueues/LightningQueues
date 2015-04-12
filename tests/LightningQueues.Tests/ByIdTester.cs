@@ -2,19 +2,17 @@
 using System.Transactions;
 using FubuTestingSupport;
 using LightningQueues.Model;
-using NUnit.Framework;
+using Xunit;
 
 namespace LightningQueues.Tests
 {
-    [TestFixture]
-    public class ByIdTester
+    public class ByIdTester : IDisposable
     {
         private QueueManager _queue;
         private QueueManager _receiver;
         private MessageId _messageId;
 
-        [SetUp]
-        public void Setup()
+        public ByIdTester()
         {
             _queue = ObjectMother.QueueManager();
             _queue.Start();
@@ -33,14 +31,14 @@ namespace LightningQueues.Tests
             }
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void retrieving_outgoing_message()
         {
             var message = _queue.GetMessageCurrentlySendingById(_messageId);
             new byte[] {1, 2, 4, 5}.ShouldEqual(message.Data);
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void retrieving_outgoinghistory_message()
         {
             readMessage();
@@ -49,7 +47,7 @@ namespace LightningQueues.Tests
             new byte[] {1, 2, 4, 5}.ShouldEqual(message.Data);
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void retrieving_processed_message()
         {
             readMessage();
@@ -58,8 +56,7 @@ namespace LightningQueues.Tests
             new byte[] {1, 2, 4, 5}.ShouldEqual(message.Data);
         }
 
-        [TearDown]
-        public void Teardown()
+        public void Dispose()
         {
             _queue.Dispose();
             _receiver.Dispose();

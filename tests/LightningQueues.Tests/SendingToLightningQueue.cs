@@ -3,17 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Transactions;
 using FubuTestingSupport;
-using NUnit.Framework;
+using Xunit;
 
 namespace LightningQueues.Tests
 {
-    [TestFixture]
-    public class SendingToLightningQueue
+    public class SendingToLightningQueue : IDisposable
     {
         private QueueManager sender, receiver;
 
-        [SetUp]
-        public void Setup()
+        public SendingToLightningQueue()
         {
             sender = ObjectMother.QueueManager();
             sender.Start();
@@ -23,7 +21,7 @@ namespace LightningQueues.Tests
             receiver.Start();
         }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void CanSendToQueue()
         {
             using (var tx = new TransactionScope())
@@ -48,39 +46,39 @@ namespace LightningQueues.Tests
             }
         }
 
-		[Test]
-		public void SendingTwoMessages_OneOfWhichToUnknownQueue_WillStillWork()
-		{
-			using (var tx = new TransactionScope())
-			{
-				sender.Send(
-					new Uri("lq.tcp://localhost:23457/h"),
-					 new MessagePayload
-					 {
-						 Data = new byte[] { 1, 2, 4, 5 }
-					 });
+        [Fact(Skip = "Not on mono")]
+        public void SendingTwoMessages_OneOfWhichToUnknownQueue_WillStillWork()
+        {
+            using (var tx = new TransactionScope())
+            {
+                sender.Send(
+                    new Uri("lq.tcp://localhost:23457/h"),
+                     new MessagePayload
+                     {
+                         Data = new byte[] { 1, 2, 4, 5 }
+                     });
 
-				sender.Send(
-					new Uri("lq.tcp://localhost:23457/I_dont_exists"),
-					 new MessagePayload
-					 {
-						 Data = new byte[] { 1, 2, 4, 5 }
-					 });
+                sender.Send(
+                    new Uri("lq.tcp://localhost:23457/I_dont_exists"),
+                     new MessagePayload
+                     {
+                         Data = new byte[] { 1, 2, 4, 5 }
+                     });
 
-				tx.Complete();
-			}
+                tx.Complete();
+            }
 
-			using (var tx = new TransactionScope())
-			{
-				var message = receiver.Receive("h", null, TimeSpan.FromSeconds(5));
+            using (var tx = new TransactionScope())
+            {
+                var message = receiver.Receive("h", null, TimeSpan.FromSeconds(5));
 
-				new byte[] { 1, 2, 4, 5 }.ShouldEqual(message.Data);
+                new byte[] { 1, 2, 4, 5 }.ShouldEqual(message.Data);
 
-				tx.Complete();
-			}
-		}
+                tx.Complete();
+            }
+        }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void CanSendHeaders()
         {
             using (var tx = new TransactionScope())
@@ -111,7 +109,7 @@ namespace LightningQueues.Tests
             }
         }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void CanLookAtSentMessages()
         {
             using (var tx = new TransactionScope())
@@ -134,10 +132,10 @@ namespace LightningQueues.Tests
 
             var messages = sender.GetAllSentMessages();
             1.ShouldEqual(messages.Length);
-            new byte[] {1, 2, 4, 5}.ShouldEqual(messages[0].Data);
+            new byte[] { 1, 2, 4, 5 }.ShouldEqual(messages[0].Data);
         }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void CanLookAtMessagesCurrentlySending()
         {
             using (var tx = new TransactionScope())
@@ -157,7 +155,7 @@ namespace LightningQueues.Tests
             new byte[] { 1, 2, 4, 5 }.ShouldEqual(messages[0].Data);
         }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void WillNotSendIfTxIsNotCommitted()
         {
             using (new TransactionScope())
@@ -178,7 +176,7 @@ namespace LightningQueues.Tests
             }
         }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void CanSendSeveralMessagesToQueue()
         {
             using (var tx = new TransactionScope())
@@ -219,12 +217,12 @@ namespace LightningQueues.Tests
 
                 tx.Complete();
             }
-            messages.Any(x => x.SequenceEqual(new byte[] {1, 2, 4, 5})).ShouldBeTrue();
-            messages.Any(x => x.SequenceEqual(new byte[] {4, 5, 6, 7})).ShouldBeTrue();
-            messages.Any(x => x.SequenceEqual(new byte[] {6, 7, 8, 9})).ShouldBeTrue();
+            messages.Any(x => x.SequenceEqual(new byte[] { 1, 2, 4, 5 })).ShouldBeTrue();
+            messages.Any(x => x.SequenceEqual(new byte[] { 4, 5, 6, 7 })).ShouldBeTrue();
+            messages.Any(x => x.SequenceEqual(new byte[] { 6, 7, 8, 9 })).ShouldBeTrue();
         }
 
-        [Test]
+        [Fact(Skip = "Not on mono")]
         public void CanSendMessagesToSeveralQueues()
         {
             using (var tx = new TransactionScope())
@@ -266,8 +264,7 @@ namespace LightningQueues.Tests
             }
         }
 
-        [TearDown]
-        public void Teardown()
+        public void Dispose()
         {
             sender.Dispose();
             receiver.Dispose();

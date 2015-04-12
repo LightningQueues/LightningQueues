@@ -1,20 +1,18 @@
 ﻿using System;
-using NUnit.Framework;
+using Xunit;
 
 namespace LightningQueues.Tests
 {
-    [TestFixture]
-    public class StartingLightningQueues
+    public class StartingLightningQueues : IDisposable
     {
         private QueueManager queueManager;
 
-        [SetUp]
-        public void Setup()
+        public StartingLightningQueues()
         {
             queueManager = ObjectMother.QueueManager();
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void Starting_twice_should_throw()
         {
             queueManager.Start();
@@ -22,7 +20,7 @@ namespace LightningQueues.Tests
             Assert.Throws<InvalidOperationException>(() => queueManager.Start());
         }
 
-        [Test]
+        [Fact(Skip="Not on mono")]
         public void Starting_after_dispose_should_throw()
         {
             queueManager.Dispose();
@@ -30,8 +28,7 @@ namespace LightningQueues.Tests
             Assert.Throws<ObjectDisposedException>(() => queueManager.Start());
         }
 
-        [TearDown]
-        public void Teardown()
+        public void Dispose()
         {
             queueManager.Dispose();
         }

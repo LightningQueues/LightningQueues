@@ -12,7 +12,7 @@ namespace LightningQueues.Tests
     {
         public static Message[] MessageBatchSingleMessage(string message = null, string queueName = null)
         {
-            return new[]{SingleMessage()};
+            return new[] { SingleMessage() };
         }
 
         public static Message SingleMessage(string message = "hello", string queueName = "h")

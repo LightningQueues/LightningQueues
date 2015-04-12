@@ -1,13 +1,12 @@
 ﻿using FubuCore;
 using FubuTestingSupport;
-using NUnit.Framework;
+using Xunit;
 
 namespace LightningQueues.Tests
 {
-    [TestFixture]
     public class SendingChokeTester
     {
-        [Test]
+        [Fact]
         public void the_defaults()
         {
             var choke = new SendingChoke();
@@ -15,14 +14,14 @@ namespace LightningQueues.Tests
             choke.MaxSendingCount.ShouldEqual(5);
         }
 
-        [Test]
+        [Fact]
         public void choke_should_send_returns_true_if_havent_sent_anything()
         {
             var choke = new SendingChoke();
             choke.ShouldBeginSend().ShouldBeTrue();
         }
 
-        [Test]
+        [Fact]
         public void choke_returns_false_if_at_max_sending_count()
         {
             var choke = new SendingChoke();
@@ -34,7 +33,7 @@ namespace LightningQueues.Tests
             choke.ShouldBeginSend().ShouldBeFalse();
         }
 
-        [Test]
+        [Fact]
         public void choke_returns_true_if_several_connecting_but_not_connected_yet_up_to_maximum_connecting_count()
         {
             var choke = new SendingChoke();
@@ -50,7 +49,7 @@ namespace LightningQueues.Tests
             choke.ShouldBeginSend().ShouldBeTrue();
         }
 
-        [Test]
+        [Fact]
         public void choke_returns_false_if_max_sending_isnt_exceeded_but_max_connecting_is()
         {
             var choke = new SendingChoke();
@@ -63,7 +62,7 @@ namespace LightningQueues.Tests
             choke.ShouldBeginSend().ShouldBeFalse();
         }
 
-        [Test]
+        [Fact]
         public void can_alter_max_connecting_count()
         {
             var choke = new SendingChoke();
@@ -72,7 +71,7 @@ namespace LightningQueues.Tests
             choke.ShouldBeginSend().ShouldBeFalse();
         }
 
-        [Test]
+        [Fact]
         public void can_alter_max_sending_count()
         {
             var choke = new SendingChoke();
@@ -91,7 +90,7 @@ namespace LightningQueues.Tests
             choke.ShouldBeginSend().ShouldBeFalse();
         }
 
-        [Test]
+        [Fact]
         public void available_sending_count_with_connecting_endpoints()
         {
             var choke = new SendingChoke();
@@ -99,7 +98,7 @@ namespace LightningQueues.Tests
             choke.AvailableSendingCount.ShouldEqual(5);
         }
 
-        [Test]
+        [Fact]
         public void available_sending_count_with_all_connected()
         {
             var choke = new SendingChoke();
@@ -111,7 +110,7 @@ namespace LightningQueues.Tests
             choke.AvailableSendingCount.ShouldEqual(0);
         }
 
-        [Test]
+        [Fact]
         public void available_sending_count_some_connected_some_still_connecting()
         {
             var choke = new SendingChoke();
@@ -124,7 +123,7 @@ namespace LightningQueues.Tests
             choke.AvailableSendingCount.ShouldEqual(1);
         }
 
-        [Test]
+        [Fact]
         public void available_sending_count_with_max_connecting()
         {
             var choke = new SendingChoke();
