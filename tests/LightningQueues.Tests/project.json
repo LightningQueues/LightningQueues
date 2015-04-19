@@ -17,10 +17,10 @@
   "frameworks": {
     "aspnet50": {
       "dependencies": {
-          "System.Collections": ""
+        "System.Collections": ""
       },
       "frameworkAssemblies": {
-          "System.Transactions": ""
+        "System.Transactions": ""
       }
     }
   }

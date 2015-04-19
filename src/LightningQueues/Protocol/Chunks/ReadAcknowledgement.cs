@@ -21,9 +21,9 @@ namespace LightningQueues.Protocol.Chunks
         protected override async Task ProcessInternalAsync(Stream stream)
         {
             _logger.Debug("Reading acknowledgement about accepting messages to {0}", _endpoint);
-            var recieveBuffer = new byte[ProtocolConstants.AcknowledgedBuffer.Length];
-            await stream.ReadBytesAsync(recieveBuffer, "receive confirmation", false).ConfigureAwait(false);
-            var recieveRespone = Encoding.Unicode.GetString(recieveBuffer);
+            var receiveBuffer = new byte[ProtocolConstants.AcknowledgedBuffer.Length];
+            await stream.ReadAsync(receiveBuffer, 0, receiveBuffer.Length).ConfigureAwait(false);
+            var recieveRespone = Encoding.Unicode.GetString(receiveBuffer);
             if (recieveRespone != ProtocolConstants.Acknowledged)
             {
                 _logger.Info("Response from sender acknowledgement was the wrong format", _endpoint);

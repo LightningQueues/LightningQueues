@@ -26,7 +26,7 @@ namespace LightningQueues.Protocol.Reactive
             byte[] buffer = new byte[sizeof(int)];
             return Observable.FromAsync(async () =>
             {
-                await stream.ReadBytesAsync(buffer, "Read length", false);
+                await stream.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
                 return BitConverter.ToInt32(buffer, 0);
             });
         }
@@ -38,11 +38,12 @@ namespace LightningQueues.Protocol.Reactive
             {
                 try
                 {
-                    await stream.ReadBytesAsync(buffer, "Messages chunk", false);
+                    await stream.ReadAsync(buffer, 0, length).ConfigureAwait(false);
                     return SerializationExtensions.ToMessages(buffer);
                 }
                 catch(Exception)
                 {
+                    stream.Seek(0, SeekOrigin.End);
                     await stream.WriteAsync(ProtocolConstants.SerializationFailureBuffer,
                                             0, ProtocolConstants.SerializationFailureBuffer.Length).ConfigureAwait(false);
                     throw;

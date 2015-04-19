@@ -18,9 +18,9 @@ namespace LightningQueues.Protocol.Chunks
 
         protected override async Task ProcessInternalAsync(Stream stream)
         {
-            var recieveBuffer = new byte[ProtocolConstants.RecievedBuffer.Length];
-            await stream.ReadBytesAsync(recieveBuffer, "receive confirmation", false).ConfigureAwait(false);
-            var recieveRespone = Encoding.Unicode.GetString(recieveBuffer);
+            var receiveBuffer = new byte[ProtocolConstants.RecievedBuffer.Length];
+            await stream.ReadAsync(receiveBuffer, 0, receiveBuffer.Length).ConfigureAwait(false);
+            var recieveRespone = Encoding.Unicode.GetString(receiveBuffer);
             if (recieveRespone == ProtocolConstants.QueueDoesNotExists)
             {
                 _logger.Info("Response from reciever {0} is that queue does not exists", _endpoint);

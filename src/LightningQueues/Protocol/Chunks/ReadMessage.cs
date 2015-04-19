@@ -23,7 +23,7 @@ namespace LightningQueues.Protocol.Chunks
         protected async override Task<Message[]> GetInternalAsync(Stream stream)
         {
             var buffer = new byte[_length];
-            await stream.ReadBytesAsync(buffer, "message data", false).ConfigureAwait(false);
+            await stream.ReadAsync(buffer, 0, _length).ConfigureAwait(false);
             try
             {
                 var messages = SerializationExtensions.ToMessages(buffer);
