@@ -11,7 +11,8 @@ namespace LightningQueues.Logging
 
         public static ILogger GetLogger(Type type)
         {
-            return new NLogLogger(NLog.LogManager.GetLogger(type.FullName));
+            return null;
+            // return new NLogLogger(NLog.LogManager.GetLogger(type.FullName));
         }
     }
 }

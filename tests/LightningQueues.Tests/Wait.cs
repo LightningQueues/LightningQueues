@@ -15,7 +15,7 @@ namespace LightningQueues.Tests
 
             while (clock.ElapsedMilliseconds < timeoutInMilliseconds)
             {
-                Thread.Yield();
+                //Thread.Yield();
                 Thread.Sleep(500);
 
                 if (condition()) return true;

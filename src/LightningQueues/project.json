@@ -1,21 +1,23 @@
 {
-    "version": "1.0.0-*",
-    "dependencies": {
-        "ManagedEsent": "1.9.2",
-        "FubuCore": "1.3.0.278",
-        "Rx-Main": "2.2.5",
-        "NLog": "2.1.0.0"
-    },
-
-    "frameworks": {
-        "aspnet50": { 
-            "dependencies": {
-            },
-            "frameworkAssemblies": {
-                "System.Transactions": "",
-                "System.Runtime": "",
-                "System.Web": ""
-            }
-        }
+  "version": "1.0.0-*",
+  "dependencies": {
+    "Rx-Main": "2.2.5",
+    "System.Net.Primitives": "4.0.10-beta-22816",
+    "System.Collections.Specialized": "4.0.0-beta-22816",
+    "System.Runtime.Serialization.Primitives": "4.0.10-beta-22816",
+    "Microsoft.AspNet.WebUtilities": "1.0.0-beta4",
+    "System.Threading.Thread": "4.0.0-beta-22816",
+    "System.Runtime": "4.0.20-beta-*",
+    "System.Net.Sockets": "4.0.0-beta-*",
+    "System.Threading": "4.0.10-beta-*",
+    "System.Collections": "4.0.10-beta-*",
+    "System.Runtime.Extensions": "4.0.10-beta-*",
+    "System.Linq": "4.0.0-beta-*",
+    "NLog": "3.2.1"
+  },
+  "frameworks": {
+    "dnx451": { },
+    "dnxcore50": {
     }
+  }
 }

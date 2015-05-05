@@ -4,6 +4,7 @@
 build/
 packages/
 results/
+.vs/
 artifacts/
 logs/
 [Bb]in/

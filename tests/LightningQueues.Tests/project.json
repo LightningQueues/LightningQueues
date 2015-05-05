@@ -1,26 +1,46 @@
 {
   "version": "1.0.0-*",
   "dependencies": {
-    "FubuCore": "1.3.0.278",
-    "LightningQueues": "1.0.0-*",
-    "xunit": "2.1.0-beta1-*",
-    "xunit.runner.aspnet": "2.1.0-beta1-*",
-    "kmon": "0.3.0",
+    "xunit": "2.1.0-*",
+    "xunit.runner.dnx": "2.1.0-*",
     "RhinoMocks": "3.6.1",
     "Rx-Main": "2.2.5",
-    "Should": "1.1.20"
+    "Rx-Testing": "2.2.5",
+    "Microsoft.VisualStudio.QualityTools.UnitTestFramework": "11.0.50727.1",
+    "Should": "1.1.20",
+    "System.Runtime.Serialization.Primitives": "4.0.10-beta-22816",
+    "System.Collections.Specialized": "4.0.0-beta-22816",
+    "System.Threading.Thread": "4.0.0-beta-22816",
+    "Microsoft.AspNet.WebUtilities": "1.0.0-beta4",
+    "System.Net.Primitives": "4.0.10-beta-22816",
+    "LightningQueues": "1.0.0-*"
   },
   "commands": {
-    "test": "xunit.runner.aspnet",
-    "autotest": "kmon --ext cs --server test"
+    "test": "xunit.runner.dnx -parallel all"
   },
   "frameworks": {
-    "aspnet50": {
+    "dnx451": {
       "dependencies": {
-        "System.Collections": ""
+        "System.Console": "4.0.0-beta-*",
+        "System.Runtime": "4.0.20-beta-*",
+        "System.Net.Sockets": "4.0.0-beta-*",
+        "System.Threading": "4.0.10-beta-*",
+        "System.Collections": "4.0.10-beta-*",
+        "System.Runtime.Extensions": "4.0.10-beta-*",
+        "System.Linq": "4.0.0-beta-*"
+      }
+    },
+    "dnxcore50": {
+      "dependencies": {
+        "System.Console": "4.0.0-beta-*",
+        "System.Runtime": "4.0.20-beta-*",
+        "System.Net.Sockets": "4.0.0-beta-*",
+        "System.Threading": "4.0.10-beta-*",
+        "System.Collections": "4.0.10-beta-*",
+        "System.Runtime.Extensions": "4.0.10-beta-*",
+        "System.Linq": "4.0.0-beta-*"
       },
       "frameworkAssemblies": {
-        "System.Transactions": ""
       }
     }
   }
