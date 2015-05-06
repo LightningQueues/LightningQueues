@@ -87,5 +87,19 @@ namespace LightningQueues.Tests.Net.Tcp
                 client.GetStream().Write(new byte[] { 1, 4, 6 }, 0, 3);
             }
         }
+
+        [Fact]
+        public void accepts_concurrently_connected_clients()
+        {
+            using (_receiver.StartReceiving().Subscribe(x => true.ShouldBeFalse()))
+            using(var client1 = new TcpClient())
+            using(var client2 = new TcpClient())
+            {
+                client1.Connect(_endpoint);
+                client2.Connect(_endpoint);
+                client2.GetStream().Write(new byte[] { 1, 4, 6 }, 0, 3);
+                client1.GetStream().Write(new byte[] { 1, 4, 6 }, 0, 3);
+            }
+        }
     }
 }
