@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using LightningQueues.Logging;
@@ -38,13 +37,14 @@ namespace LightningQueues.Net.Protocol.V1
         public IObservable<IncomingMessage[]> MessagesChunk(Stream stream, int length)
         {
             return Observable.FromAsync(() => stream.ReadBytesAsync(length))
-                .Select(x => x.ToMessages())
-                .Do(x => _logger.Debug("Successfully read messages"),
-                    async ex =>
-                    {
-                        _logger.Debug($"Error deserializing messages {ex}");
-                        await SendBuffer(stream, Constants.SerializationFailureBuffer);
-                    });
+                .Select(x => x.ToMessages()).Do(x => _logger.Debug("Successfully read messages"))
+                .Catch((Exception ex) =>
+                {
+                    _logger.Error("Error deserializing messages", ex);
+                    return from _ in Observable.FromAsync(() => SendBuffer(stream, Constants.SerializationFailureBuffer))
+                           from empty in Observable.Empty<IncomingMessage[]>()
+                           select empty;
+                });
         }
 
         private async Task SendBuffer(Stream stream, byte[] buffer)

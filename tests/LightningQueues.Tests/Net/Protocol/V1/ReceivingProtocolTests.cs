@@ -28,12 +28,12 @@ namespace LightningQueues.Tests.Net.Protocol.V1
         {
             using (var ms = new MemoryStream())
             {
+                var subscribeCalled = false;
                 ms.Write(BitConverter.GetBytes(-2), 0, 4);
                 ms.Position = 0;
-                using (_protocol.LengthChunk(ms).Subscribe(x => true.ShouldBeFalse()))
+                using (_protocol.LengthChunk(ms).Subscribe(x => subscribeCalled = true))
                 {
-                    //Need to evaluate a new assertion library.
-                    //_logger.DebugMessages.ShouldContain("Read in length value of -2");
+                    subscribeCalled.ShouldBeFalse();
                 }
             }
         }
@@ -42,13 +42,15 @@ namespace LightningQueues.Tests.Net.Protocol.V1
         public void handling_valid_length()
         {
             var length = 5;
+            var actual = -1;
             using (var ms = new MemoryStream())
             {
                 ms.Write(BitConverter.GetBytes(length), 0, 4);
                 ms.Position = 0;
-                using (_protocol.LengthChunk(ms).SubscribeOn(Scheduler.CurrentThread)
-                      .Subscribe(x => x.ShouldEqual(length)))
+                using (_protocol.LengthChunk(ms)
+                      .Subscribe(x => actual = x))
                 {
+                    actual.ShouldEqual(length);
                 }
             }
         }
@@ -67,20 +69,23 @@ namespace LightningQueues.Tests.Net.Protocol.V1
 
         private void runLengthTest(int differenceFromActualLength)
         {
-            var message = new IncomingMessage();
-            message.Id = MessageId.GenerateRandom();
-            message.Data = System.Text.Encoding.UTF8.GetBytes("hello");
-            message.Queue = "test";
+            var message = new IncomingMessage
+            {
+                Id = MessageId.GenerateRandom(),
+                Data = System.Text.Encoding.UTF8.GetBytes("hello"),
+                Queue = "test"
+            };
             var bytes = new[] { message }.Serialize();
+            var subscribeCalled = false;
             using (var ms = new MemoryStream())
             {
                 ms.Write(BitConverter.GetBytes(bytes.Length + differenceFromActualLength), 0, 4);
                 ms.Write(bytes, 0, bytes.Length);
                 ms.Position = 0;
-                using (_protocol.MessagesChunk(ms, bytes.Length).SubscribeOn(Scheduler.CurrentThread)
-                      .Subscribe(x => true.ShouldBeFalse()))
+                using (_protocol.MessagesChunk(ms, bytes.Length)
+                      .Subscribe(x => subscribeCalled = true))
                 {
-                    _logger.DebugMessages.Any(x => x.StartsWith("Error deserializing messages")).ShouldBeTrue();
+                    subscribeCalled.ShouldBeFalse();
                 }
             }
         }
@@ -109,19 +114,41 @@ namespace LightningQueues.Tests.Net.Protocol.V1
         public void sending_to_a_queue_that_doesnt_exist()
         {
             var protocol = new ReceivingProtocol(new ThrowingMessageRepository<QueueDoesNotExistException>(), _logger);
-            var message = new IncomingMessage();
-            message.Id = MessageId.GenerateRandom();
-            message.Data = System.Text.Encoding.UTF8.GetBytes("hello");
-            message.Queue = "test";
+            var message = new IncomingMessage
+            {
+                Id = MessageId.GenerateRandom(),
+                Data = System.Text.Encoding.UTF8.GetBytes("hello"),
+                Queue = "test"
+            };
             var bytes = new[] { message }.Serialize();
+            var subscribeCalled = false;
             using (var ms = new MemoryStream())
             {
                 ms.Write(BitConverter.GetBytes(bytes.Length), 0, 4);
                 ms.Write(bytes, 0, bytes.Length);
                 ms.Position = 0;
-                using (protocol.ReceiveStream(Observable.Return(ms)).SubscribeOn(Scheduler.CurrentThread)
-                       .Subscribe(x => true.ShouldBeFalse()))
+                using (protocol.ReceiveStream(Observable.Return(ms))
+                    .Subscribe(x => subscribeCalled = true))
                 {
+                    subscribeCalled.ShouldBeFalse();
+                }
+            }
+        }
+
+        [Fact]
+        public void sending_data_that_is_cannot_be_deserialized()
+        {
+            using (var ms = new MemoryStream())
+            {
+                var subscribeCalled = false;
+                ms.Write(BitConverter.GetBytes(16), 0, 4);
+                ms.Write(Guid.NewGuid().ToByteArray(), 0, 16);
+                ms.Position = 0;
+                using (_protocol.ReceiveStream(Observable.Return(ms))
+                    .Subscribe(x => subscribeCalled = true))
+                {
+                    _logger.ErrorMessages.Any(x => x.StartsWith("Error deserializing messages")).ShouldBeTrue();
+                    subscribeCalled.ShouldBeFalse();
                 }
             }
         }
