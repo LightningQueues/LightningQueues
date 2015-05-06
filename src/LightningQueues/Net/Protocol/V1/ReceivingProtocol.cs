@@ -23,8 +23,7 @@ namespace LightningQueues.Net.Protocol.V1
         {
             return from stream in streams.Do(x => _logger.Debug("Starting to read stream."))
                    from length in LengthChunk(stream)
-                   from messages in MessagesChunk(stream, length)
-                   from _ in Store(stream, messages)
+                   from messages in MessagesChunk(stream, length).Do(x => StoreMessages(stream, x))
                    from message in messages
                    select message;
         }
@@ -51,11 +50,6 @@ namespace LightningQueues.Net.Protocol.V1
         private async Task SendBuffer(Stream stream, byte[] buffer)
         {
             await stream.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
-        }
-
-        public IObservable<Unit> Store(Stream stream, IncomingMessage[] messages)
-        {
-            return Observable.FromAsync(async () => await StoreMessages(stream, messages));
         }
 
         public async Task StoreMessages(Stream stream, IncomingMessage[] messages)
