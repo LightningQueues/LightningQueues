@@ -7,7 +7,6 @@
       "xunit.runner.dnx >= 2.1.0-*",
       "RhinoMocks >= 3.6.1",
       "Rx-Main >= 2.2.5",
-      "Rx-Testing >= 2.2.5",
       "Microsoft.VisualStudio.QualityTools.UnitTestFramework >= 11.0.50727.1",
       "Should >= 1.1.20",
       "System.Runtime.Serialization.Primitives >= 4.0.10-beta-22816",
@@ -1246,51 +1245,6 @@
         "lib/windowsphone71/System.Reactive.PlatformServices.XML",
         "lib/windowsphone8/System.Reactive.PlatformServices.dll",
         "lib/windowsphone8/System.Reactive.PlatformServices.XML"
-      ]
-    },
-    "Rx-Testing/2.2.5": {
-      "serviceable": false,
-      "sha": "bq423wYgkK4p0idk8zCIaspAF3qWz6uUiFuIzckLpztXrJDixasn1eqyj5fXRVkxk5uV+URI2UYAlF1EdrYvbw==",
-      "frameworks": {
-        "DNX,Version=v4.5.1": {
-          "dependencies": {
-            "Rx-Main": "2.2.5"
-          },
-          "frameworkAssemblies": [
-            "Microsoft.VisualStudio.QualityTools.UnitTestFramework"
-          ],
-          "runtimeAssemblies": [
-            "lib/net45/Microsoft.Reactive.Testing.dll"
-          ],
-          "compileAssemblies": [
-            "lib/net45/Microsoft.Reactive.Testing.dll"
-          ]
-        },
-        "DNXCore,Version=v5.0": {
-          "dependencies": {
-            "Rx-Main": "2.2.5"
-          },
-          "frameworkAssemblies": [],
-          "runtimeAssemblies": [],
-          "compileAssemblies": []
-        }
-      },
-      "files": [
-        "Rx-Testing.2.2.5.nupkg",
-        "Rx-Testing.2.2.5.nupkg.sha512",
-        "Rx-Testing.nuspec",
-        "lib/net40/Microsoft.Reactive.Testing.dll",
-        "lib/net40/Microsoft.Reactive.Testing.XML",
-        "lib/net45/Microsoft.Reactive.Testing.dll",
-        "lib/net45/Microsoft.Reactive.Testing.XML",
-        "lib/sl5/Microsoft.Reactive.Testing.dll",
-        "lib/sl5/Microsoft.Reactive.Testing.XML",
-        "lib/windows8/Microsoft.Reactive.Testing.dll",
-        "lib/windows8/Microsoft.Reactive.Testing.XML",
-        "lib/windowsphone71/Microsoft.Reactive.Testing.dll",
-        "lib/windowsphone71/Microsoft.Reactive.Testing.XML",
-        "lib/windowsphone8/Microsoft.Reactive.Testing.dll",
-        "lib/windowsphone8/Microsoft.Reactive.Testing.XML"
       ]
     },
     "Should/1.1.20": {

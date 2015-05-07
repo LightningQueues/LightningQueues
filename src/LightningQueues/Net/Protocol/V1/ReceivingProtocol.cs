@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using LightningQueues.Logging;
@@ -11,26 +12,40 @@ namespace LightningQueues.Net.Protocol.V1
     {
         readonly IMessageRepository _repository;
         readonly ILogger _logger;
-        
-        public ReceivingProtocol(IMessageRepository repository, ILogger logger)
+        private readonly IScheduler _scheduler;
+
+        public ReceivingProtocol(IMessageRepository repository, ILogger logger) : this(repository, logger, Scheduler.Default)
+        {
+        }
+
+        public ReceivingProtocol(IMessageRepository repository, ILogger logger, IScheduler scheduler)
         {
             _repository = repository;
             _logger = logger;
+            _scheduler = scheduler;
+        }
+        
+
+        public IObservable<IncomingMessage> ReceiveStream(IObservable<Stream> streams)
+        {
+            return receiveStream(streams).Timeout(TimeSpan.FromSeconds(5), _scheduler);
         }
 
-        public virtual IObservable<IncomingMessage> ReceiveStream(IObservable<Stream> streams)
+        private IObservable<IncomingMessage> receiveStream(IObservable<Stream> streams)
         {
             return from stream in streams.Do(x => _logger.Debug("Starting to read stream."))
                    from length in LengthChunk(stream)
                    from messages in MessagesChunk(stream, length).Do(x => StoreMessages(stream, x))
                    from message in messages
-                   select message;
+                   select message; 
         }
 
         public IObservable<int> LengthChunk(Stream stream)
         {
             return Observable.FromAsync(() => stream.ReadBytesAsync(sizeof(int)))
-                .Select(x => BitConverter.ToInt32(x, 0)).Do(x => _logger.Debug($"Read in length value of {x}"))
+                .Select(x => BitConverter.ToInt32(x, 0))
+                .Catch((Exception ex) => sendSerializationError<int>(stream, ex))
+                .Do(x => _logger.Debug($"Read in length value of {x}"))
                 .Where(x => x >= 0);
         }
 
@@ -38,13 +53,15 @@ namespace LightningQueues.Net.Protocol.V1
         {
             return Observable.FromAsync(() => stream.ReadBytesAsync(length))
                 .Select(x => x.ToMessages()).Do(x => _logger.Debug("Successfully read messages"))
-                .Catch((Exception ex) =>
-                {
-                    _logger.Error("Error deserializing messages", ex);
-                    return from _ in Observable.FromAsync(() => SendBuffer(stream, Constants.SerializationFailureBuffer))
-                           from empty in Observable.Empty<IncomingMessage[]>()
-                           select empty;
-                });
+                .Catch((Exception ex) => sendSerializationError<IncomingMessage[]>(stream, ex));
+        }
+
+        private IObservable<T> sendSerializationError<T>(Stream stream, Exception ex)
+        {
+            _logger.Error("Error deserializing messages", ex);
+            return from _ in Observable.FromAsync(() => SendBuffer(stream, Constants.SerializationFailureBuffer))
+                   from empty in Observable.Empty<T>()
+                   select empty;
         }
 
         private async Task SendBuffer(Stream stream, byte[] buffer)

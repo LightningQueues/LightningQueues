@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Concurrency;
+using System.Threading;
 using System.Threading.Tasks;
 using LightningQueues.Storage;
 using LightningQueues.Net.Protocol.V1;
@@ -16,11 +17,13 @@ namespace LightningQueues.Tests.Net.Protocol.V1
     {
         readonly RecordingLogger _logger;
         readonly ReceivingProtocol _protocol;
+        readonly TestScheduler _scheduler;
 
         public ReceivingProtocolTests()
         {
             _logger = new RecordingLogger();
-            _protocol = new ReceivingProtocol(new NoPersistenceMessageRepository(), _logger);
+            _scheduler = new TestScheduler();
+            _protocol = new ReceivingProtocol(new NoPersistenceMessageRepository(), _logger, _scheduler);
         }
 
         [Fact]
@@ -151,6 +154,16 @@ namespace LightningQueues.Tests.Net.Protocol.V1
                     subscribeCalled.ShouldBeFalse();
                 }
             }
+        }
+
+        [Fact]
+        public void dealing_with_slow_clients()
+        {
+            var recording = _scheduler.Start(() => _protocol.ReceiveStream(Observable.Never<Stream>()),
+                TimeSpan.FromSeconds(1).Ticks, TimeSpan.FromSeconds(2).Ticks, TimeSpan.FromSeconds(10).Ticks);
+
+            recording.Messages.First()
+                .Value.Exception.ShouldBeType<TimeoutException>();
         }
     }
 }

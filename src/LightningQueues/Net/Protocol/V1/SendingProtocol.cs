@@ -54,10 +54,8 @@ namespace LightningQueues.Net.Protocol.V1
 
         public async Task ReceiveAndAcknowledgeAsync(Stream stream)
         {
-            byte[] receivedBuffer = new byte[Constants.ReceivedBuffer.Length];
-            await stream.ReadAsyncToEnd(receivedBuffer);
-            var result = System.Text.Encoding.Unicode.GetString(receivedBuffer);
-            if (System.Text.Encoding.Unicode.GetString(receivedBuffer) == Constants.Received)
+            var receivedBuffer = await stream.ReadBytesAsync(Constants.ReceivedBuffer.Length);
+            if (receivedBuffer == Constants.ReceivedBuffer)
             {
                 await stream.WriteAsync(Constants.AcknowledgedBuffer,
                                         0, Constants.AcknowledgedBuffer.Length);
