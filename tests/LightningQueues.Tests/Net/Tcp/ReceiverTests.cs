@@ -133,7 +133,11 @@ namespace LightningQueues.Tests.Net.Tcp
                 await Task.WhenAny(receivingCompletionSource.Task, Task.Delay(100));
             }
             receivingCompletionSource.Task.IsCompleted.ShouldBeTrue();
-            receivingCompletionSource.Task.Result.ShouldNotBeNull();
+            var actual = receivingCompletionSource.Task.Result;
+            actual.ShouldNotBeNull();
+            actual.Id.ShouldEqual(expected.Id);
+            actual.Queue.ShouldEqual(expected.Queue);
+            Encoding.UTF8.GetString(actual.Data).ShouldEqual("hello");
         }
     }
 }
