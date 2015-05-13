@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Reactive.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using LightningQueues.Net;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Tcp;
 using LightningQueues.Storage;

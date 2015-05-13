@@ -12,7 +12,7 @@
     "System.Threading.Thread": "4.0.0-beta-22816",
     "Microsoft.AspNet.WebUtilities": "1.0.0-beta4",
     "System.Net.Primitives": "4.0.10-beta-22816",
-    "LightningQueues": "1.0.0-*",
+    "LightningQueues": "1.0.0-*"
   },
   "commands": {
     "test": "xunit.runner.dnx"

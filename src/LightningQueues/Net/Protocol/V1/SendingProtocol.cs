@@ -2,23 +2,12 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Reactive;
 using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using LightningQueues.Logging;
 
 namespace LightningQueues.Net.Protocol.V1
 {
-    public interface ISendingProtocol
-    {
-        IObservable<IncomingMessage> SendStream(IObservable<OutgoingMessageBatch> messages);
-    }
-
-    public class OutgoingMessageBatch
-    {
-        public Stream Stream { get; set; }
-        public IncomingMessage[] Messages { get; set; }
-    }
-
     public class SendingProtocol : ISendingProtocol
     {
         readonly ILogger _logger;
@@ -30,48 +19,45 @@ namespace LightningQueues.Net.Protocol.V1
 
         public IObservable<IncomingMessage> SendStream(IObservable<OutgoingMessageBatch> observableMessages)
         {
-            return from messageParts in SerializeOutgoing(observableMessages)
-                   from _ in WriteLength(messageParts.Item2.Stream, messageParts.Item1.Length)
-                   from messages in WriteMessages(messageParts.Item2.Stream, messageParts.Item1, messageParts.Item2.Messages).Do(x => _logger.Debug("Wrote messages"))
-                   from __ in ReceiveAndAcknowledge(messageParts.Item2.Stream).Do(x => _logger.Debug("Received ack"))
-                   from m in messages
+            return from tuple in SerializeOutgoing(observableMessages)
+                                    .Do(x => WriteLength(x.Item2.Stream, x.Item1.Length))
+                                    .Do(x => WriteMessages(x.Item2.Stream, x.Item1))
+                   from received in ReadReceived(tuple.Item2.Stream).ToObservable().Where(x => x)
+                                    .Do(x => WriteAcknowledge(tuple.Item2.Stream))
+                   from m in tuple.Item2.Messages
                    select m;
         }
 
-        public IObservable<Unit> WriteLength(Stream stream, int length)
+        public async Task WriteLength(Stream stream, int length)
         {
             _logger.Debug($"Writing length of {length}");
             var bufferLenInBytes = BitConverter.GetBytes(length);
-            return Observable.FromAsync(() => stream.WriteAsync(bufferLenInBytes, 0, bufferLenInBytes.Length));
+            await stream.WriteAsync(bufferLenInBytes, 0, bufferLenInBytes.Length);
         }
 
-        public IObservable<IncomingMessage[]> WriteMessages(Stream stream, byte[] messageBytes, IncomingMessage[] original)
+        public async Task WriteMessages(Stream stream, byte[] messageBytes)
         {
-            _logger.Debug($"Writing actual length of {messageBytes.Length}");
-            return Observable.FromAsync(async () =>
-            {
-                _logger.Debug("Starting to send.");
-                await stream.WriteAsync(messageBytes, 0, messageBytes.Length).ConfigureAwait(false);
-                return original;
-            });
+            _logger.Debug("Starting to send.");
+            await stream.WriteAsync(messageBytes, 0, messageBytes.Length).ConfigureAwait(false);
+            _logger.Debug("Finished sending messages");
         }
 
-        public IObservable<Unit> ReceiveAndAcknowledge(Stream stream)
+        public async Task<bool> ReadReceived(Stream stream)
         {
-            return Observable.FromAsync(async () =>
-            {
-                await ReceiveAndAcknowledgeAsync(stream);
-            });
-        }
-
-        public async Task ReceiveAndAcknowledgeAsync(Stream stream)
-        {
+            _logger.Debug("Waiting for receive buffer");
             var receivedBuffer = await stream.ReadBytesAsync(Constants.ReceivedBuffer.Length);
             if (receivedBuffer.SequenceEqual(Constants.ReceivedBuffer))
             {
-                await stream.WriteAsync(Constants.AcknowledgedBuffer,
-                                        0, Constants.AcknowledgedBuffer.Length);
+                return true;
             }
+            _logger.Debug("Received something different than received buffer");
+            return false;
+        }
+
+        public async Task WriteAcknowledge(Stream stream)
+        {
+            _logger.Debug("Sending acknowledgement");
+            await stream.WriteAsync(Constants.AcknowledgedBuffer, 0, Constants.AcknowledgedBuffer.Length);
         }
 
         public IObservable<Tuple<byte[], OutgoingMessageBatch>> SerializeOutgoing(IObservable<OutgoingMessageBatch> outgoing)
