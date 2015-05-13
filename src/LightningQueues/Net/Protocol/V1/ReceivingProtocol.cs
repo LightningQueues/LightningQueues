@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -74,6 +75,7 @@ namespace LightningQueues.Net.Protocol.V1
             var transaction = await BeginTransaction(stream, messages);
             await ReceiveAcknowledgement(stream, transaction);
             await ActualCommit(stream, transaction);
+            _logger.Debug("Finished storing messages");
         }
 
         public async Task<IIncomingTransaction> BeginTransaction(Stream stream, IncomingMessage[] messages)
@@ -105,8 +107,9 @@ namespace LightningQueues.Net.Protocol.V1
 
                 var ackBuffer = await stream.ReadBytesAsync(Constants.AcknowledgedBuffer.Length).ConfigureAwait(false);
 
-                if(ackBuffer != Constants.AcknowledgedBuffer)
+                if(!ackBuffer.SequenceEqual(Constants.AcknowledgedBuffer))
                 {
+                    _logger.Debug("Received something that wasn't an acknowledgement");
                     throw new IOException("Unexpected acknowledgement from sender");
                 }
             }

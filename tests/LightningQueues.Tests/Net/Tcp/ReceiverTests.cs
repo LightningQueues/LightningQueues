@@ -1,28 +1,30 @@
-using Xunit;
-using Should;
 using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Reactive.Linq;
-using LightningQueues.Net.Tcp;
+using System.Text;
+using System.Threading.Tasks;
 using LightningQueues.Net.Protocol.V1;
+using LightningQueues.Net.Tcp;
 using LightningQueues.Storage;
+using Should;
+using Xunit;
 
 namespace LightningQueues.Tests.Net.Tcp
 {
-    public class ProtocolTests
+    public class ReceiverTests
     {
         readonly SendingProtocol _sender;
         readonly Receiver _receiver;
         readonly IPEndPoint _endpoint;
         readonly RecordingLogger _logger;
 
-        public ProtocolTests()
+        public ReceiverTests()
         {
             var port = PortFinder.FindPort(); //to make it possible to run in parallel
             _endpoint = new IPEndPoint(IPAddress.Loopback, port);
-            _sender = new SendingProtocol();
             _logger = new RecordingLogger();
+            _sender = new SendingProtocol(_logger);
             var protocol = new ReceivingProtocol(new NoPersistenceMessageRepository(), _logger);
             _receiver = new Receiver(_endpoint, protocol);
         }
@@ -100,6 +102,38 @@ namespace LightningQueues.Tests.Net.Tcp
                 client2.GetStream().Write(new byte[] { 1, 4, 6 }, 0, 3);
                 client1.GetStream().Write(new byte[] { 1, 4, 6 }, 0, 3);
             }
+        }
+
+        [Fact]
+        public async Task receiving_a_valid_message()
+        {
+            var expected = new IncomingMessage
+            {
+                Id = MessageId.GenerateRandom(),
+                Queue = "test",
+                Data = Encoding.UTF8.GetBytes("hello")
+            };
+            var messages = new[] {expected};
+            var receivingCompletionSource = new TaskCompletionSource<IncomingMessage>();
+            using (_receiver.StartReceiving().Subscribe(x => { receivingCompletionSource.SetResult(x); }))
+            using (var client = new TcpClient())
+            {
+                client.Connect(_endpoint);
+                var stream = client.GetStream();
+                var outgoing = new OutgoingMessageBatch
+                {
+                    Messages = messages,
+                    Stream = stream
+                };
+                var completionSource = new TaskCompletionSource<bool>();
+                using (_sender.SendStream(Observable.Return(outgoing)).Subscribe(x => { completionSource.SetResult(true); }))
+                {
+                    await Task.WhenAny(completionSource.Task, Task.Delay(100));
+                }
+                await Task.WhenAny(receivingCompletionSource.Task, Task.Delay(100));
+            }
+            receivingCompletionSource.Task.IsCompleted.ShouldBeTrue();
+            receivingCompletionSource.Task.Result.ShouldNotBeNull();
         }
     }
 }
