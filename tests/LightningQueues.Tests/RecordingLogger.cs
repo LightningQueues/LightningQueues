@@ -6,9 +6,19 @@ namespace LightningQueues.Tests
 {
     public class RecordingLogger : ILogger
     {
+        private readonly Action<string> _outputHook;
         readonly IList<string> _debug = new List<string>();
         readonly IList<string> _error = new List<string>();
         readonly IList<string> _info = new List<string>();
+
+        public RecordingLogger() : this(x => { })
+        {
+        }
+
+        public RecordingLogger(Action<string> outputHook)
+        {
+            _outputHook = outputHook;
+        }
 
         public IEnumerable<string> InfoMessages
         {
@@ -27,8 +37,10 @@ namespace LightningQueues.Tests
 
         public void Debug(string message)
         {
+            _outputHook(message);
             _debug.Add(message);
         }
+
 
         public void Debug<TMessage>(TMessage message)
         {
@@ -37,6 +49,7 @@ namespace LightningQueues.Tests
 
         public void Info(string message)
         {
+            _outputHook(message);
             _info.Add(message);
         }
 
@@ -47,6 +60,7 @@ namespace LightningQueues.Tests
 
         public void Error(string message, Exception exception)
         {
+            _outputHook(message + exception);
             _error.Add(message);
         }
     }
