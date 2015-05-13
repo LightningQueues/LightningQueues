@@ -13,11 +13,9 @@
     "Microsoft.AspNet.WebUtilities": "1.0.0-beta4",
     "System.Net.Primitives": "4.0.10-beta-22816",
     "LightningQueues": "1.0.0-*",
-    "dnxmon": "0.4.0"
   },
   "commands": {
-    "test": "xunit.runner.dnx -parallel all",
-    "autotest": "dnxmon --server test" 
+    "test": "xunit.runner.dnx"
   },
   "frameworks": {
     "dnx451": {

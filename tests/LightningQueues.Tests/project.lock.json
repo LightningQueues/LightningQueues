@@ -14,8 +14,7 @@
       "System.Threading.Thread >= 4.0.0-beta-22816",
       "Microsoft.AspNet.WebUtilities >= 1.0.0-beta4",
       "System.Net.Primitives >= 4.0.10-beta-22816",
-      "LightningQueues >= 1.0.0-*",
-      "dnxmon >= 0.4.0"
+      "LightningQueues >= 1.0.0-*"
     ],
     "DNX,Version=v4.5.1": [
       "System.Console >= 4.0.0-beta-*",
@@ -37,49 +36,6 @@
     ]
   },
   "libraries": {
-    "dnxmon/0.4.0": {
-      "serviceable": false,
-      "sha": "c30ek6eoQK9uMi42RuYRFDTxE2wBeggl9wszh3Eaw0MjDQe4CjHj1i/AGLtAHzkke8P7xo+IFOqfWU92/Lf8UQ==",
-      "frameworks": {
-        "DNX,Version=v4.5.1": {
-          "dependencies": {},
-          "frameworkAssemblies": [
-            "mscorlib",
-            "System",
-            "System.Core",
-            "Microsoft.CSharp"
-          ],
-          "runtimeAssemblies": [
-            "lib/dnx451/dnxmon.dll"
-          ],
-          "compileAssemblies": [
-            "lib/dnx451/dnxmon.dll"
-          ]
-        },
-        "DNXCore,Version=v5.0": {
-          "dependencies": {
-            "System.Diagnostics.Process": "4.0.0-beta-22802",
-            "System.Console": "4.0.0-beta-22802"
-          },
-          "frameworkAssemblies": [],
-          "runtimeAssemblies": [
-            "lib/dnxcore50/dnxmon.dll"
-          ],
-          "compileAssemblies": [
-            "lib/dnxcore50/dnxmon.dll"
-          ]
-        }
-      },
-      "files": [
-        "dnxmon.0.4.0.nupkg",
-        "dnxmon.0.4.0.nupkg.sha512",
-        "dnxmon.nuspec",
-        "lib/dnx451/dnxmon.dll",
-        "lib/dnx451/dnxmon.xml",
-        "lib/dnxcore50/dnxmon.dll",
-        "lib/dnxcore50/dnxmon.xml"
-      ]
-    },
     "Microsoft.AspNet.WebUtilities/1.0.0-beta4": {
       "serviceable": true,
       "sha": "EZJruvBXvVN78gAuL1Ei8HSgBfS9HvU/CiE4MjicXwdzHwyv+HZAvReDmGeWa+UaIW8kmmM4LzNAE8uEBjeQXA==",
