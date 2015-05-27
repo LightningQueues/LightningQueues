@@ -5,7 +5,6 @@
     "": [
       "xunit >= 2.1.0-*",
       "xunit.runner.dnx >= 2.1.0-*",
-      "RhinoMocks >= 3.6.1",
       "Rx-Main >= 2.2.5",
       "Microsoft.VisualStudio.QualityTools.UnitTestFramework >= 11.0.50727.1",
       "Should >= 1.1.20",
@@ -963,35 +962,6 @@
         "lib/sl4/NLog.xml",
         "lib/sl5/NLog.dll",
         "lib/sl5/NLog.xml"
-      ]
-    },
-    "RhinoMocks/3.6.1": {
-      "serviceable": false,
-      "sha": "0HjdR7PVVUDz9Db5cLzU0Dquay8MhoCoZ8PJRZOo10Iysq4m+mjl2aaxc4eWztvZ6S1v/NYW5xv1qul0ToN21w==",
-      "frameworks": {
-        "DNX,Version=v4.5.1": {
-          "dependencies": {},
-          "frameworkAssemblies": [],
-          "runtimeAssemblies": [
-            "lib/net/Rhino.Mocks.dll"
-          ],
-          "compileAssemblies": [
-            "lib/net/Rhino.Mocks.dll"
-          ]
-        },
-        "DNXCore,Version=v5.0": {
-          "dependencies": {},
-          "frameworkAssemblies": [],
-          "runtimeAssemblies": [],
-          "compileAssemblies": []
-        }
-      },
-      "files": [
-        "RhinoMocks.3.6.1.nupkg",
-        "RhinoMocks.3.6.1.nupkg.sha512",
-        "RhinoMocks.nuspec",
-        "lib/net/Rhino.Mocks.dll",
-        "lib/net/Rhino.Mocks.xml"
       ]
     },
     "Rx-Core/2.2.5": {

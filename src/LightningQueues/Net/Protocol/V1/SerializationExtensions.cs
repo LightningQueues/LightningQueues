@@ -6,12 +6,6 @@ namespace LightningQueues.Net.Protocol.V1
 {
     public static class SerializationExtensions
     {
-        public static string ToQueryString(this IDictionary<string, string> qs)
-        {
-            return string.Empty;
-            //return string.Join("&", Array.ConvertAll(qs.AllKeys, key => string.Format("{0}={1}", WebUtility.UrlEncode(key), WebUtility.UrlEncode(qs[key]))));
-        }
-
         public static IncomingMessage[] ToMessages(this byte[] buffer)
         {
             using (var ms = new MemoryStream(buffer))

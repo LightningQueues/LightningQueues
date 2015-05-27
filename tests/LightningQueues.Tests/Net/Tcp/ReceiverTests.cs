@@ -26,7 +26,7 @@ namespace LightningQueues.Tests.Net.Tcp
             _endpoint = new IPEndPoint(IPAddress.Loopback, port);
             _logger = new RecordingLogger();
             _sender = new SendingProtocol(_logger);
-            var protocol = new ReceivingProtocol(new NoPersistenceMessageRepository(), _logger);
+            var protocol = new ReceivingProtocol(new NoPersistenceMessageStore(), _logger);
             _receiver = new Receiver(_endpoint, protocol);
         }
 

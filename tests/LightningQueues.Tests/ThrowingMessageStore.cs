@@ -3,10 +3,10 @@ using System;
 
 namespace LightningQueues.Tests
 {
-    public class ThrowingMessageRepository<TException> : IMessageRepository
+    public class ThrowingMessageStore<TException> : IMessageStore
         where TException : Exception, new()
     {
-        public IIncomingTransaction StoreMessages(IncomingMessage[] messages)
+        public ITransaction StoreMessages(IncomingMessage[] messages)
         {
             throw new TException();
         }

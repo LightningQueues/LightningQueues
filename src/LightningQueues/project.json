@@ -11,6 +11,7 @@
     "System.Net.Sockets": "4.0.0-beta-*",
     "System.Threading": "4.0.10-beta-*",
     "System.Collections": "4.0.10-beta-*",
+    "System.Collections.Concurrent": "4.0.10-beta-*",
     "System.Runtime.Extensions": "4.0.10-beta-*",
     "System.Linq": "4.0.0-beta-*",
     "NLog": "3.2.1"

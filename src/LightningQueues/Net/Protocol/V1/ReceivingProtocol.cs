@@ -11,17 +11,17 @@ namespace LightningQueues.Net.Protocol.V1
 {
     public class ReceivingProtocol : IReceivingProtocol
     {
-        readonly IMessageRepository _repository;
+        readonly IMessageStore _store;
         readonly ILogger _logger;
         private readonly IScheduler _scheduler;
 
-        public ReceivingProtocol(IMessageRepository repository, ILogger logger) : this(repository, logger, Scheduler.Default)
+        public ReceivingProtocol(IMessageStore store, ILogger logger) : this(store, logger, Scheduler.Default)
         {
         }
 
-        public ReceivingProtocol(IMessageRepository repository, ILogger logger, IScheduler scheduler)
+        public ReceivingProtocol(IMessageStore store, ILogger logger, IScheduler scheduler)
         {
-            _repository = repository;
+            _store = store;
             _logger = logger;
             _scheduler = scheduler;
         }
@@ -78,11 +78,11 @@ namespace LightningQueues.Net.Protocol.V1
             _logger.Debug("Finished storing messages");
         }
 
-        public async Task<IIncomingTransaction> BeginTransaction(Stream stream, IncomingMessage[] messages)
+        public async Task<ITransaction> BeginTransaction(Stream stream, IncomingMessage[] messages)
         {
             try
             {
-                var transaction = _repository.StoreMessages(messages);
+                var transaction = _store.StoreMessages(messages);
                 return transaction;
             }
             catch(QueueDoesNotExistException)
@@ -99,7 +99,7 @@ namespace LightningQueues.Net.Protocol.V1
             }
         }
 
-        public async Task ReceiveAcknowledgement(Stream stream, IIncomingTransaction transaction)
+        public async Task ReceiveAcknowledgement(Stream stream, ITransaction transaction)
         {
             try
             {
@@ -120,7 +120,7 @@ namespace LightningQueues.Net.Protocol.V1
             }
         }
 
-        public async Task ActualCommit(Stream stream, IIncomingTransaction transaction)
+        public async Task ActualCommit(Stream stream, ITransaction transaction)
         {
             try
             {

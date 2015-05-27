@@ -3,7 +3,6 @@
   "dependencies": {
     "xunit": "2.1.0-*",
     "xunit.runner.dnx": "2.1.0-*",
-    "RhinoMocks": "3.6.1",
     "Rx-Main": "2.2.5",
     "Microsoft.VisualStudio.QualityTools.UnitTestFramework": "11.0.50727.1",
     "Should": "1.1.20",

@@ -23,7 +23,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
         {
             _logger = new RecordingLogger();
             _scheduler = new TestScheduler();
-            _protocol = new ReceivingProtocol(new NoPersistenceMessageRepository(), _logger, _scheduler);
+            _protocol = new ReceivingProtocol(new NoPersistenceMessageStore(), _logger, _scheduler);
         }
 
         [Fact]
@@ -97,7 +97,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
         public async Task storing_to_a_queue_that_doesnt_exist()
         {
             byte[] errorBytes = null;
-            var protocol = new ReceivingProtocol(new ThrowingMessageRepository<QueueDoesNotExistException>(), _logger);
+            var protocol = new ReceivingProtocol(new ThrowingMessageStore<QueueDoesNotExistException>(), _logger);
             using (var ms = new MemoryStream())
             {
                 try
@@ -116,7 +116,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
         [Fact]
         public void sending_to_a_queue_that_doesnt_exist()
         {
-            var protocol = new ReceivingProtocol(new ThrowingMessageRepository<QueueDoesNotExistException>(), _logger);
+            var protocol = new ReceivingProtocol(new ThrowingMessageStore<QueueDoesNotExistException>(), _logger);
             var message = new IncomingMessage
             {
                 Id = MessageId.GenerateRandom(),

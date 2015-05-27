@@ -69,7 +69,7 @@ namespace LightningQueues
 
     	public override string ToString()
         {
-            return $"{SourceInstanceId}/{MessageIdentifier}";
+            return $"{MessageIdentifier}/{SourceInstanceId}";
         }
     }
 }
