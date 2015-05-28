@@ -17,13 +17,16 @@ namespace LightningQueues.Storage
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.First());
         }
 
-        public static IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator<TKey, TValue>(this SortedList<TKey, TValue> list, TKey key)
+        public static IEnumerator<KeyValuePair<string, byte[]>> GetEnumerator(this SortedList<string, byte[]> list, string keyStart)
         {
             var keys = list.Keys.ToList();
             var values = list.Values.ToList();
-            for (var i = list.IndexOfKey(key); i < list.Count && i >= 0; i++)
+            for (var i = list.IndexOfKey(keyStart); i < list.Count && i >= 0; i++)
             {
-                yield return new KeyValuePair<TKey, TValue>(keys[i], values[i]);
+                var key = keys[i];
+                if(!key.StartsWith(keyStart))
+                    yield break;
+                yield return new KeyValuePair<string, byte[]>(keys[i], values[i]);
             }
         }
     }

@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace LightningQueues.Storage
+namespace LightningQueues.Storage.InMemory
 {
-    public class MessageStore<T> : IMessageStore where T : IStorage, new()
+    public class MessageStore : IMessageStore 
     {
-        public MessageStore() : this(new T())
+        public MessageStore() : this(new InMemoryStorage())
         {
         }
 
@@ -20,9 +20,13 @@ namespace LightningQueues.Storage
 
         private void CreateKeyLayout()
         {
-            if (Storage.Get("q") == null)
+            if (Storage.Get("/q") == null)
             {
-                Storage.Put("q", new byte[]{});
+                Storage.Put("/q", new byte[]{});
+            }
+            if (Storage.Get("/batch") == null)
+            {
+                Storage.Put("/batch", new byte[]{});
             }
         }
 
@@ -31,7 +35,7 @@ namespace LightningQueues.Storage
 
         public void CreateQueue(string queue)
         {
-            Storage.Put($"q/{queue}/msgs", 
+            Storage.Put($"/q/{queue}/msgs", 
                 BitConverter.GetBytes(DateTime.UtcNow.ToBinary()));
         }
 
@@ -39,15 +43,12 @@ namespace LightningQueues.Storage
         {
             var key = $"/q/{queue}/msgs";
             var idString = id.ToString();
-            //This is dumb, but good enough for now and probably good enough for tests
-            var enumerator = Storage.GetEnumerator();
-            Console.WriteLine($"Initial Key: {key}");
+            var enumerator = Storage.GetEnumerator(key);
             while (enumerator.MoveNext())
             {
                 if (enumerator.Current.Key.Contains(idString))
                 {
                     key = enumerator.Current.Key;
-                    Console.WriteLine($"Key found: {key}");
                     break;
                 }
             }
@@ -82,7 +83,7 @@ namespace LightningQueues.Storage
 
         private void StoreMessage(ITransaction transaction, IncomingMessage message)
         {
-            var queue = Storage.Get($"q/{message.Queue}/msgs");
+            var queue = Storage.Get($"/q/{message.Queue}/msgs");
             if(queue == null)
                 throw new QueueDoesNotExistException($"Queue with name '{message.Queue}' doesn't exist.");
 
@@ -94,8 +95,7 @@ namespace LightningQueues.Storage
 
         private void StartRecovery()
         {
-            var removeTxs = new List<string>();
-            removeTxs.AddRange(GatherUncommittedTransactions());
+            var removeTxs = GatherUncommittedTransactions().ToList();
             var removeMsgs = new List<string>();
             removeMsgs.AddRange(GatherMessagesUncommitted(removeTxs));
             foreach (var key in removeMsgs.Union(removeTxs))
@@ -106,7 +106,7 @@ namespace LightningQueues.Storage
 
         private IEnumerable<string> GatherUncommittedTransactions()
         {
-            var transactionEnumerator = Storage.GetEnumerator("batch");
+            var transactionEnumerator = Storage.GetEnumerator("/batch");
             while (transactionEnumerator.MoveNext())
             {
                 yield return transactionEnumerator.Current.Key;
@@ -115,7 +115,7 @@ namespace LightningQueues.Storage
 
         private IEnumerable<string> GatherMessagesUncommitted(List<string> transactions)
         {
-            var msgsEnumerator = Storage.GetEnumerator("q");
+            var msgsEnumerator = Storage.GetEnumerator("/q");
             while (msgsEnumerator.MoveNext())
             {
                 if (transactions.Any(x => msgsEnumerator.Current.Key.Contains(x)))

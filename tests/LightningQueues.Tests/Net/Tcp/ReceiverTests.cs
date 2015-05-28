@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using LightningQueues.Net;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Tcp;
-using LightningQueues.Storage;
+using LightningQueues.Storage.InMemory;
 using Should;
 using Xunit;
 
@@ -26,7 +26,9 @@ namespace LightningQueues.Tests.Net.Tcp
             _endpoint = new IPEndPoint(IPAddress.Loopback, port);
             _logger = new RecordingLogger();
             _sender = new SendingProtocol(_logger);
-            var protocol = new ReceivingProtocol(new NoPersistenceMessageStore(), _logger);
+            var store = new MessageStore();
+            store.CreateQueue("test");
+            var protocol = new ReceivingProtocol(store, _logger);
             _receiver = new Receiver(_endpoint, protocol);
         }
 

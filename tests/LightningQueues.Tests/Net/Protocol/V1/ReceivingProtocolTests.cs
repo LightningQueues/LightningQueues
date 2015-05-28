@@ -4,12 +4,11 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Reactive.Concurrency;
-using System.Threading;
 using System.Threading.Tasks;
 using LightningQueues.Storage;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Protocol;
+using LightningQueues.Storage.InMemory;
 
 namespace LightningQueues.Tests.Net.Protocol.V1
 {
@@ -23,7 +22,9 @@ namespace LightningQueues.Tests.Net.Protocol.V1
         {
             _logger = new RecordingLogger();
             _scheduler = new TestScheduler();
-            _protocol = new ReceivingProtocol(new NoPersistenceMessageStore(), _logger, _scheduler);
+            var store = new MessageStore();
+            store.CreateQueue("test");
+            _protocol = new ReceivingProtocol(store, _logger, _scheduler);
         }
 
         [Fact]

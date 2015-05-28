@@ -14,7 +14,7 @@ namespace LightningQueues.Tests.Storage.InMemory
         [Fact]
         public void happy_path_success()
         {
-            var store = new MessageStore<InMemoryStorage>();
+            var store = new MessageStore();
             var message = newMessage();
             store.CreateQueue(message.Queue);
             store.StoreMessages(message).Commit();
@@ -28,7 +28,7 @@ namespace LightningQueues.Tests.Storage.InMemory
         [Fact]
         public void storing_message_for_queue_that_doesnt_exist()
         {
-            var store = new MessageStore<InMemoryStorage>();
+            var store = new MessageStore();
             var message = newMessage();
             Assert.Throws<QueueDoesNotExistException>(() => store.StoreMessages(message));
         }
@@ -36,13 +36,26 @@ namespace LightningQueues.Tests.Storage.InMemory
         [Fact]
         public void crash_before_commit()
         {
-            var store = new MessageStore<InMemoryStorage>();
+            var store = new MessageStore();
             var message = newMessage();
             store.CreateQueue(message.Queue);
-            store.StoreMessages(message);
+            var transaction = store.StoreMessages(message);
             //crash
-            store = new MessageStore<InMemoryStorage>(store.Storage);
-            store.Storage.GetEnumerator($"/q/{message.Queue}/msgs/{message.Id}")
+            store = new MessageStore(store.Storage);
+            store.Storage.GetEnumerator($"/q/{message.Queue}/msgs/{message.Id}/batch/{transaction.TransactionId}")
+                .MoveNext()
+                .ShouldBeFalse();
+        }
+
+        [Fact]
+        public void rollback_messages_received()
+        {
+            var store = new MessageStore();
+            var message = newMessage();
+            store.CreateQueue(message.Queue);
+            var transaction = store.StoreMessages(message);
+            transaction.Rollback();
+            store.Storage.GetEnumerator($"/q/{message.Queue}/msgs/{message.Id}/batch/{transaction.TransactionId}")
                 .MoveNext()
                 .ShouldBeFalse();
         }

@@ -1,18 +1,21 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 
-namespace LightningQueues.Storage
+namespace LightningQueues.Storage.InMemory
 {
     public class StorageTransaction : ITransaction
     {
         private readonly IStorage _storage;
+        private ConcurrentQueue<Action<IStorage>> _rollbackActions;
 
         public StorageTransaction(IStorage storage)
         {
+            _rollbackActions = new ConcurrentQueue<Action<IStorage>>();
             _storage = storage;
             TransactionId = Guid.NewGuid();
-            _storage.Put($"batch/{TransactionId}", 
+            Put($"/batch/{TransactionId}", 
                 BitConverter.GetBytes(DateTime.UtcNow.ToBinary()));
         }
 
@@ -20,11 +23,17 @@ namespace LightningQueues.Storage
 
         public void Commit()
         {
-            _storage.Delete($"batch/{TransactionId}");
+            _storage.Delete($"/batch/{TransactionId}");
+            _rollbackActions = new ConcurrentQueue<Action<IStorage>>();
         }
 
         public void Rollback()
         {
+            foreach (var action in _rollbackActions)
+            {
+                action(_storage);
+            }
+            _rollbackActions = new ConcurrentQueue<Action<IStorage>>();
         }
 
         public byte[] Get(string key)
@@ -34,11 +43,14 @@ namespace LightningQueues.Storage
 
         public void Put(string key, byte[] value)
         {
+            _rollbackActions.Enqueue(storage => storage.Delete(key));
             _storage.Put(key, value);
         }
 
         public void Delete(string key)
         {
+            var value = _storage.Get(key);
+            _rollbackActions.Enqueue(storage => storage.Put(key, value));
             _storage.Delete(key);
         }
 
