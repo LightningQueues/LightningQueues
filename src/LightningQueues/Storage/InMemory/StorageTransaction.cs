@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace LightningQueues.Storage.InMemory
 {
-    public class StorageTransaction : ITransaction
+    public class StorageTransaction : ITransaction, IEnumerable
     {
         private readonly IStorage _storage;
         private ConcurrentQueue<Action<IStorage>> _rollbackActions;

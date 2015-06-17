@@ -81,7 +81,7 @@ namespace LightningQueues.Storage.InMemory
             return transaction;
         }
 
-        private void StoreMessage(ITransaction transaction, IncomingMessage message)
+        private void StoreMessage(StorageTransaction transaction, IncomingMessage message)
         {
             var queue = Storage.Get($"/q/{message.Queue}/msgs");
             if(queue == null)

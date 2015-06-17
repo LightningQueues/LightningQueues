@@ -2,7 +2,7 @@
 
 namespace LightningQueues.Storage
 {
-    public interface ITransaction : IStorage
+    public interface ITransaction
     {
         Guid TransactionId { get; }
         void Commit();

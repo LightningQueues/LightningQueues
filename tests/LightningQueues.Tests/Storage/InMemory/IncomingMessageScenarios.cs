@@ -6,6 +6,7 @@ using LightningQueues.Storage;
 using LightningQueues.Storage.InMemory;
 using Should;
 using Xunit;
+using static LightningQueues.Tests.ObjectMother;
 
 namespace LightningQueues.Tests.Storage.InMemory
 {
@@ -15,7 +16,7 @@ namespace LightningQueues.Tests.Storage.InMemory
         public void happy_path_success()
         {
             var store = new MessageStore();
-            var message = newMessage();
+            var message = NewIncomingMessage();
             store.CreateQueue(message.Queue);
             store.StoreMessages(message).Commit();
             var result = store.GetMessageById(message.Queue, message.Id);
@@ -29,7 +30,7 @@ namespace LightningQueues.Tests.Storage.InMemory
         public void storing_message_for_queue_that_doesnt_exist()
         {
             var store = new MessageStore();
-            var message = newMessage();
+            var message = NewIncomingMessage();
             Assert.Throws<QueueDoesNotExistException>(() => store.StoreMessages(message));
         }
 
@@ -37,7 +38,7 @@ namespace LightningQueues.Tests.Storage.InMemory
         public void crash_before_commit()
         {
             var store = new MessageStore();
-            var message = newMessage();
+            var message = NewIncomingMessage();
             store.CreateQueue(message.Queue);
             var transaction = store.StoreMessages(message);
             //crash
@@ -51,29 +52,13 @@ namespace LightningQueues.Tests.Storage.InMemory
         public void rollback_messages_received()
         {
             var store = new MessageStore();
-            var message = newMessage();
+            var message = NewIncomingMessage();
             store.CreateQueue(message.Queue);
             var transaction = store.StoreMessages(message);
             transaction.Rollback();
             store.Storage.GetEnumerator($"/q/{message.Queue}/msgs/{message.Id}/batch/{transaction.TransactionId}")
                 .MoveNext()
                 .ShouldBeFalse();
-        }
-
-        private IncomingMessage newMessage(string queueName = "cleverqueuename", string payload = "hello", string headerValue = "myvalue")
-        {
-            var message = new IncomingMessage
-            {
-                Data = Encoding.UTF8.GetBytes(payload),
-                Headers = new Dictionary<string, string>
-                {
-                    {"mykey", headerValue}
-                },
-                Id = MessageId.GenerateRandom(),
-                Queue = queueName,
-                SentAt = DateTime.Now
-            };
-            return message;
         }
     }
 }
