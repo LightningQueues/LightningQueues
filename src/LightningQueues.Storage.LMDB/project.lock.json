@@ -3,6 +3,14 @@
   "version": -9996,
   "targets": {
     "DNX,Version=v4.5.1": {
+      "LightningDB/0.9.0.15": {
+        "compile": {
+          "lib/dnx451/LightningDB.dll": {}
+        },
+        "runtime": {
+          "lib/dnx451/LightningDB.dll": {}
+        }
+      },
       "Microsoft.AspNet.WebUtilities/1.0.0-beta6-11557": {
         "dependencies": {
           "Microsoft.Framework.WebEncoders.Core": "1.0.0-beta6-11557"
@@ -256,6 +264,14 @@
       }
     },
     "DNXCore,Version=v5.0": {
+      "LightningDB/0.9.0.15": {
+        "compile": {
+          "lib/dnxcore50/LightningDB.dll": {}
+        },
+        "runtime": {
+          "lib/dnxcore50/LightningDB.dll": {}
+        }
+      },
       "Microsoft.AspNet.WebUtilities/1.0.0-beta6-11557": {
         "dependencies": {
           "Microsoft.Framework.WebEncoders.Core": "1.0.0-beta6-11557",
@@ -588,6 +604,24 @@
     }
   },
   "libraries": {
+    "LightningDB/0.9.0.15": {
+      "sha512": "92E0lALqki36Jj5jCTwq8nBx4fRml+oCrEyJu2DWrFkcQ0Egb+PvwhCYG/CY4TqNekiv+SrR/mNV/0FBlNxumg==",
+      "files": [
+        "LightningDB.0.9.0.15.nupkg",
+        "LightningDB.0.9.0.15.nupkg.sha512",
+        "LightningDB.nuspec",
+        "content/liblmdb.dylib",
+        "content/lmdb32.dll",
+        "content/lmdb64.dll",
+        "lib/dnx451/LightningDB.dll",
+        "lib/dnx451/LightningDB.xml",
+        "lib/dnxcore50/LightningDB.dll",
+        "lib/dnxcore50/LightningDB.xml",
+        "lib/net45/LightningDB.dll",
+        "lib/net45/LightningDB.xml",
+        "tools/net45/install.ps1"
+      ]
+    },
     "Microsoft.AspNet.WebUtilities/1.0.0-beta6-11557": {
       "serviceable": true,
       "sha512": "KelS9mosn1V7edTussCz9w/dXjJlYRZIwB/WYaj3NRzxTBnAYyTLLVl5gfmBTb0AXqvu1ln09oXkzc0fTnVB3w==",
@@ -1037,20 +1071,8 @@
   },
   "projectFileDependencyGroups": {
     "": [
-      "Rx-Main >= 2.2.5",
-      "System.Net.Primitives >= 4.0.10-beta-*",
-      "System.Collections.Specialized >= 4.0.0-beta-*",
-      "System.Runtime.Serialization.Primitives >= 4.0.10-beta-*",
-      "Microsoft.AspNet.WebUtilities >= 1.0.0-*",
-      "System.Threading.Thread >= 4.0.0-beta-*",
-      "System.Runtime >= 4.0.20-beta-*",
-      "System.Net.Sockets >= 4.0.0-beta-*",
-      "System.Threading >= 4.0.10-beta-*",
-      "System.Collections >= 4.0.10-beta-*",
-      "System.Collections.Concurrent >= 4.0.10-beta-*",
-      "System.Runtime.Extensions >= 4.0.10-beta-*",
-      "System.Linq >= 4.0.0-beta-*",
-      "NLog >= 3.2.1"
+      "LightningQueues >= 1.0.0-*",
+      "LightningDB >= 0.9.0.15"
     ],
     "DNX,Version=v4.5.1": [],
     "DNXCore,Version=v5.0": []

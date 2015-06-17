@@ -6,39 +6,20 @@
     "Rx-Main": "2.2.5",
     "Microsoft.VisualStudio.QualityTools.UnitTestFramework": "11.0.50727.1",
     "Should": "1.1.20",
-    "System.Runtime.Serialization.Primitives": "4.0.10-beta-22816",
-    "System.Collections.Specialized": "4.0.0-beta-22816",
-    "System.Threading.Thread": "4.0.0-beta-22816",
-    "Microsoft.AspNet.WebUtilities": "1.0.0-beta4",
-    "System.Net.Primitives": "4.0.10-beta-22816",
-    "LightningQueues": "1.0.0-*"
+    "System.Runtime.Serialization.Primitives": "4.0.10-beta-*",
+    "System.Collections.Specialized": "4.0.0-beta-*",
+    "System.Threading.Thread": "4.0.0-beta-*",
+    "System.Net.Primitives": "4.0.10-beta-*",
+    "LightningQueues": "1.0.0-*",
+    "LightningQueues.Storage.LMDB": "1.0.0-*"
   },
   "commands": {
     "test": "xunit.runner.dnx"
   },
   "frameworks": {
     "dnx451": {
-      "dependencies": {
-        "System.Console": "4.0.0-beta-*",
-        "System.Runtime": "4.0.20-beta-*",
-        "System.Net.Sockets": "4.0.0-beta-*",
-        "System.Threading": "4.0.10-beta-*",
-        "System.Collections": "4.0.10-beta-*",
-        "System.Runtime.Extensions": "4.0.10-beta-*",
-        "System.Linq": "4.0.0-beta-*"
-      }
     },
     "dnxcore50": {
-      "dependencies": {
-        "System.Console": "4.0.0-beta-*",
-        "System.Runtime": "4.0.20-beta-*",
-        "System.Net.Sockets": "4.0.0-beta-*",
-        "System.Threading": "4.0.10-beta-*",
-        "System.Collections": "4.0.10-beta-*",
-        "System.Runtime.Extensions": "4.0.10-beta-*",
-        "System.Linq": "4.0.0-beta-*"
-      },
-      "frameworkAssemblies": {}
     }
   }
 }

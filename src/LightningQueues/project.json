@@ -2,11 +2,11 @@
   "version": "1.0.0-*",
   "dependencies": {
     "Rx-Main": "2.2.5",
-    "System.Net.Primitives": "4.0.10-beta-22816",
-    "System.Collections.Specialized": "4.0.0-beta-22816",
-    "System.Runtime.Serialization.Primitives": "4.0.10-beta-22816",
-    "Microsoft.AspNet.WebUtilities": "1.0.0-beta4",
-    "System.Threading.Thread": "4.0.0-beta-22816",
+    "System.Net.Primitives": "4.0.10-beta-*",
+    "System.Collections.Specialized": "4.0.0-beta-*",
+    "System.Runtime.Serialization.Primitives": "4.0.10-beta-*",
+    "Microsoft.AspNet.WebUtilities": "1.0.0-*",
+    "System.Threading.Thread": "4.0.0-beta-*",
     "System.Runtime": "4.0.20-beta-*",
     "System.Net.Sockets": "4.0.0-beta-*",
     "System.Threading": "4.0.10-beta-*",
@@ -18,7 +18,6 @@
   },
   "frameworks": {
     "dnx451": { },
-    "dnxcore50": {
-    }
+    "dnxcore50": { }
   }
 }
