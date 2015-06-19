@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Text;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
@@ -18,6 +19,24 @@ namespace LightningQueues.Tests.Storage.Lmdb
         {
             _queuePath = testDirectory.CreateNewDirectoryForTest();
             _store = new LmdbMessageStore(_queuePath);
+        }
+
+        [Fact]
+        public void happy_path_success()
+        {
+            var message = NewIncomingMessage();
+            _store.CreateQueue(message.Queue);
+            _store.StoreMessages(message).Commit();
+            using (var tx = _store.Environment.BeginTransaction())
+            {
+                using (var db = tx.OpenDatabase(message.Queue))
+                {
+                    var data = tx.Get(db, Encoding.UTF8.GetBytes($"{message.Id}"));
+                    var headers = tx.Get(db, Encoding.UTF8.GetBytes($"{message.Id}/headers")).ToDictionary();
+                    Encoding.UTF8.GetString(data).ShouldEqual("hello");
+                    headers.First().Value.ShouldEqual("myvalue");
+                }
+            }
         }
 
         [Fact]

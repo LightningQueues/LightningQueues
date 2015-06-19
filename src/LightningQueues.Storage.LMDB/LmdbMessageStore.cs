@@ -29,7 +29,9 @@ namespace LightningQueues.Storage.LMDB
                     openedDatabases.Add(db);
                     foreach (var message in messagesByQueue)
                     {
-                        transaction.Put(db, $"id/{message.Id}", message.Data);
+                        transaction.Put(db, message.Id.ToString(), message.Data);
+                        transaction.Put(db, $"{message.Id}/headers", message.Headers.ToBytes());
+                        transaction.Put(db, $"{message.Id}/sent", BitConverter.GetBytes(message.SentAt.ToBinary()));
                     }
                 }
             }

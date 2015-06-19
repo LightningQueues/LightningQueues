@@ -2,22 +2,25 @@
   "version": "1.0.0-*",
   "dependencies": {
     "Rx-Main": "2.2.5",
-    "System.Net.Primitives": "4.0.10-beta-*",
-    "System.Collections.Specialized": "4.0.0-beta-*",
-    "System.Runtime.Serialization.Primitives": "4.0.10-beta-*",
-    "Microsoft.AspNet.WebUtilities": "1.0.0-*",
-    "System.Threading.Thread": "4.0.0-beta-*",
-    "System.Runtime": "4.0.20-beta-*",
-    "System.Net.Sockets": "4.0.0-beta-*",
-    "System.Threading": "4.0.10-beta-*",
-    "System.Collections": "4.0.10-beta-*",
-    "System.Collections.Concurrent": "4.0.10-beta-*",
-    "System.Runtime.Extensions": "4.0.10-beta-*",
-    "System.Linq": "4.0.0-beta-*",
     "NLog": "3.2.1"
   },
   "frameworks": {
     "dnx451": { },
-    "dnxcore50": { }
+    "dnxcore50": {
+      "dependencies": {
+        "System.Net.Primitives": "4.0.10-beta-*",
+        "System.Collections.Specialized": "4.0.0-beta-*",
+        "System.Runtime.Serialization.Primitives": "4.0.10-beta-*",
+        "System.Threading.Thread": "4.0.0-beta-*",
+        "System.Runtime": "4.0.20-beta-*",
+        "System.Net.Sockets": "4.0.0-beta-*",
+        "System.Threading": "4.0.10-beta-*",
+        "System.Collections": "4.0.10-beta-*",
+        "System.Collections.Concurrent": "4.0.10-beta-*",
+        "System.Runtime.Extensions": "4.0.10-beta-*",
+        "System.Linq": "4.0.0-beta-*",
+        "System.ComponentModel": "4.0.0-beta-22816"
+      }
+    }
   }
 }

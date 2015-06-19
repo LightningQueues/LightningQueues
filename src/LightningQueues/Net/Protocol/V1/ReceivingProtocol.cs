@@ -110,7 +110,7 @@ namespace LightningQueues.Net.Protocol.V1
                 if(!ackBuffer.SequenceEqual(Constants.AcknowledgedBuffer))
                 {
                     _logger.Debug("Received something that wasn't an acknowledgement");
-                    throw new IOException("Unexpected acknowledgement from sender");
+                    throw new InvalidOperationException("Unexpected acknowledgement from sender");
                 }
             }
             catch(Exception)

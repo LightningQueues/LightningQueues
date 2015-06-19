@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace LightningQueues.Storage.InMemory
 {
@@ -55,7 +54,7 @@ namespace LightningQueues.Storage.InMemory
             var message = new IncomingMessage
             {
                 Data = Storage.Get(key),
-                Headers = Encoding.UTF8.GetString(Storage.Get($"{key}/headers")).ParseQueryString(),
+                Headers = Storage.Get($"{key}/headers").ToDictionary(),
                 Id = id,
                 Queue = queue,
                 SentAt = DateTime.FromBinary(BitConverter.ToInt64(Storage.Get($"{key}/sent"), 0))
@@ -89,7 +88,7 @@ namespace LightningQueues.Storage.InMemory
 
             var key = $"/q/{message.Queue}/msgs/{message.Id}/batch/{transaction.TransactionId}";
             transaction.Put(key, message.Data);
-            transaction.Put($"{key}/headers", Encoding.UTF8.GetBytes(message.Headers.ToQueryString()));
+            transaction.Put($"{key}/headers", message.Headers.ToBytes());
             transaction.Put($"{key}/sent", BitConverter.GetBytes(message.SentAt.ToBinary()));
         }
 
