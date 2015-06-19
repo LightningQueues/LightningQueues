@@ -13,15 +13,16 @@
       "System.Threading.Thread >= 4.0.0-beta-*",
       "System.Net.Primitives >= 4.0.10-beta-*",
       "LightningQueues >= 1.0.0-*",
+      "LightningDB >= 0.9.0.16",
       "LightningQueues.Storage.LMDB >= 1.0.0-*"
     ],
     "DNX,Version=v4.5.1": [],
     "DNXCore,Version=v5.0": []
   },
   "libraries": {
-    "LightningDB/0.9.0.15": {
+    "LightningDB/0.9.0.16": {
       "serviceable": false,
-      "sha": "92E0lALqki36Jj5jCTwq8nBx4fRml+oCrEyJu2DWrFkcQ0Egb+PvwhCYG/CY4TqNekiv+SrR/mNV/0FBlNxumg==",
+      "sha": "a4zAQCz+H2J6cXJ3oyRbZcuICSSk0E5vEcZGvkcXqkUGlRxY2y1QVC69cYm9BRfs1edRvUh/Yz+07RT1mZEZ/g==",
       "frameworks": {
         "DNX,Version=v4.5.1": {
           "dependencies": {},
@@ -45,8 +46,8 @@
         }
       },
       "files": [
-        "LightningDB.0.9.0.15.nupkg",
-        "LightningDB.0.9.0.15.nupkg.sha512",
+        "LightningDB.0.9.0.16.nupkg",
+        "LightningDB.0.9.0.16.nupkg.sha512",
         "LightningDB.nuspec",
         "content/liblmdb.dylib",
         "content/lmdb32.dll",

@@ -34,11 +34,22 @@ namespace LightningQueues.Storage.LMDB
             {
                 transaction.Abort();
                 transaction.Dispose();
-                if(ex.Message.StartsWith("MDB_NOTFOUND"))
+                if(ex.StatusCode == -30798) //MDB_NOTFOUND
                     throw new QueueDoesNotExistException("Queue doesn't exist", ex);
                 throw;
             }
             return new LmdbTransaction(transaction);
+        }
+
+        public void CreateQueue(string queueName)
+        {
+            using (var tx = _environment.BeginTransaction())
+            {
+                using (tx.OpenDatabase(queueName, new DatabaseOptions {Flags = DatabaseOpenFlags.Create}))
+                {
+                    tx.Commit();
+                }
+            }
         }
 
         public void Dispose()

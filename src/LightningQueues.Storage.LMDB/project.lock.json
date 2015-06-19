@@ -3,7 +3,7 @@
   "version": -9996,
   "targets": {
     "DNX,Version=v4.5.1": {
-      "LightningDB/0.9.0.15": {
+      "LightningDB/0.9.0.16": {
         "compile": {
           "lib/dnx451/LightningDB.dll": {}
         },
@@ -264,7 +264,7 @@
       }
     },
     "DNXCore,Version=v5.0": {
-      "LightningDB/0.9.0.15": {
+      "LightningDB/0.9.0.16": {
         "compile": {
           "lib/dnxcore50/LightningDB.dll": {}
         },
@@ -604,11 +604,11 @@
     }
   },
   "libraries": {
-    "LightningDB/0.9.0.15": {
-      "sha512": "92E0lALqki36Jj5jCTwq8nBx4fRml+oCrEyJu2DWrFkcQ0Egb+PvwhCYG/CY4TqNekiv+SrR/mNV/0FBlNxumg==",
+    "LightningDB/0.9.0.16": {
+      "sha512": "a4zAQCz+H2J6cXJ3oyRbZcuICSSk0E5vEcZGvkcXqkUGlRxY2y1QVC69cYm9BRfs1edRvUh/Yz+07RT1mZEZ/g==",
       "files": [
-        "LightningDB.0.9.0.15.nupkg",
-        "LightningDB.0.9.0.15.nupkg.sha512",
+        "LightningDB.0.9.0.16.nupkg",
+        "LightningDB.0.9.0.16.nupkg.sha512",
         "LightningDB.nuspec",
         "content/liblmdb.dylib",
         "content/lmdb32.dll",
@@ -1072,7 +1072,7 @@
   "projectFileDependencyGroups": {
     "": [
       "LightningQueues >= 1.0.0-*",
-      "LightningDB >= 0.9.0.15"
+      "LightningDB >= 0.9.0.16"
     ],
     "DNX,Version=v4.5.1": [],
     "DNXCore,Version=v5.0": []
