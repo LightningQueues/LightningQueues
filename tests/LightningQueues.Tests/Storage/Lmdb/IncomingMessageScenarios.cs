@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using Should;
@@ -39,12 +40,30 @@ namespace LightningQueues.Tests.Storage.Lmdb
             {
                 using (var db = tx.OpenDatabase(message.Queue))
                 {
-                    var result = tx.Get(db, System.Text.Encoding.UTF8.GetBytes(message.Id.ToString()));
+                    var result = tx.Get(db, Encoding.UTF8.GetBytes($"id/{message.Id}"));
                     result.ShouldBeNull();
                 }
             }
         }
 
+        [Fact]
+        public void rollback_messages_received()
+        {
+            var message = NewIncomingMessage();
+            _store.CreateQueue(message.Queue);
+            var transaction = _store.StoreMessages(message);
+            transaction.Rollback();
+            using (var tx = _store.Environment.BeginTransaction())
+            {
+                using (var db = tx.OpenDatabase(message.Queue))
+                {
+                    var result = tx.Get(db, Encoding.UTF8.GetBytes($"id/{message.Id}"));
+                    result.ShouldBeNull();
+                }
+            }
+        }
+
+        [Fact]
         public void creating_multiple_stores()
         {
             _store.Dispose();
