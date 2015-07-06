@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using LightningQueues.Storage;
 using LightningQueues.Storage.InMemory;
-using Should;
 using Xunit;
 using static LightningQueues.Tests.ObjectMother;
 

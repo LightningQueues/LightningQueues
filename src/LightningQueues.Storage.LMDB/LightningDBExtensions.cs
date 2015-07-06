@@ -20,7 +20,7 @@ namespace LightningQueues.Storage.LMDB
         {
             foreach (var lightningDatabase in databases)
             {
-                lightningDatabase.Close();
+                lightningDatabase.Dispose();
             }
         }
     }

@@ -3,7 +3,6 @@ using System.Linq;
 using System.Text;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
-using Should;
 using Xunit;
 using static LightningQueues.Tests.ObjectMother;
 

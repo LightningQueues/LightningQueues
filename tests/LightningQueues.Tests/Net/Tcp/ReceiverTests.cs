@@ -8,7 +8,6 @@ using LightningQueues.Net;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Tcp;
 using LightningQueues.Storage.InMemory;
-using Should;
 using Xunit;
 
 namespace LightningQueues.Tests.Net.Tcp

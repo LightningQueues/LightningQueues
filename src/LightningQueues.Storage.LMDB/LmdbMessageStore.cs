@@ -51,7 +51,7 @@ namespace LightningQueues.Storage.LMDB
         {
             using (var tx = _environment.BeginTransaction())
             {
-                using (tx.OpenDatabase(queueName, new DatabaseOptions {Flags = DatabaseOpenFlags.Create}))
+                using (tx.OpenDatabase(queueName, new DatabaseConfiguration {Flags = DatabaseOpenFlags.Create}))
                 {
                     tx.Commit();
                 }

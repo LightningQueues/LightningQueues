@@ -5,13 +5,8 @@
     "xunit.runner.dnx": "2.1.0-*",
     "Rx-Main": "2.2.5",
     "Microsoft.VisualStudio.QualityTools.UnitTestFramework": "11.0.50727.1",
-    "Should": "1.1.20",
-    "System.Runtime.Serialization.Primitives": "4.0.10-beta-*",
-    "System.Collections.Specialized": "4.0.0-beta-*",
-    "System.Threading.Thread": "4.0.0-beta-*",
-    "System.Net.Primitives": "4.0.10-beta-*",
     "LightningQueues": "1.0.0-*",
-    "LightningDB": "0.9.0.16",
+    "LightningDB": "0.9.0.23",
     "LightningQueues.Storage.LMDB": "1.0.0-*"
   },
   "commands": {
@@ -21,6 +16,12 @@
     "dnx451": {
     },
     "dnxcore50": {
+      "dependencies": {
+        "System.Runtime.Serialization.Primitives": "4.0.10-beta-*",
+        "System.Collections.Specialized": "4.0.0-beta-*",
+        "System.Threading.Thread": "4.0.0-beta-*",
+        "System.Net.Primitives": "4.0.10-beta-*"
+      }
     }
   }
 }

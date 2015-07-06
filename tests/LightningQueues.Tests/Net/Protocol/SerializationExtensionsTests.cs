@@ -1,7 +1,6 @@
 ﻿using System.Linq;
 using System.Text;
 using LightningQueues.Net.Protocol.V1;
-using Should;
 using Xunit;
 
 namespace LightningQueues.Tests.Net.Protocol

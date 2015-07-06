@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using LightningQueues.Net.Protocol.V1;
-using Should;
 using Xunit;
 
 namespace LightningQueues.Tests.Net.Protocol.V1

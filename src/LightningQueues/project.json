@@ -13,7 +13,7 @@
         "System.Runtime.Serialization.Primitives": "4.0.10-beta-*",
         "System.Threading.Thread": "4.0.0-beta-*",
         "System.Runtime": "4.0.20-beta-*",
-        "System.Net.Sockets": "4.0.0-beta-*",
+        "System.Net.Sockets": "4.0.10-beta-*",
         "System.Threading": "4.0.10-beta-*",
         "System.Collections": "4.0.10-beta-*",
         "System.Collections.Concurrent": "4.0.10-beta-*",
