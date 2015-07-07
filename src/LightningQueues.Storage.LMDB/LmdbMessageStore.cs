@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using LightningDB;
 
@@ -20,13 +19,11 @@ namespace LightningQueues.Storage.LMDB
         public ITransaction StoreMessages(params IncomingMessage[] messages)
         {
             var transaction = _environment.BeginTransaction();
-            var openedDatabases = new List<LightningDatabase>();
             try
             {
                 foreach (var messagesByQueue in messages.GroupBy(x => x.Queue))
                 {
                     var db = transaction.OpenDatabase(messagesByQueue.Key);
-                    openedDatabases.Add(db);
                     foreach (var message in messagesByQueue)
                     {
                         transaction.Put(db, message.Id.ToString(), message.Data);
@@ -37,14 +34,12 @@ namespace LightningQueues.Storage.LMDB
             }
             catch (LightningException ex) 
             {
-                transaction.Abort();
                 transaction.Dispose();
-                openedDatabases.CloseAll();
                 if(ex.StatusCode == -30798) //MDB_NOTFOUND
                     throw new QueueDoesNotExistException("Queue doesn't exist", ex);
                 throw;
             }
-            return new LmdbTransaction(transaction, openedDatabases);
+            return new LmdbTransaction(transaction);
         }
 
         public void CreateQueue(string queueName)
