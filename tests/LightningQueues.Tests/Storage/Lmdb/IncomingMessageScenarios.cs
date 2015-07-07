@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using Xunit;
@@ -21,11 +22,12 @@ namespace LightningQueues.Tests.Storage.Lmdb
         }
 
         [Fact]
-        public void happy_path_success()
+        public async Task happy_path_success()
         {
             var message = NewIncomingMessage();
             _store.CreateQueue(message.Queue);
-            _store.StoreMessages(message).Commit();
+            var transaction = await _store.StoreMessages(message);
+            await transaction.Commit();
             using (var tx = _store.Environment.BeginTransaction())
             {
                 using (var db = tx.OpenDatabase(message.Queue))
@@ -39,18 +41,18 @@ namespace LightningQueues.Tests.Storage.Lmdb
         }
 
         [Fact]
-        public void storing_message_for_queue_that_doesnt_exist()
+        public async Task storing_message_for_queue_that_doesnt_exist()
         {
             var message = NewIncomingMessage();
-            Assert.Throws<QueueDoesNotExistException>(() => _store.StoreMessages(message));
+            await Assert.ThrowsAsync<QueueDoesNotExistException>(async () => await _store.StoreMessages(message));
         }
 
         [Fact]
-        public void crash_before_commit()
+        public async Task crash_before_commit()
         {
             var message = NewIncomingMessage();
             _store.CreateQueue(message.Queue);
-            _store.StoreMessages(message);
+            await _store.StoreMessages(message);
             _store.Dispose();
             //crash
             _store = new LmdbMessageStore(_queuePath);
@@ -65,12 +67,12 @@ namespace LightningQueues.Tests.Storage.Lmdb
         }
 
         [Fact]
-        public void rollback_messages_received()
+        public async Task rollback_messages_received()
         {
             var message = NewIncomingMessage();
             _store.CreateQueue(message.Queue);
-            var transaction = _store.StoreMessages(message);
-            transaction.Rollback();
+            var transaction = await _store.StoreMessages(message);
+            await transaction.Rollback();
             using (var tx = _store.Environment.BeginTransaction())
             {
                 using (var db = tx.OpenDatabase(message.Queue))

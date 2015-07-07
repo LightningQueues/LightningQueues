@@ -82,7 +82,7 @@ namespace LightningQueues.Net.Protocol.V1
         {
             try
             {
-                var transaction = _store.StoreMessages(messages);
+                var transaction = await _store.StoreMessages(messages);
                 return transaction;
             }
             catch(QueueDoesNotExistException)
@@ -115,7 +115,7 @@ namespace LightningQueues.Net.Protocol.V1
             }
             catch(Exception)
             {
-                transaction.Rollback();
+                await transaction.Rollback();
                 throw;
             }
         }
@@ -124,7 +124,7 @@ namespace LightningQueues.Net.Protocol.V1
         {
             try
             {
-                transaction.Commit();
+                await transaction.Commit();
             }
             catch(Exception)
             {

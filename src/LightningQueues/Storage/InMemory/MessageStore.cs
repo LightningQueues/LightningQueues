@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace LightningQueues.Storage.InMemory
 {
@@ -62,7 +63,7 @@ namespace LightningQueues.Storage.InMemory
             return message;
         }
 
-        public ITransaction StoreMessages(params IncomingMessage[] messages)
+        public Task<ITransaction> StoreMessages(params IncomingMessage[] messages)
         {
             var transaction = new StorageTransaction(Storage);
             try
@@ -77,7 +78,7 @@ namespace LightningQueues.Storage.InMemory
                 transaction.Rollback();
                 throw;
             }
-            return transaction;
+            return Task.FromResult((ITransaction)transaction);
         }
 
         private void StoreMessage(StorageTransaction transaction, IncomingMessage message)

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using LightningQueues.Storage;
 using LightningQueues.Storage.InMemory;
 using Xunit;
@@ -12,12 +13,13 @@ namespace LightningQueues.Tests.Storage.InMemory
     public class IncomingMessageScenarios
     {
         [Fact]
-        public void happy_path_success()
+        public async Task happy_path_success()
         {
             var store = new MessageStore();
             var message = NewIncomingMessage();
             store.CreateQueue(message.Queue);
-            store.StoreMessages(message).Commit();
+            var tx = await store.StoreMessages(message);
+            await tx.Commit();
             var result = store.GetMessageById(message.Queue, message.Id);
             result.Queue.ShouldEqual(message.Queue);
             result.Id.ShouldEqual(message.Id);
@@ -30,16 +32,16 @@ namespace LightningQueues.Tests.Storage.InMemory
         {
             var store = new MessageStore();
             var message = NewIncomingMessage();
-            Assert.Throws<QueueDoesNotExistException>(() => store.StoreMessages(message));
+            Assert.Throws<QueueDoesNotExistException>(() => store.StoreMessages(message).Wait());
         }
 
         [Fact]
-        public void crash_before_commit()
+        public async Task crash_before_commit()
         {
             var store = new MessageStore();
             var message = NewIncomingMessage();
             store.CreateQueue(message.Queue);
-            var transaction = store.StoreMessages(message);
+            var transaction = await store.StoreMessages(message);
             //crash
             store = new MessageStore(store.Storage);
             store.Storage.GetEnumerator($"/q/{message.Queue}/msgs/{message.Id}/batch/{transaction.TransactionId}")
@@ -48,13 +50,13 @@ namespace LightningQueues.Tests.Storage.InMemory
         }
 
         [Fact]
-        public void rollback_messages_received()
+        public async Task rollback_messages_received()
         {
             var store = new MessageStore();
             var message = NewIncomingMessage();
             store.CreateQueue(message.Queue);
-            var transaction = store.StoreMessages(message);
-            transaction.Rollback();
+            var transaction = await store.StoreMessages(message);
+            await transaction.Rollback();
             store.Storage.GetEnumerator($"/q/{message.Queue}/msgs/{message.Id}/batch/{transaction.TransactionId}")
                 .MoveNext()
                 .ShouldBeFalse();

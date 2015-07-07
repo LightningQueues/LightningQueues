@@ -1,7 +1,9 @@
-﻿namespace LightningQueues.Storage
+﻿using System.Threading.Tasks;
+
+namespace LightningQueues.Storage
 {
     public interface IMessageStore
     {
-        ITransaction StoreMessages(IncomingMessage[] messages);
+        Task<ITransaction> StoreMessages(IncomingMessage[] messages);
     }
 }

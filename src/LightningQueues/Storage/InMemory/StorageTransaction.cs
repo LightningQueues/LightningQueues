@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace LightningQueues.Storage.InMemory
 {
@@ -21,19 +22,21 @@ namespace LightningQueues.Storage.InMemory
 
         public Guid TransactionId { get; }
 
-        public void Commit()
+        public Task Commit()
         {
             _storage.Delete($"/batch/{TransactionId}");
             _rollbackActions = new ConcurrentQueue<Action<IStorage>>();
+            return Task.FromResult(0);
         }
 
-        public void Rollback()
+        public Task Rollback()
         {
             foreach (var action in _rollbackActions)
             {
                 action(_storage);
             }
             _rollbackActions = new ConcurrentQueue<Action<IStorage>>();
+            return Task.FromResult(0);
         }
 
         public byte[] Get(string key)

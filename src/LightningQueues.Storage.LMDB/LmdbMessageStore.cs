@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Linq;
+using System.Reactive.Concurrency;
+using System.Threading.Tasks;
 using LightningDB;
 
 namespace LightningQueues.Storage.LMDB
@@ -16,30 +18,41 @@ namespace LightningQueues.Storage.LMDB
 
         public LightningEnvironment Environment => _environment;
 
-        public ITransaction StoreMessages(params IncomingMessage[] messages)
+        public Task<ITransaction> StoreMessages(params IncomingMessage[] messages)
         {
-            var transaction = _environment.BeginTransaction();
-            try
+            var tcs = new TaskCompletionSource<ITransaction>();
+            var scheduler = new EventLoopScheduler();
+            var catchAll = scheduler.Catch<Exception>(ex =>
             {
-                foreach (var messagesByQueue in messages.GroupBy(x => x.Queue))
+                tcs.SetException(ex);
+                return true;
+            });
+            catchAll.Schedule(() =>
+            {
+                var transaction = _environment.BeginTransaction();
+                try
                 {
-                    var db = transaction.OpenDatabase(messagesByQueue.Key);
-                    foreach (var message in messagesByQueue)
+                    foreach (var messagesByQueue in messages.GroupBy(x => x.Queue))
                     {
-                        transaction.Put(db, message.Id.ToString(), message.Data);
-                        transaction.Put(db, $"{message.Id}/headers", message.Headers.ToBytes());
-                        transaction.Put(db, $"{message.Id}/sent", BitConverter.GetBytes(message.SentAt.ToBinary()));
+                        var db = transaction.OpenDatabase(messagesByQueue.Key);
+                        foreach (var message in messagesByQueue)
+                        {
+                            transaction.Put(db, message.Id.ToString(), message.Data);
+                            transaction.Put(db, $"{message.Id}/headers", message.Headers.ToBytes());
+                            transaction.Put(db, $"{message.Id}/sent", BitConverter.GetBytes(message.SentAt.ToBinary()));
+                        }
                     }
                 }
-            }
-            catch (LightningException ex) 
-            {
-                transaction.Dispose();
-                if(ex.StatusCode == -30798) //MDB_NOTFOUND
-                    throw new QueueDoesNotExistException("Queue doesn't exist", ex);
-                throw;
-            }
-            return new LmdbTransaction(transaction);
+                catch (LightningException ex)
+                {
+                    transaction.Dispose();
+                    if (ex.StatusCode == -30798) //MDB_NOTFOUND
+                        throw new QueueDoesNotExistException("Queue doesn't exist", ex);
+                    throw;
+                }
+                tcs.SetResult(new LmdbTransaction(transaction, scheduler));
+            });
+            return tcs.Task;
         }
 
         public void CreateQueue(string queueName)
