@@ -71,7 +71,21 @@ namespace LightningQueues.Storage.LMDB
 
         public Task MoveToQueue(IAsyncTransaction transaction, string queueName, IncomingMessage message)
         {
-            return Task.FromResult(0);
+            var lmdbTransaction = (LmdbTransaction)transaction;
+            var tcs = new TaskCompletionSource<bool>();
+            var scheduler = lmdbTransaction.Scheduler;
+            var tx = lmdbTransaction.Transaction;
+            var catchAll = scheduler.Catch<Exception>(ex =>
+            {
+                tcs.SetException(ex);
+                return true;
+            });
+            catchAll.Schedule(() =>
+            {
+                MoveToQueue(tx, queueName, message);
+                tcs.SetResult(true);
+            });
+            return tcs.Task;
         }
 
         public void StoreMessages(ITransaction transaction, params IncomingMessage[] messages)
@@ -87,6 +101,30 @@ namespace LightningQueues.Storage.LMDB
 
         public void MoveToQueue(ITransaction transaction, string queueName, IncomingMessage message)
         {
+            var tx = ((LmdbTransaction) transaction).Transaction;
+            MoveToQueue(tx, queueName, message);
+        }
+
+        private void MoveToQueue(LightningTransaction tx, string queueName, IncomingMessage message)
+        {
+            try
+            {
+                var original = tx.OpenDatabase(message.Queue);
+                tx.Delete(original, message.Id.ToString());
+                tx.Delete(original, $"{message.Id}/headers");
+                tx.Delete(original, $"{message.Id}/sent");
+                var newDb = tx.OpenDatabase(queueName);
+                tx.Put(newDb, message.Id.ToString(), message.Data);
+                tx.Put(newDb, $"{message.Id}/headers", message.Headers.ToBytes());
+                tx.Put(newDb, $"{message.Id}/sent", BitConverter.GetBytes(message.SentAt.ToBinary()));
+            }
+            catch (LightningException ex)
+            {
+                tx.Dispose();
+                if (ex.StatusCode == -30798) //MDB_NOTFOUND
+                    throw new QueueDoesNotExistException("Queue doesn't exist", ex);
+                throw;
+            }
         }
 
         public void CreateQueue(string queueName)

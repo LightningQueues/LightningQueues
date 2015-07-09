@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using LightningDB;
+﻿using LightningDB;
 using System.Text;
 
 namespace LightningQueues.Storage.LMDB
@@ -16,12 +15,9 @@ namespace LightningQueues.Storage.LMDB
             transaction.Put(db, Encoding.UTF8.GetBytes(key), value);
         }
 
-        public static void CloseAll(this IEnumerable<LightningDatabase> databases)
+        public static void Delete(this LightningTransaction transaction, LightningDatabase db, string key)
         {
-            foreach (var lightningDatabase in databases)
-            {
-                lightningDatabase.Dispose();
-            }
+            transaction.Delete(db, Encoding.UTF8.GetBytes(key));
         }
     }
 }
