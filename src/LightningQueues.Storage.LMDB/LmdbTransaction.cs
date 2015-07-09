@@ -5,31 +5,69 @@ using LightningDB;
 
 namespace LightningQueues.Storage.LMDB
 {
-    public class LmdbTransaction : ITransaction
+    public class LmdbTransaction : ITransaction, IAsyncTransaction
     {
         private readonly LightningTransaction _transaction;
         private readonly IScheduler _scheduler;
 
-        public LmdbTransaction(LightningTransaction transaction, IScheduler scheduler)
+        private LmdbTransaction(LightningTransaction transaction, IScheduler scheduler)
         {
-            _transaction = transaction;
             _scheduler = scheduler;
+            _transaction = transaction;
             TransactionId = Guid.NewGuid();
+        }
+
+        public LmdbTransaction(LightningEnvironment env)
+        {
+            _transaction = env.BeginTransaction();
+        }
+
+        public LightningTransaction Transaction => _transaction;
+        public IScheduler Scheduler => _scheduler;
+
+        public static async Task<IAsyncTransaction> CreateAsync(LightningEnvironment env, IScheduler scheduler)
+        {
+            var tcs = new TaskCompletionSource<LightningTransaction>();
+            scheduler.Schedule(() =>
+            {
+                try
+                {
+                    var tx = env.BeginTransaction();
+                    tcs.SetResult(tx);
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            });
+            var transaction = await tcs.Task;
+            return new LmdbTransaction(transaction, scheduler);
         }
 
         public Guid TransactionId { get; }
 
-        public Task Commit()
+        Task IAsyncTransaction.Commit()
         {
-            return TransactionAction(x => x.Commit());
+            return AsyncTransactionAction(x => x.Commit());
         }
 
-        public Task Rollback()
+        Task IAsyncTransaction.Rollback()
         {
-            return TransactionAction(x => x.Dispose());
+            return AsyncTransactionAction(x => x.Dispose());
         }
 
-        private Task TransactionAction(Action<LightningTransaction> action)
+        void ITransaction.Rollback()
+        {
+            _transaction.Dispose();
+        }
+
+        void ITransaction.Commit()
+        {
+            using(_transaction)
+                _transaction.Commit();
+        }
+
+        private Task AsyncTransactionAction(Action<LightningTransaction> action)
         {
             var tcs = new TaskCompletionSource<bool>();
             var catchAll = _scheduler.Catch<Exception>(ex =>

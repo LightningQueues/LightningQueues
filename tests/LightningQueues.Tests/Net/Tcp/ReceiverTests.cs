@@ -7,33 +7,38 @@ using System.Threading.Tasks;
 using LightningQueues.Net;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Tcp;
-using LightningQueues.Storage.InMemory;
+using LightningQueues.Storage;
+using LightningQueues.Storage.LMDB;
+using LightningQueues.Tests.Storage.Lmdb;
 using Xunit;
 
 namespace LightningQueues.Tests.Net.Tcp
 {
-    public class ReceiverTests
+    [Collection("SharedTestDirectory")]
+    public class ReceiverTests : IDisposable
     {
+        readonly IMessageStore _store;
         readonly SendingProtocol _sender;
         readonly Receiver _receiver;
         readonly IPEndPoint _endpoint;
         readonly RecordingLogger _logger;
 
-        public ReceiverTests()
+        public ReceiverTests(SharedTestDirectory testDirectory)
         {
             var port = PortFinder.FindPort(); //to make it possible to run in parallel
             _endpoint = new IPEndPoint(IPAddress.Loopback, port);
             _logger = new RecordingLogger();
             _sender = new SendingProtocol(_logger);
-            var store = new MessageStore();
-            store.CreateQueue("test");
-            var protocol = new ReceivingProtocol(store, _logger);
+            _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
+            _store.CreateQueue("test");
+            var protocol = new ReceivingProtocol(_store, _logger);
             _receiver = new Receiver(_endpoint, protocol);
         }
 
         [Fact]
         public void stops_listening_on_dispose_of_subscription()
         {
+            using(_receiver)
             using (_receiver.StartReceiving().Subscribe(x => { }))
             {
                 try
@@ -140,6 +145,12 @@ namespace LightningQueues.Tests.Net.Tcp
             actual.Id.ShouldEqual(expected.Id);
             actual.Queue.ShouldEqual(expected.Queue);
             Encoding.UTF8.GetString(actual.Data).ShouldEqual("hello");
+        }
+
+        public void Dispose()
+        {
+            _receiver.Dispose();
+            _store.Dispose();
         }
     }
 }

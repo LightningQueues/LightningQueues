@@ -70,7 +70,7 @@ namespace LightningQueues.Net.Protocol.V1
             await stream.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
         }
 
-        public async Task StoreMessages(Stream stream, IncomingMessage[] messages)
+        public async Task StoreMessages(Stream stream, params IncomingMessage[] messages)
         {
             var transaction = await BeginTransaction(stream, messages);
             await ReceiveAcknowledgement(stream, transaction);
@@ -78,12 +78,14 @@ namespace LightningQueues.Net.Protocol.V1
             _logger.Debug("Finished storing messages");
         }
 
-        public async Task<ITransaction> BeginTransaction(Stream stream, IncomingMessage[] messages)
+        public async Task<IAsyncTransaction> BeginTransaction(Stream stream, IncomingMessage[] messages)
         {
             try
             {
-                var transaction = await _store.StoreMessages(messages);
-                return transaction;
+                var store = _store.Async;
+                var tx = await store.BeginTransaction();
+                await store.StoreMessages(tx, messages);
+                return tx;
             }
             catch(QueueDoesNotExistException)
             {
@@ -99,7 +101,7 @@ namespace LightningQueues.Net.Protocol.V1
             }
         }
 
-        public async Task ReceiveAcknowledgement(Stream stream, ITransaction transaction)
+        public async Task ReceiveAcknowledgement(Stream stream, IAsyncTransaction transaction)
         {
             try
             {
@@ -120,7 +122,7 @@ namespace LightningQueues.Net.Protocol.V1
             }
         }
 
-        public async Task ActualCommit(Stream stream, ITransaction transaction)
+        public async Task ActualCommit(Stream stream, IAsyncTransaction transaction)
         {
             try
             {

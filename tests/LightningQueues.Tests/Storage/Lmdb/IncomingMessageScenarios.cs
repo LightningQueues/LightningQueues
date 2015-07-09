@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using Xunit;
@@ -22,12 +21,13 @@ namespace LightningQueues.Tests.Storage.Lmdb
         }
 
         [Fact]
-        public async Task happy_path_success()
+        public void happy_path_success()
         {
             var message = NewIncomingMessage();
             _store.CreateQueue(message.Queue);
-            var transaction = await _store.StoreMessages(message);
-            await transaction.Commit();
+            var transaction = _store.BeginTransaction();
+            _store.StoreMessages(transaction, message);
+            transaction.Commit();
             using (var tx = _store.Environment.BeginTransaction())
             {
                 using (var db = tx.OpenDatabase(message.Queue))
@@ -41,18 +41,23 @@ namespace LightningQueues.Tests.Storage.Lmdb
         }
 
         [Fact]
-        public async Task storing_message_for_queue_that_doesnt_exist()
+        public void storing_message_for_queue_that_doesnt_exist()
         {
             var message = NewIncomingMessage();
-            await Assert.ThrowsAsync<QueueDoesNotExistException>(async () => await _store.StoreMessages(message));
+            Assert.Throws<QueueDoesNotExistException>(() =>
+            {
+                var tx = _store.BeginTransaction();
+                _store.StoreMessages(tx, message);
+            });
         }
 
         [Fact]
-        public async Task crash_before_commit()
+        public void crash_before_commit()
         {
             var message = NewIncomingMessage();
             _store.CreateQueue(message.Queue);
-            await _store.StoreMessages(message);
+            var transaction = _store.BeginTransaction();
+            _store.StoreMessages(transaction, message);
             _store.Dispose();
             //crash
             _store = new LmdbMessageStore(_queuePath);
@@ -67,12 +72,13 @@ namespace LightningQueues.Tests.Storage.Lmdb
         }
 
         [Fact]
-        public async Task rollback_messages_received()
+        public void rollback_messages_received()
         {
             var message = NewIncomingMessage();
             _store.CreateQueue(message.Queue);
-            var transaction = await _store.StoreMessages(message);
-            await transaction.Rollback();
+            var transaction = _store.BeginTransaction();
+            _store.StoreMessages(transaction, message);
+            transaction.Rollback();
             using (var tx = _store.Environment.BeginTransaction())
             {
                 using (var db = tx.OpenDatabase(message.Queue))

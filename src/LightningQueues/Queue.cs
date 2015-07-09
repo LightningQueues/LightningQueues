@@ -1,0 +1,83 @@
+﻿using System;
+using System.Net;
+using System.Reactive.Concurrency;
+using System.Reactive.Disposables;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
+using LightningQueues.Net.Tcp;
+using LightningQueues.Storage;
+
+namespace LightningQueues
+{
+    public class Queue : IDisposable
+    {
+        private readonly Receiver _receiver;
+        private readonly IMessageStore _messageStore;
+        private readonly Subject<IncomingMessage> _receiveSubject;
+        private readonly IScheduler _scheduler;
+
+        public Queue(Receiver receiver, IMessageStore messageStore) : this(receiver, messageStore, TaskPoolScheduler.Default)
+        {
+        }
+
+        public Queue(Receiver receiver, IMessageStore messageStore, IScheduler scheduler)
+        {
+            _receiver = receiver;
+            _messageStore = messageStore;
+            _receiveSubject = new Subject<IncomingMessage>();
+            _scheduler = scheduler;
+        }
+
+        public IPEndPoint Endpoint => _receiver.Endpoint;
+
+        public IObservable<IncomingMessage> ReceiveIncoming(string queueName)
+        {
+            return _messageStore.PersistedMessages(queueName)
+                .Concat(_receiver.StartReceiving())
+                .Merge(_receiveSubject)
+                .Where(x => x.Queue == queueName);
+        }
+
+        public void MoveToQueue(string queueName, IncomingMessage message)
+        {
+            var tx = _messageStore.BeginTransaction();
+            _messageStore.MoveToQueue(tx, queueName, message);
+            tx.Commit();
+            message.Queue = queueName;
+            _receiveSubject.OnNext(message);
+        }
+
+        public void Enqueue(IncomingMessage message)
+        {
+            var tx = _messageStore.BeginTransaction();
+            _messageStore.StoreMessages(tx, message);
+            tx.Commit();
+            _receiveSubject.OnNext(message);
+        }
+
+        public void ReceiveLater(IncomingMessage message, TimeSpan timeSpan)
+        {
+            _scheduler.Schedule(message, timeSpan, (sch, msg) =>
+            {
+                _receiveSubject.OnNext(msg);
+                return Disposable.Empty;
+            });
+        }
+
+        public void ReceiveLater(IncomingMessage message, DateTimeOffset time)
+        {
+            _scheduler.Schedule(message, time, (sch, msg) =>
+            {
+                _receiveSubject.OnNext(msg);
+                return Disposable.Empty;
+            });
+        }
+
+        public void Dispose()
+        {
+            _receiver.Dispose();
+            _receiveSubject.Dispose();
+            _messageStore.Dispose();
+        }
+    }
+}

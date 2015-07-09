@@ -33,5 +33,10 @@ namespace LightningQueues.Tests
         {
             Assert.Null(value);
         }
+
+        public static void ShouldBeSame<T>(this T expected, T target)
+        {
+            Assert.Same(expected, target);
+        }
     }
 }

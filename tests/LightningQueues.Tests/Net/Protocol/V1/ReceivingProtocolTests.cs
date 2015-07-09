@@ -7,23 +7,25 @@ using System.Threading.Tasks;
 using LightningQueues.Storage;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Protocol;
-using LightningQueues.Storage.InMemory;
+using LightningQueues.Storage.LMDB;
+using LightningQueues.Tests.Storage.Lmdb;
 
 namespace LightningQueues.Tests.Net.Protocol.V1
 {
-    public class ReceivingProtocolTests
+    [Collection("SharedTestDirectory")]
+    public class ReceivingProtocolTests : IDisposable
     {
         readonly RecordingLogger _logger;
         readonly ReceivingProtocol _protocol;
         readonly TestScheduler _scheduler;
+        readonly IMessageStore _store;
 
-        public ReceivingProtocolTests()
+        public ReceivingProtocolTests(SharedTestDirectory testDirectory)
         {
             _logger = new RecordingLogger();
             _scheduler = new TestScheduler();
-            var store = new MessageStore();
-            store.CreateQueue("test");
-            _protocol = new ReceivingProtocol(store, _logger, _scheduler);
+            _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
+            _protocol = new ReceivingProtocol(_store, _logger, _scheduler);
         }
 
         [Fact]
@@ -97,12 +99,11 @@ namespace LightningQueues.Tests.Net.Protocol.V1
         public async Task storing_to_a_queue_that_doesnt_exist()
         {
             byte[] errorBytes = null;
-            var protocol = new ReceivingProtocol(new ThrowingMessageStore<QueueDoesNotExistException>(), _logger);
             using (var ms = new MemoryStream())
             {
                 try
                 {
-                    await protocol.StoreMessages(ms, null);
+                    await _protocol.StoreMessages(ms, ObjectMother.NewIncomingMessage("test"));
                 }
                 catch (QueueDoesNotExistException)
                 {
@@ -116,7 +117,6 @@ namespace LightningQueues.Tests.Net.Protocol.V1
         [Fact]
         public void sending_to_a_queue_that_doesnt_exist()
         {
-            var protocol = new ReceivingProtocol(new ThrowingMessageStore<QueueDoesNotExistException>(), _logger);
             var message = new IncomingMessage
             {
                 Id = MessageId.GenerateRandom(),
@@ -130,7 +130,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
                 ms.Write(BitConverter.GetBytes(bytes.Length), 0, 4);
                 ms.Write(bytes, 0, bytes.Length);
                 ms.Position = 0;
-                using (protocol.ReceiveStream(Observable.Return(ms))
+                using (_protocol.ReceiveStream(Observable.Return(ms))
                     .Subscribe(x => subscribeCalled = true))
                 {
                     subscribeCalled.ShouldBeFalse();
@@ -164,6 +164,11 @@ namespace LightningQueues.Tests.Net.Protocol.V1
 
             recording.Messages.First()
                 .Value.Exception.ShouldBeType<TimeoutException>();
+        }
+
+        public void Dispose()
+        {
+            _store.Dispose();
         }
     }
 }
