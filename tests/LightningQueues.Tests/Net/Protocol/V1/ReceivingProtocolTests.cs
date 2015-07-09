@@ -74,7 +74,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
 
         private void runLengthTest(int differenceFromActualLength)
         {
-            var message = new IncomingMessage
+            var message = new Message
             {
                 Id = MessageId.GenerateRandom(),
                 Data = System.Text.Encoding.UTF8.GetBytes("hello"),
@@ -117,7 +117,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
         [Fact]
         public void sending_to_a_queue_that_doesnt_exist()
         {
-            var message = new IncomingMessage
+            var message = new Message
             {
                 Id = MessageId.GenerateRandom(),
                 Data = System.Text.Encoding.UTF8.GetBytes("hello"),

@@ -114,14 +114,14 @@ namespace LightningQueues.Tests.Net.Tcp
         [Fact]
         public async Task receiving_a_valid_message()
         {
-            var expected = new IncomingMessage
+            var expected = new Message
             {
                 Id = MessageId.GenerateRandom(),
                 Queue = "test",
                 Data = Encoding.UTF8.GetBytes("hello")
             };
             var messages = new[] {expected};
-            var receivingCompletionSource = new TaskCompletionSource<IncomingMessage>();
+            var receivingCompletionSource = new TaskCompletionSource<Message>();
             using (_receiver.StartReceiving().Subscribe(x => { receivingCompletionSource.SetResult(x); }))
             using (var client = new TcpClient())
             {

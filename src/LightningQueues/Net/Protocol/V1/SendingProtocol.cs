@@ -17,7 +17,7 @@ namespace LightningQueues.Net.Protocol.V1
             _logger = logger;
         }
 
-        public IObservable<IncomingMessage> SendStream(IObservable<OutgoingMessageBatch> observableMessages)
+        public IObservable<Message> SendStream(IObservable<OutgoingMessageBatch> observableMessages)
         {
             return from tuple in SerializeOutgoing(observableMessages)
                                     .Do(x => WriteLength(x.Item2.Stream, x.Item1.Length))

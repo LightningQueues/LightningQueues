@@ -19,7 +19,7 @@ namespace LightningQueues.Storage.LMDB
 
         public LightningEnvironment Environment => _environment;
 
-        public Task StoreMessages(IAsyncTransaction transaction, params IncomingMessage[] messages)
+        public Task StoreMessages(IAsyncTransaction transaction, params Message[] messages)
         {
             var lmdbTransaction = (LmdbTransaction)transaction;
             var tcs = new TaskCompletionSource<bool>();
@@ -38,7 +38,7 @@ namespace LightningQueues.Storage.LMDB
             return tcs.Task;
         }
 
-        private void StoreMessages(LightningTransaction tx, params IncomingMessage[] messages)
+        private void StoreMessages(LightningTransaction tx, params Message[] messages)
         {
             try
             {
@@ -69,7 +69,7 @@ namespace LightningQueues.Storage.LMDB
             return new LmdbTransaction(_environment);
         }
 
-        public Task MoveToQueue(IAsyncTransaction transaction, string queueName, IncomingMessage message)
+        public Task MoveToQueue(IAsyncTransaction transaction, string queueName, Message message)
         {
             var lmdbTransaction = (LmdbTransaction)transaction;
             var tcs = new TaskCompletionSource<bool>();
@@ -88,24 +88,33 @@ namespace LightningQueues.Storage.LMDB
             return tcs.Task;
         }
 
-        public void StoreMessages(ITransaction transaction, params IncomingMessage[] messages)
+        public void StoreMessages(ITransaction transaction, params Message[] messages)
         {
             var tx = ((LmdbTransaction)transaction).Transaction;
             StoreMessages(tx, messages);
         }
 
-        public IObservable<IncomingMessage> PersistedMessages(string queueName)
+        public IObservable<Message> PersistedMessages(string queueName)
         {
-            return Observable.Never<IncomingMessage>();
+            return Observable.Never<Message>();
         }
 
-        public void MoveToQueue(ITransaction transaction, string queueName, IncomingMessage message)
+        public void MoveToQueue(ITransaction transaction, string queueName, Message message)
         {
             var tx = ((LmdbTransaction) transaction).Transaction;
             MoveToQueue(tx, queueName, message);
         }
 
-        private void MoveToQueue(LightningTransaction tx, string queueName, IncomingMessage message)
+        public void SuccessfullyReceived(Message message)
+        {
+        }
+
+        public void SendMessage(Uri destination, Message message)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void MoveToQueue(LightningTransaction tx, string queueName, Message message)
         {
             try
             {

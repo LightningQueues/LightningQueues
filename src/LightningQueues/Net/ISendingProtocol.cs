@@ -4,6 +4,6 @@ namespace LightningQueues.Net
 {
     public interface ISendingProtocol
     {
-        IObservable<IncomingMessage> SendStream(IObservable<OutgoingMessageBatch> messages);
+        IObservable<Message> SendStream(IObservable<OutgoingMessageBatch> messages);
     }
 }

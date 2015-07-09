@@ -10,7 +10,7 @@ namespace LightningQueues.Tests.Net.Protocol
         [Fact]
         public void can_serialize_and_deserialize()
         {
-            var expected = new IncomingMessage
+            var expected = new Message
             {
                 Data = Encoding.UTF8.GetBytes("hello"),
                 Id = MessageId.GenerateRandom(),

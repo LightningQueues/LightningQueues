@@ -27,12 +27,12 @@ namespace LightningQueues.Net.Protocol.V1
         }
         
 
-        public IObservable<IncomingMessage> ReceiveStream(IObservable<Stream> streams)
+        public IObservable<Message> ReceiveStream(IObservable<Stream> streams)
         {
             return receiveStream(streams).Timeout(TimeSpan.FromSeconds(5), _scheduler);
         }
 
-        private IObservable<IncomingMessage> receiveStream(IObservable<Stream> streams)
+        private IObservable<Message> receiveStream(IObservable<Stream> streams)
         {
             return from stream in streams.Do(x => _logger.Debug("Starting to read stream."))
                    from length in LengthChunk(stream)
@@ -50,11 +50,11 @@ namespace LightningQueues.Net.Protocol.V1
                 .Where(x => x >= 0);
         }
 
-        public IObservable<IncomingMessage[]> MessagesChunk(Stream stream, int length)
+        public IObservable<Message[]> MessagesChunk(Stream stream, int length)
         {
             return Observable.FromAsync(() => stream.ReadBytesAsync(length))
                 .Select(x => x.ToMessages()).Do(x => _logger.Debug("Successfully read messages"))
-                .Catch((Exception ex) => sendSerializationError<IncomingMessage[]>(stream, ex));
+                .Catch((Exception ex) => sendSerializationError<Message[]>(stream, ex));
         }
 
         private IObservable<T> sendSerializationError<T>(Stream stream, Exception ex)
@@ -70,7 +70,7 @@ namespace LightningQueues.Net.Protocol.V1
             await stream.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
         }
 
-        public async Task StoreMessages(Stream stream, params IncomingMessage[] messages)
+        public async Task StoreMessages(Stream stream, params Message[] messages)
         {
             var transaction = await BeginTransaction(stream, messages);
             await ReceiveAcknowledgement(stream, transaction);
@@ -78,7 +78,7 @@ namespace LightningQueues.Net.Protocol.V1
             _logger.Debug("Finished storing messages");
         }
 
-        public async Task<IAsyncTransaction> BeginTransaction(Stream stream, IncomingMessage[] messages)
+        public async Task<IAsyncTransaction> BeginTransaction(Stream stream, Message[] messages)
         {
             try
             {

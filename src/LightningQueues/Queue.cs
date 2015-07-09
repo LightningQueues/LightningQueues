@@ -13,7 +13,7 @@ namespace LightningQueues
     {
         private readonly Receiver _receiver;
         private readonly IMessageStore _messageStore;
-        private readonly Subject<IncomingMessage> _receiveSubject;
+        private readonly Subject<Message> _receiveSubject;
         private readonly IScheduler _scheduler;
 
         public Queue(Receiver receiver, IMessageStore messageStore) : this(receiver, messageStore, TaskPoolScheduler.Default)
@@ -24,21 +24,26 @@ namespace LightningQueues
         {
             _receiver = receiver;
             _messageStore = messageStore;
-            _receiveSubject = new Subject<IncomingMessage>();
+            _receiveSubject = new Subject<Message>();
             _scheduler = scheduler;
         }
 
         public IPEndPoint Endpoint => _receiver.Endpoint;
 
-        public IObservable<IncomingMessage> ReceiveIncoming(string queueName)
+        internal IMessageStore Store => _messageStore;
+
+        internal ISubject<Message> ReceiveLoop => _receiveSubject; 
+
+        public IObservable<MessageContext> ReceiveIncoming(string queueName)
         {
             return _messageStore.PersistedMessages(queueName)
                 .Concat(_receiver.StartReceiving())
                 .Merge(_receiveSubject)
-                .Where(x => x.Queue == queueName);
+                .Where(x => x.Queue == queueName)
+                .Select(x => new MessageContext(x, this));
         }
 
-        public void MoveToQueue(string queueName, IncomingMessage message)
+        public void MoveToQueue(string queueName, Message message)
         {
             var tx = _messageStore.BeginTransaction();
             _messageStore.MoveToQueue(tx, queueName, message);
@@ -47,7 +52,7 @@ namespace LightningQueues
             _receiveSubject.OnNext(message);
         }
 
-        public void Enqueue(IncomingMessage message)
+        public void Enqueue(Message message)
         {
             var tx = _messageStore.BeginTransaction();
             _messageStore.StoreMessages(tx, message);
@@ -55,7 +60,7 @@ namespace LightningQueues
             _receiveSubject.OnNext(message);
         }
 
-        public void ReceiveLater(IncomingMessage message, TimeSpan timeSpan)
+        public void ReceiveLater(Message message, TimeSpan timeSpan)
         {
             _scheduler.Schedule(message, timeSpan, (sch, msg) =>
             {
@@ -64,7 +69,7 @@ namespace LightningQueues
             });
         }
 
-        public void ReceiveLater(IncomingMessage message, DateTimeOffset time)
+        public void ReceiveLater(Message message, DateTimeOffset time)
         {
             _scheduler.Schedule(message, time, (sch, msg) =>
             {

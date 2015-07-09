@@ -3,11 +3,12 @@ using System.Collections.Generic;
 
 namespace LightningQueues
 {
-    public class IncomingMessage
+    public class Message
     {
-        public IncomingMessage()
+        public Message()
         {
             Headers = new Dictionary<string, string>();
+            SentAt = DateTime.UtcNow;
         }
 
         public MessageId Id { get; set; }

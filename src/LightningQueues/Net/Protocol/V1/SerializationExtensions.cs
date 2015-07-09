@@ -6,16 +6,16 @@ namespace LightningQueues.Net.Protocol.V1
 {
     public static class SerializationExtensions
     {
-        public static IncomingMessage[] ToMessages(this byte[] buffer)
+        public static Message[] ToMessages(this byte[] buffer)
         {
             using (var ms = new MemoryStream(buffer))
             using (var br = new BinaryReader(ms))
             {
                 var numberOfMessages = br.ReadInt32();
-                var msgs = new IncomingMessage[numberOfMessages];
+                var msgs = new Message[numberOfMessages];
                 for (int i = 0; i < numberOfMessages; i++)
                 {
-                    var msg = msgs[i] = new IncomingMessage
+                    var msg = msgs[i] = new Message
                     {
                         Id = new MessageId
                         {
@@ -44,7 +44,7 @@ namespace LightningQueues.Net.Protocol.V1
             }
         }
 
-        public static byte[] Serialize(this IncomingMessage[] messages)
+        public static byte[] Serialize(this Message[] messages)
         {
             using (var stream = new MemoryStream())
             using (var writer = new BinaryWriter(stream))

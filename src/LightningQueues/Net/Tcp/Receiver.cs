@@ -11,7 +11,7 @@ namespace LightningQueues.Net.Tcp
         readonly TcpListener _listener;
         readonly IReceivingProtocol _protocol;
         bool _disposed;
-        IObservable<IncomingMessage> _stream;
+        IObservable<Message> _stream;
         private readonly object _lockObject;
         
         public Receiver(IPEndPoint endpoint, IReceivingProtocol protocol)
@@ -27,7 +27,7 @@ namespace LightningQueues.Net.Tcp
 
         public IPEndPoint Endpoint { get; }
 
-        public IObservable<IncomingMessage> StartReceiving()
+        public IObservable<Message> StartReceiving()
         {
             lock (_lockObject)
             {
