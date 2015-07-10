@@ -44,12 +44,12 @@ namespace LightningQueues.Net.Protocol.V1
             }
         }
 
-        public static byte[] Serialize(this Message[] messages)
+        public static byte[] Serialize(this IList<OutgoingMessage> messages)
         {
             using (var stream = new MemoryStream())
             using (var writer = new BinaryWriter(stream))
             {
-                writer.Write(messages.Length);
+                writer.Write(messages.Count);
                 foreach (var message in messages)
                 {
                     writer.Write(message.Id.SourceInstanceId.ToByteArray());

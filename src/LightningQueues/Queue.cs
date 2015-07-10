@@ -11,21 +11,24 @@ namespace LightningQueues
 {
     public class Queue : IDisposable
     {
+        private readonly Sender _sender;
         private readonly Receiver _receiver;
         private readonly IMessageStore _messageStore;
         private readonly Subject<Message> _receiveSubject;
         private readonly IScheduler _scheduler;
 
-        public Queue(Receiver receiver, IMessageStore messageStore) : this(receiver, messageStore, TaskPoolScheduler.Default)
+        public Queue(Receiver receiver, Sender sender, IMessageStore messageStore) : this(receiver, sender, messageStore, TaskPoolScheduler.Default)
         {
         }
 
-        public Queue(Receiver receiver, IMessageStore messageStore, IScheduler scheduler)
+        public Queue(Receiver receiver, Sender sender, IMessageStore messageStore, IScheduler scheduler)
         {
             _receiver = receiver;
+            _sender = sender;
             _messageStore = messageStore;
             _receiveSubject = new Subject<Message>();
             _scheduler = scheduler;
+            _sender.StartSending();
         }
 
         public IPEndPoint Endpoint => _receiver.Endpoint;
@@ -69,6 +72,13 @@ namespace LightningQueues
             });
         }
 
+        public void Send(OutgoingMessage message)
+        {
+            var tx = _messageStore.BeginTransaction();
+            _messageStore.StoreOutgoing(tx, message);
+            tx.Commit();
+        }
+
         public void ReceiveLater(Message message, DateTimeOffset time)
         {
             _scheduler.Schedule(message, time, (sch, msg) =>
@@ -80,6 +90,7 @@ namespace LightningQueues
 
         public void Dispose()
         {
+            _sender.Dispose();
             _receiver.Dispose();
             _receiveSubject.Dispose();
             _messageStore.Dispose();

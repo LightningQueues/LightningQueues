@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Reactive.Linq;
@@ -114,7 +115,7 @@ namespace LightningQueues.Tests.Net.Tcp
         [Fact]
         public async Task receiving_a_valid_message()
         {
-            var expected = new Message
+            var expected = new OutgoingMessage
             {
                 Id = MessageId.GenerateRandom(),
                 Queue = "test",
@@ -127,9 +128,9 @@ namespace LightningQueues.Tests.Net.Tcp
             {
                 client.Connect(_endpoint);
                 var stream = client.GetStream();
-                var outgoing = new OutgoingMessageBatch
+                var outgoing = new OutgoingMessageBatch(new Uri("lq.tcp://localhost"))
                 {
-                    Messages = messages,
+                    Messages = messages.ToList(),
                     Stream = stream
                 };
                 var completionSource = new TaskCompletionSource<bool>();

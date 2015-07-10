@@ -25,7 +25,8 @@ namespace LightningQueues.Tests
             var port = PortFinder.FindPort();
             var ipEndpoint = new IPEndPoint(IPAddress.Loopback, port);
             var receiver = new Receiver(ipEndpoint, new ReceivingProtocol(_store, new RecordingLogger()));
-            _queue = new Queue(receiver, _store, _scheduler);
+            var sender = new Sender(new SendingProtocol(new RecordingLogger()), _store);
+            _queue = new Queue(receiver, sender, _store, _scheduler);
         }
 
         [Fact]
