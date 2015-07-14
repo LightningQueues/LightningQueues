@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 
-namespace LightningQueues.Tests
+namespace LightningQueues
 {
     public static class PortFinder
     {

@@ -37,6 +37,11 @@ namespace LightningQueues
 
         internal ISubject<Message> ReceiveLoop => _receiveSubject;
 
+        public void CreateQueue(string queueName)
+        {
+            _messageStore.CreateQueue(queueName);
+        }
+
         public IObservable<MessageContext> ReceiveIncoming(string queueName)
         {
             return _messageStore.PersistedMessages(queueName)

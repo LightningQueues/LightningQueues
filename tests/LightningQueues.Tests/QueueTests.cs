@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Net;
 using System.Threading.Tasks;
-using LightningQueues.Net.Protocol.V1;
-using LightningQueues.Net.Tcp;
-using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using LightningQueues.Tests.Storage.Lmdb;
 using Xunit;
@@ -15,21 +11,17 @@ namespace LightningQueues.Tests
     {
         private readonly TestScheduler _scheduler;
         private readonly Queue _queue;
-        private readonly IMessageStore _store;
-        private readonly int _port;
 
         public QueueTests(SharedTestDirectory testDirectory)
         {
             _scheduler = new TestScheduler();
-            var path = testDirectory.CreateNewDirectoryForTest();
-            _store = new LmdbMessageStore(path);
-            _store.CreateQueue("test");
-            var logger = new RecordingLogger();
-            _port = PortFinder.FindPort();
-            var ipEndpoint = new IPEndPoint(IPAddress.Loopback, _port);
-            var receiver = new Receiver(ipEndpoint, new ReceivingProtocol(_store, logger), logger);
-            var sender = new Sender(new SendingProtocol(logger), _store, logger);
-            _queue = new Queue(receiver, sender, _store, _scheduler);
+            _queue = new QueueConfiguration()
+                .LogWith(new RecordingLogger())
+                .AutomaticEndpoint()
+                .ScheduleQueueWith(_scheduler)
+                .StoreWithLmdb(testDirectory.CreateNewDirectoryForTest())
+                .BuildQueue();
+            _queue.CreateQueue("test");
         }
 
         [Fact]
@@ -76,7 +68,7 @@ namespace LightningQueues.Tests
         [Fact]
         public void moving_queues()
         {
-            _store.CreateQueue("another");
+            _queue.CreateQueue("another");
             Message first = null;
             Message afterMove = null;
             var expected = ObjectMother.NewMessage<Message>("test");
@@ -93,7 +85,7 @@ namespace LightningQueues.Tests
         public async Task send_message_to_self()
         {
             var message = ObjectMother.NewMessage<OutgoingMessage>("test");
-            message.Destination = new Uri($"lq.tcp://localhost:{_port}");
+            message.Destination = new Uri($"lq.tcp://localhost:{_queue.Endpoint.Port}");
             _queue.Send(message);
             var received = await _queue.ReceiveIncoming("test").FirstAsyncWithTimeout();
             received.ShouldNotBeNull();
