@@ -96,12 +96,12 @@ namespace LightningQueues.Storage.LMDB
 
         public IObservable<Message> PersistedMessages(string queueName)
         {
-            return Observable.Never<Message>();
+            return Observable.Empty<Message>();
         }
 
         public IObservable<OutgoingMessage> PersistedOutgoingMessages()
         {
-            return Observable.Never<OutgoingMessage>();
+            return Observable.Empty<OutgoingMessage>();
         }
 
         public void MoveToQueue(ITransaction transaction, string queueName, Message message)
@@ -116,12 +116,10 @@ namespace LightningQueues.Storage.LMDB
 
         public void SendMessage(Uri destination, Message message)
         {
-            throw new NotImplementedException();
         }
 
         public void StoreOutgoing(ITransaction tx, OutgoingMessage message)
         {
-            throw new NotImplementedException();
         }
 
         private void MoveToQueue(LightningTransaction tx, string queueName, Message message)

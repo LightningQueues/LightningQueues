@@ -12,5 +12,13 @@ namespace LightningQueues
                    from _ in Observable.FromAsync(() => onNext(s))
                    select s;
         }
+
+        public static IObservable<T> Using<T, TDisposable>(this IObservable<TDisposable> stream, Func<TDisposable, IObservable<T>> action) where TDisposable : IDisposable
+        {
+            return stream.SelectMany(x =>
+            {
+                return Observable.Using(() => x, action);
+            });
+        }
     }
 }

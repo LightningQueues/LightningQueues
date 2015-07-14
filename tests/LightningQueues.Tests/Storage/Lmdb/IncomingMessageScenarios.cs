@@ -23,7 +23,7 @@ namespace LightningQueues.Tests.Storage.Lmdb
         [Fact]
         public void happy_path_success()
         {
-            var message = NewIncomingMessage();
+            var message = NewMessage<Message>();
             _store.CreateQueue(message.Queue);
             var transaction = _store.BeginTransaction();
             _store.StoreMessages(transaction, message);
@@ -43,7 +43,7 @@ namespace LightningQueues.Tests.Storage.Lmdb
         [Fact]
         public void storing_message_for_queue_that_doesnt_exist()
         {
-            var message = NewIncomingMessage();
+            var message = NewMessage<Message>();
             Assert.Throws<QueueDoesNotExistException>(() =>
             {
                 var tx = _store.BeginTransaction();
@@ -54,7 +54,7 @@ namespace LightningQueues.Tests.Storage.Lmdb
         [Fact]
         public void crash_before_commit()
         {
-            var message = NewIncomingMessage();
+            var message = NewMessage<Message>();
             _store.CreateQueue(message.Queue);
             var transaction = _store.BeginTransaction();
             _store.StoreMessages(transaction, message);
@@ -74,7 +74,7 @@ namespace LightningQueues.Tests.Storage.Lmdb
         [Fact]
         public void rollback_messages_received()
         {
-            var message = NewIncomingMessage();
+            var message = NewMessage<Message>();
             _store.CreateQueue(message.Queue);
             var transaction = _store.BeginTransaction();
             _store.StoreMessages(transaction, message);

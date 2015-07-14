@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using LightningQueues.Logging;
 using LightningQueues.Storage;
 
 namespace LightningQueues.Net.Tcp
@@ -12,13 +13,15 @@ namespace LightningQueues.Net.Tcp
     {
         private readonly ISendingProtocol _protocol;
         private readonly IMessageStore _store;
+        private readonly ILogger _logger;
         private readonly ISubject<OutgoingMessage> _outgoing;
         private IDisposable _sendingSubscription;
 
-        public Sender(ISendingProtocol protocol, IMessageStore store)
+        public Sender(ISendingProtocol protocol, IMessageStore store, ILogger logger)
         {
             _protocol = protocol;
             _store = store;
+            _logger = logger;
             _outgoing = new Subject<OutgoingMessage>();
         }
 
@@ -26,23 +29,30 @@ namespace LightningQueues.Net.Tcp
         {
             var outgoingByEndpoint = _store.PersistedOutgoingMessages()
                 .Merge(_outgoing)
-                .GroupBy(x => x.Destination)
-                .Buffer(TimeSpan.FromMilliseconds(200), TaskPoolScheduler.Default)
-                .Select(x => x.Aggregate(new OutgoingMessageBatch(x[0].Key),
-                    (batch, item) =>
-                    {
-                        item.Aggregate(batch, (b, msg) => b.AddMessage(msg));
-                        return batch;
-                    }));
+                .Buffer(TimeSpan.FromMilliseconds(100), TaskPoolScheduler.Default)
+                .Where(x => x.Count > 0)
+                .SelectMany(buffered =>
+                {
+                    _logger.Debug($"Buffered {buffered.Count} messages");
+                    return buffered.GroupBy(x => x.Destination)
+                    .Select(x => new OutgoingMessageBatch(x.Key, x));
+                });
             var successfullySent = (from outgoing in outgoingByEndpoint
                                    let client = new TcpClient()
-                                   from _ in Observable.FromAsync(() => client.ConnectAsync(outgoing.Destination.Host, outgoing.Destination.Port))
-                                   select Observable.Using(() => client,
-                                   disposable =>
-                                   {
-                                       outgoing.Stream = client.GetStream();
-                                       return _protocol.SendStream(Observable.Return(outgoing));
-                                   })).SelectMany(x => x);
+                                   from message in Observable.FromAsync(() => client.ConnectAsync(outgoing.Destination.Host, outgoing.Destination.Port))
+                                                       .Timeout(TimeSpan.FromSeconds(5))
+                                                       .Retry(5)
+                                                       //CustomRetry here
+                                                       .Select(x => client)
+                                                       .Using(x =>
+                                                       {
+                                                           _logger.Debug($"Client connected to server at: {outgoing.Destination}");
+                                                           outgoing.Stream = x.GetStream();
+                                                           _logger.Debug($"Sending {outgoing.Messages.Count} through protocol");
+                                                           return _protocol.SendStream(Observable.Return(outgoing));
+                                                       })
+                                   select message).Publish().RefCount();
+            //todo something better than subscribe internally
             _sendingSubscription = successfullySent.Subscribe(x => { });
             return successfullySent;
         }

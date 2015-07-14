@@ -2,7 +2,7 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Reactive.Linq;
-using System.Reactive.Disposables;
+using LightningQueues.Logging;
 
 namespace LightningQueues.Net.Tcp
 {
@@ -10,15 +10,17 @@ namespace LightningQueues.Net.Tcp
     {
         readonly TcpListener _listener;
         readonly IReceivingProtocol _protocol;
+        private readonly ILogger _logger;
         bool _disposed;
         IObservable<Message> _stream;
         private readonly object _lockObject;
         
-        public Receiver(IPEndPoint endpoint, IReceivingProtocol protocol)
+        public Receiver(IPEndPoint endpoint, IReceivingProtocol protocol, ILogger logger)
         {
             Endpoint = endpoint;
             Timeout = TimeSpan.FromSeconds(5);
             _protocol = protocol;
+            _logger = logger;
             _listener = new TcpListener(Endpoint);
             _lockObject = new object();
         }
@@ -36,18 +38,25 @@ namespace LightningQueues.Net.Tcp
 
                 _listener.Start();
 
-                _stream = Observable.While(() => !_disposed, Observable.FromAsync(_listener.AcceptTcpClientAsync)
-                    .Repeat()
-                    .Select(x => new {Stream = x.GetStream(), Client = x})
-                    .SelectMany(x =>
-                    {
-                        return Observable.Using(() => new CompositeDisposable(x.Client, x.Stream),
-                            disposable => _protocol.ReceiveStream(Observable.Return(x.Stream)));
-                    })
+                _logger.Debug($"TcpListener started listening on port: {Endpoint.Port}");
+                _stream = Observable.While(IsNotDisposed, ContinueAcceptingNewClients())
+                    .Using(x => _protocol.ReceiveStream(Observable.Return(x.GetStream())))
                     .Publish()
-                    .RefCount());
+                    .RefCount();
             }
             return _stream;
+        }
+
+        private bool IsNotDisposed()
+        {
+            return !_disposed;
+        }
+
+        private IObservable<TcpClient> ContinueAcceptingNewClients()
+        {
+            return Observable.FromAsync(() => _listener.AcceptTcpClientAsync())
+                .Do(x => _logger.Debug($"Client at {x.Client.RemoteEndPoint} connection established."))
+                .Repeat();
         }
 
         public void Dispose()

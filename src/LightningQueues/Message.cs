@@ -16,6 +16,7 @@ namespace LightningQueues
         public DateTime SentAt { get; set; }
         public IDictionary<string, string> Headers { get; set; }
         public byte[] Data { get; set; }
+        [Obsolete("This is purely for backwards compatibility in wire format")]
         public string SubQueue { get; set; }
     }
 }

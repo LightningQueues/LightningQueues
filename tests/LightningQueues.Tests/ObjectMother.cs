@@ -6,9 +6,9 @@ namespace LightningQueues.Tests
 {
     public static class ObjectMother
     {
-        public  static Message NewIncomingMessage(string queueName = "cleverqueuename", string payload = "hello", string headerValue = "myvalue")
+        public  static T NewMessage<T>(string queueName = "cleverqueuename", string payload = "hello", string headerValue = "myvalue") where T : Message, new()
         {
-            var message = new Message
+            var message = new T
             {
                 Data = Encoding.UTF8.GetBytes(payload),
                 Headers = new Dictionary<string, string>

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net;
+using System.Threading.Tasks;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Tcp;
 using LightningQueues.Storage;
@@ -15,6 +16,7 @@ namespace LightningQueues.Tests
         private readonly TestScheduler _scheduler;
         private readonly Queue _queue;
         private readonly IMessageStore _store;
+        private readonly int _port;
 
         public QueueTests(SharedTestDirectory testDirectory)
         {
@@ -22,15 +24,16 @@ namespace LightningQueues.Tests
             var path = testDirectory.CreateNewDirectoryForTest();
             _store = new LmdbMessageStore(path);
             _store.CreateQueue("test");
-            var port = PortFinder.FindPort();
-            var ipEndpoint = new IPEndPoint(IPAddress.Loopback, port);
-            var receiver = new Receiver(ipEndpoint, new ReceivingProtocol(_store, new RecordingLogger()));
-            var sender = new Sender(new SendingProtocol(new RecordingLogger()), _store);
+            var logger = new RecordingLogger();
+            _port = PortFinder.FindPort();
+            var ipEndpoint = new IPEndPoint(IPAddress.Loopback, _port);
+            var receiver = new Receiver(ipEndpoint, new ReceivingProtocol(_store, logger), logger);
+            var sender = new Sender(new SendingProtocol(logger), _store, logger);
             _queue = new Queue(receiver, sender, _store, _scheduler);
         }
 
         [Fact]
-        public void ReceiveAtALaterTime()
+        public void receive_at_a_later_time()
         {
             var received = false;
             _queue.ReceiveLater(new Message {Queue = "test"}, TimeSpan.FromSeconds(3));
@@ -44,7 +47,7 @@ namespace LightningQueues.Tests
         }
 
         [Fact]
-        public void ReceiveAtASpecificTime()
+        public void receive_at_a_specified_time()
         {
             var received = false;
             var time = DateTimeOffset.Now.AddSeconds(5);
@@ -59,10 +62,10 @@ namespace LightningQueues.Tests
         }
 
         [Fact]
-        public void EnqueueAMessage()
+        public void enqueue_a_message()
         {
             Message result = null;
-            var expected = ObjectMother.NewIncomingMessage("test");
+            var expected = ObjectMother.NewMessage<Message>("test");
             using (_queue.ReceiveIncoming("test").Subscribe(x => result = x.Message))
             {
                 _queue.Enqueue(expected);
@@ -71,12 +74,12 @@ namespace LightningQueues.Tests
         }
 
         [Fact]
-        public void MovingQueues()
+        public void moving_queues()
         {
             _store.CreateQueue("another");
             Message first = null;
             Message afterMove = null;
-            var expected = ObjectMother.NewIncomingMessage("test");
+            var expected = ObjectMother.NewMessage<Message>("test");
             using (_queue.ReceiveIncoming("another").Subscribe(x => afterMove = x.Message))
             using (_queue.ReceiveIncoming("test").Subscribe(x => first = x.Message))
             {
@@ -84,6 +87,18 @@ namespace LightningQueues.Tests
                 _queue.MoveToQueue("another", first);
             }
             afterMove.Queue.ShouldEqual("another");
+        }
+
+        [Fact]
+        public async Task send_message_to_self()
+        {
+            var message = ObjectMother.NewMessage<OutgoingMessage>("test");
+            message.Destination = new Uri($"lq.tcp://localhost:{_port}");
+            _queue.Send(message);
+            var received = await _queue.ReceiveIncoming("test").FirstAsyncWithTimeout();
+            received.ShouldNotBeNull();
+            received.Message.Queue.ShouldEqual(message.Queue);
+            received.Message.Data.ShouldEqual(message.Data);
         }
 
         public void Dispose()

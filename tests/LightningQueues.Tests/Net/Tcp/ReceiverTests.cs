@@ -33,7 +33,7 @@ namespace LightningQueues.Tests.Net.Tcp
             _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
             _store.CreateQueue("test");
             var protocol = new ReceivingProtocol(_store, _logger);
-            _receiver = new Receiver(_endpoint, protocol);
+            _receiver = new Receiver(_endpoint, protocol, _logger);
         }
 
         [Fact]
@@ -128,9 +128,8 @@ namespace LightningQueues.Tests.Net.Tcp
             {
                 client.Connect(_endpoint);
                 var stream = client.GetStream();
-                var outgoing = new OutgoingMessageBatch(new Uri("lq.tcp://localhost"))
+                var outgoing = new OutgoingMessageBatch(new Uri("lq.tcp://localhost"), messages)
                 {
-                    Messages = messages.ToList(),
                     Stream = stream
                 };
                 var completionSource = new TaskCompletionSource<bool>();

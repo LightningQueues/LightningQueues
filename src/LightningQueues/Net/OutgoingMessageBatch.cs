@@ -6,20 +6,16 @@ namespace LightningQueues.Net
 {
     public class OutgoingMessageBatch
     {
-        public OutgoingMessageBatch(Uri destination)
+        public OutgoingMessageBatch(Uri destination, IEnumerable<OutgoingMessage> messages)
         {
             Destination = destination;
-            Messages = new List<OutgoingMessage>();
+            var messagesList = new List<OutgoingMessage>();
+            messagesList.AddRange(messages);
+            Messages = messagesList;
         }
 
         public Uri Destination { get; set; }
         public Stream Stream { get; set; }
-        public IList<OutgoingMessage> Messages { get; set; }
-
-        public OutgoingMessageBatch AddMessage(OutgoingMessage message)
-        {
-            Messages.Add(message);
-            return this;
-        }
+        public IList<OutgoingMessage> Messages { get; }
     }
 }

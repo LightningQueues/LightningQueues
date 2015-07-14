@@ -103,7 +103,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
             {
                 try
                 {
-                    await _protocol.StoreMessages(ms, ObjectMother.NewIncomingMessage("test"));
+                    await _protocol.StoreMessages(ms, ObjectMother.NewMessage<Message>("test"));
                 }
                 catch (QueueDoesNotExistException)
                 {

@@ -35,7 +35,7 @@ namespace LightningQueues
 
         internal IMessageStore Store => _messageStore;
 
-        internal ISubject<Message> ReceiveLoop => _receiveSubject; 
+        internal ISubject<Message> ReceiveLoop => _receiveSubject;
 
         public IObservable<MessageContext> ReceiveIncoming(string queueName)
         {
@@ -77,6 +77,7 @@ namespace LightningQueues
             var tx = _messageStore.BeginTransaction();
             _messageStore.StoreOutgoing(tx, message);
             tx.Commit();
+            _sender.Send(message);
         }
 
         public void ReceiveLater(Message message, DateTimeOffset time)
