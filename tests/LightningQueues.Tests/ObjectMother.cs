@@ -1,6 +1,9 @@
 ﻿using System;
+using LightningQueues.Storage.LMDB;
 using System.Collections.Generic;
+using System.Reactive.Concurrency;
 using System.Text;
+using LightningQueues.Logging;
 
 namespace LightningQueues.Tests
 {
@@ -21,6 +24,18 @@ namespace LightningQueues.Tests
             };
             return message;
 
+        }
+
+        public static Queue NewLmdbQueue(string path, string queueName = "test", ILogger logger = null, IScheduler scheduler = null)
+        {
+            var queueConfiguration = new QueueConfiguration();
+            queueConfiguration.LogWith(logger ?? new RecordingLogger());
+            queueConfiguration.AutomaticEndpoint();
+            queueConfiguration.ScheduleQueueWith(scheduler ?? TaskPoolScheduler.Default);
+            queueConfiguration.StoreWithLmdb(path);
+            var queue = queueConfiguration.BuildQueue();
+            queue.CreateQueue(queueName);
+            return queue;
         }
     }
 }

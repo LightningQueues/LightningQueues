@@ -4,7 +4,7 @@ using Microsoft.Framework.Runtime;
 using Microsoft.Framework.Runtime.Infrastructure;
 using Xunit;
 
-namespace LightningQueues.Tests.Storage.Lmdb
+namespace LightningQueues.Tests
 {
     public class SharedTestDirectory : IDisposable
     {

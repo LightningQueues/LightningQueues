@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Threading.Tasks;
-using LightningQueues.Storage.LMDB;
-using LightningQueues.Tests.Storage.Lmdb;
 using Xunit;
 
 namespace LightningQueues.Tests
@@ -15,13 +13,7 @@ namespace LightningQueues.Tests
         public QueueTests(SharedTestDirectory testDirectory)
         {
             _scheduler = new TestScheduler();
-            _queue = new QueueConfiguration()
-                .LogWith(new RecordingLogger())
-                .AutomaticEndpoint()
-                .ScheduleQueueWith(_scheduler)
-                .StoreWithLmdb(testDirectory.CreateNewDirectoryForTest())
-                .BuildQueue();
-            _queue.CreateQueue("test");
+            _queue = ObjectMother.NewLmdbQueue(testDirectory.CreateNewDirectoryForTest(), scheduler: _scheduler);
         }
 
         [Fact]

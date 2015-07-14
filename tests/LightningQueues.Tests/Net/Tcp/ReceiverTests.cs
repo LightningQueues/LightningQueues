@@ -10,7 +10,6 @@ using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Tcp;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
-using LightningQueues.Tests.Storage.Lmdb;
 using Xunit;
 
 namespace LightningQueues.Tests.Net.Tcp

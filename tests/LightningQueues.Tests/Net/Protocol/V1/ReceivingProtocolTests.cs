@@ -8,7 +8,6 @@ using LightningQueues.Storage;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Protocol;
 using LightningQueues.Storage.LMDB;
-using LightningQueues.Tests.Storage.Lmdb;
 
 namespace LightningQueues.Tests.Net.Protocol.V1
 {
