@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace LightningQueues.Storage
 {
@@ -36,24 +35,6 @@ namespace LightningQueues.Storage
                 }
             }
             return dictionary;
-        } 
-
-        public static IEnumerator<KeyValuePair<string, byte[]>> GetEnumerator(this SortedList<string, byte[]> list, string keyStart)
-        {
-            var keys = list.Keys.ToList();
-            var values = list.Values.ToList();
-            for (var i = list.IndexOfKey(keyStart); i < list.Count && i >= 0; i++)
-            {
-                var key = keys[i];
-                if(!key.StartsWith(keyStart))
-                    yield break;
-                yield return new KeyValuePair<string, byte[]>(keys[i], values[i]);
-            }
-        }
-
-        public static IEnumerable<T> Yield<T>(this T item)
-        {
-            yield return item;
         } 
     }
 }

@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Concurrency;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -62,7 +62,7 @@ namespace LightningQueues.Storage.LMDB
             return ExecuteScheduledAction(transaction, tx => MoveToQueue(tx, queueName, message));
         }
 
-        public Task FailedToSend(IAsyncTransaction transaction, IList<OutgoingMessage> messages)
+        public Task FailedToSend(IAsyncTransaction transaction, params OutgoingMessage[] messages)
         {
             return ExecuteScheduledAction(transaction, tx =>
             {
@@ -93,14 +93,14 @@ namespace LightningQueues.Storage.LMDB
             return tcs.Task;
         }
 
-        public Task SuccessfullySent(IAsyncTransaction transaction, IList<OutgoingMessage> messages)
+        public Task SuccessfullySent(IAsyncTransaction transaction, params OutgoingMessage[] messages)
         {
             return ExecuteScheduledAction(transaction, tx => SuccessfullySent(tx, messages));
         }
 
-        private void SuccessfullySent(LightningTransaction tx, IList<OutgoingMessage> messages)
+        private void SuccessfullySent(LightningTransaction tx, params OutgoingMessage[] messages)
         {
-            RemoveMessageFromStorage(tx, messages, "outgoing");
+            RemoveMessageFromStorage(tx, "outgoing", messages.Cast<Message>().ToArray());
         }
 
         public void StoreMessages(ITransaction transaction, params Message[] messages)
@@ -111,12 +111,91 @@ namespace LightningQueues.Storage.LMDB
 
         public IObservable<Message> PersistedMessages(string queueName)
         {
-            return Observable.Empty<Message>();
+            return Observable.Create<Message>(x =>
+            {
+                try
+                {
+                    using (var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly))
+                    using (var db = tx.OpenDatabase(queueName))
+                    using (var cursor = tx.CreateCursor(db))
+                    {
+                        while (cursor.MoveNext())
+                        {
+                            var current = cursor.Current;
+                            var message = new Message();
+                            message.Id = MessageId.Parse(Encoding.UTF8.GetString(current.Key));
+                            message.Data = current.Value;
+                            cursor.MoveNext();
+                            current = cursor.Current;
+                            message.Headers = current.Value.ToDictionary();
+                            cursor.MoveNext();
+                            current = cursor.Current;
+                            message.SentAt = DateTime.FromBinary(BitConverter.ToInt64(current.Value, 0));
+                            message.Queue = queueName;
+                            x.OnNext(message);
+                        }
+                    }
+                    x.OnCompleted();
+                }
+                catch (Exception ex)
+                {
+                    x.OnError(ex);
+                }
+                return Disposable.Empty;
+            });
         }
 
         public IObservable<OutgoingMessage> PersistedOutgoingMessages()
         {
-            return Observable.Empty<OutgoingMessage>();
+            return Observable.Create<OutgoingMessage>(x =>
+            {
+                try
+                {
+                    using (var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly))
+                    using (var db = tx.OpenDatabase("outgoing"))
+                    using (var cursor = tx.CreateCursor(db))
+                    {
+                        while (cursor.MoveNext())
+                        {
+                            var current = cursor.Current;
+                            var message = new OutgoingMessage();
+                            var key = Encoding.UTF8.GetString(current.Key);
+                            message.Id = MessageId.Parse(key);
+                            message.Data = current.Value;
+                            cursor.MoveNext();
+                            cursor.MoveNext(); //move past attempts
+                            current = cursor.Current;
+                            var date = DateTime.FromBinary(BitConverter.ToInt64(current.Value, 0));
+                            if (date != DateTime.MinValue)
+                                message.DeliverBy = date;
+                            cursor.MoveNext();
+                            current = cursor.Current;
+                            message.Headers = current.Value.ToDictionary();
+                            cursor.MoveNext();
+                            current = cursor.Current;
+                            var maxAttempts = BitConverter.ToInt32(current.Value, 0);
+                            if (maxAttempts != 0)
+                                message.MaxAttempts = maxAttempts;
+                            cursor.MoveNext();
+                            current = cursor.Current;
+                            message.Queue = Encoding.UTF8.GetString(current.Value);
+                            cursor.MoveNext();
+                            current = cursor.Current;
+                            message.SentAt = DateTime.FromBinary(BitConverter.ToInt64(current.Value, 0));
+                            cursor.MoveNext();
+                            current = cursor.Current;
+                            message.Destination = new Uri(Encoding.UTF8.GetString(current.Value));
+                            x.OnNext(message);
+                        }
+                    }
+                    x.OnCompleted();
+                }
+                catch (Exception ex)
+                {
+                    x.OnError(ex);
+                }
+                return Disposable.Empty;
+            });
         }
 
         public void MoveToQueue(ITransaction transaction, string queueName, Message message)
@@ -133,10 +212,10 @@ namespace LightningQueues.Storage.LMDB
 
         private void SuccessfullyReceived(LightningTransaction tx, Message message)
         {
-            RemoveMessageFromStorage(tx, message.Yield(), message.Queue);
+            RemoveMessageFromStorage(tx, message.Queue, message);
         }
 
-        private void RemoveMessageFromStorage(LightningTransaction tx, IEnumerable<Message> messages, string queueName)
+        private void RemoveMessageFromStorage(LightningTransaction tx, string queueName, params Message[] messages)
         {
             var db = tx.OpenDatabase(queueName);
             foreach (var message in messages)
@@ -146,6 +225,10 @@ namespace LightningQueues.Storage.LMDB
                     var idPrefix = Encoding.UTF8.GetBytes(message.Id.ToString());
                     while (cursor.MoveToFirstAfter(idPrefix))
                     {
+                        var current = cursor.Current;
+                        if (!current.Key.StartsWith(idPrefix))
+                            break;
+
                         cursor.Delete();
                     }
                 }
@@ -167,10 +250,11 @@ namespace LightningQueues.Storage.LMDB
             tx.Put(db, $"{message.Id}/q", Encoding.UTF8.GetBytes(message.Queue));
             tx.Put(db, $"{message.Id}/sent", BitConverter.GetBytes(message.SentAt.ToBinary()));
             tx.Put(db, $"{message.Id}/uri", Encoding.UTF8.GetBytes(message.Destination.ToString()));
-            if(message.DeliverBy.HasValue)
-                tx.Put(db, $"{message.Id}/expire", BitConverter.GetBytes(message.DeliverBy.Value.ToBinary()));
-            if(message.MaxAttempts.HasValue)
-                tx.Put(db, $"{message.Id}/max", BitConverter.GetBytes(message.MaxAttempts.Value));
+            //Possibly not insert here when null, but easier to deal with upstream for now
+            var expire = message.DeliverBy ?? DateTime.MinValue;
+            tx.Put(db, $"{message.Id}/expire", BitConverter.GetBytes(expire.ToBinary()));
+            var maxAttempts = message.MaxAttempts ?? 0;
+            tx.Put(db, $"{message.Id}/max", BitConverter.GetBytes(maxAttempts));
         }
 
         private void FailedToSend(LightningTransaction tx, OutgoingMessage message)

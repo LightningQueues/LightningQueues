@@ -16,6 +16,18 @@ namespace LightningQueues
             };
         }
 
+        public static MessageId Parse(string id)
+        {
+            var parts = id.Split('/');
+            var messageId = Guid.Parse(parts[0]);
+            var instanceId = Guid.Parse(parts[1]);
+            return new MessageId
+            {
+                MessageIdentifier = messageId,
+                SourceInstanceId = instanceId
+            };
+        }
+
         public static Guid GenerateGuidComb()
         {
             byte[] guidArray = Guid.NewGuid().ToByteArray();
