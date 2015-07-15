@@ -5,7 +5,7 @@ namespace LightningQueues
     public interface IQueueContext
     {
         void CommitChanges();
-        void Send(Uri destination, Message message);
+        void Send(OutgoingMessage message);
         void ReceiveLater(TimeSpan timeSpan);
         void ReceiveLater(DateTimeOffset time);
         void SuccessfullyReceived();

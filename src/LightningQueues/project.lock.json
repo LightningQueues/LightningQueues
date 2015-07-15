@@ -139,23 +139,16 @@
           "lib/DNXCore50/System.Collections.dll": {}
         }
       },
-      "System.Collections.Concurrent/4.0.10-beta-23021": {
+      "System.Collections.Concurrent/4.0.10-beta-22416": {
         "dependencies": {
-          "System.Runtime": "4.0.20-beta-23021",
-          "System.Threading.Tasks": "4.0.10-beta-23021",
-          "System.Diagnostics.Tracing": "4.0.20-beta-23021",
-          "System.Resources.ResourceManager": "4.0.0-beta-23021",
-          "System.Diagnostics.Debug": "4.0.10-beta-23021",
-          "System.Threading": "4.0.10-beta-23021",
-          "System.Collections": "4.0.10-beta-23021",
-          "System.Runtime.Extensions": "4.0.10-beta-23021",
-          "System.Globalization": "4.0.10-beta-23021"
+          "System.Runtime": "4.0.0-beta-22416",
+          "System.Threading.Tasks": "4.0.0-beta-22416"
         },
         "compile": {
-          "ref/dotnet/System.Collections.Concurrent.dll": {}
+          "lib/contract/System.Collections.Concurrent.dll": {}
         },
         "runtime": {
-          "lib/dotnet/System.Collections.Concurrent.dll": {}
+          "lib/aspnetcore50/System.Collections.Concurrent.dll": {}
         }
       },
       "System.Collections.NonGeneric/4.0.0-beta-23021": {
@@ -174,32 +167,15 @@
           "lib/dotnet/System.Collections.NonGeneric.dll": {}
         }
       },
-      "System.Collections.Specialized/4.0.0-beta-23019": {
+      "System.ComponentModel/4.0.0-beta-23021": {
         "dependencies": {
-          "System.Runtime": "4.0.20-beta-23019",
-          "System.Resources.ResourceManager": "4.0.0-beta-23019",
-          "System.Collections.NonGeneric": "4.0.0-beta-23019",
-          "System.Globalization.Extensions": "4.0.0-beta-23019",
-          "System.Runtime.Extensions": "4.0.10-beta-23019",
-          "System.Threading": "4.0.10-beta-23019",
-          "System.Globalization": "4.0.10-beta-23019"
+          "System.Runtime": "4.0.20-beta-23021"
         },
         "compile": {
-          "ref/dotnet/System.Collections.Specialized.dll": {}
+          "ref/dotnet/System.ComponentModel.dll": {}
         },
         "runtime": {
-          "lib/dotnet/System.Collections.Specialized.dll": {}
-        }
-      },
-      "System.ComponentModel/4.0.0-beta-22816": {
-        "dependencies": {
-          "System.Runtime": "4.0.20-beta-22816"
-        },
-        "compile": {
-          "lib/contract/System.ComponentModel.dll": {}
-        },
-        "runtime": {
-          "lib/aspnetcore50/System.ComponentModel.dll": {}
+          "lib/dotnet/System.ComponentModel.dll": {}
         }
       },
       "System.ComponentModel.EventBasedAsync/4.0.10-beta-23021": {
@@ -227,26 +203,26 @@
           "lib/DNXCore50/System.Diagnostics.Debug.dll": {}
         }
       },
-      "System.Diagnostics.Tracing/4.0.20-beta-23021": {
+      "System.Diagnostics.Tracing/4.0.10-beta-22231": {
         "dependencies": {
-          "System.Runtime": "4.0.0-beta-23021"
+          "System.Runtime": "4.0.0-beta-22231"
         },
         "compile": {
-          "ref/dotnet/System.Diagnostics.Tracing.dll": {}
+          "lib/contract/System.Diagnostics.Tracing.dll": {}
         },
         "runtime": {
-          "lib/DNXCore50/System.Diagnostics.Tracing.dll": {}
+          "lib/aspnetcore50/System.Diagnostics.Tracing.dll": {}
         }
       },
-      "System.Globalization/4.0.10-beta-23021": {
+      "System.Globalization/4.0.10-beta-22231": {
         "dependencies": {
-          "System.Runtime": "4.0.0-beta-23021"
+          "System.Runtime": "4.0.0-beta-22231"
         },
         "compile": {
-          "ref/dotnet/System.Globalization.dll": {}
+          "lib/contract/System.Globalization.dll": {}
         },
         "runtime": {
-          "lib/DNXCore50/System.Globalization.dll": {}
+          "lib/aspnetcore50/System.Globalization.dll": {}
         }
       },
       "System.Globalization.Calendars/4.0.0-beta-23021": {
@@ -259,21 +235,6 @@
         },
         "runtime": {
           "lib/DNXCore50/System.Globalization.Calendars.dll": {}
-        }
-      },
-      "System.Globalization.Extensions/4.0.0-beta-23019": {
-        "dependencies": {
-          "System.Runtime": "4.0.20-beta-23019",
-          "System.Runtime.Extensions": "4.0.10-beta-23019",
-          "System.Globalization": "4.0.10-beta-23019",
-          "System.Runtime.InteropServices": "4.0.20-beta-23019",
-          "System.Resources.ResourceManager": "4.0.0-beta-23019"
-        },
-        "compile": {
-          "ref/dotnet/System.Globalization.Extensions.dll": {}
-        },
-        "runtime": {
-          "lib/dotnet/System.Globalization.Extensions.dll": {}
         }
       },
       "System.IO/4.0.10-beta-23021": {
@@ -492,18 +453,6 @@
         },
         "runtime": {
           "lib/dotnet/System.Runtime.Numerics.dll": {}
-        }
-      },
-      "System.Runtime.Serialization.Primitives/4.0.10-beta-23019": {
-        "dependencies": {
-          "System.Runtime": "4.0.20-beta-23019",
-          "System.Resources.ResourceManager": "4.0.0-beta-23019"
-        },
-        "compile": {
-          "ref/dotnet/System.Runtime.Serialization.Primitives.dll": {}
-        },
-        "runtime": {
-          "lib/dotnet/System.Runtime.Serialization.Primitives.dll": {}
         }
       },
       "System.Security.Claims/4.0.0-beta-23021": {
@@ -741,26 +690,15 @@
           "lib/DNXCore50/System.Threading.Overlapped.dll": {}
         }
       },
-      "System.Threading.Tasks/4.0.10-beta-23021": {
+      "System.Threading.Tasks/4.0.10-beta-22231": {
         "dependencies": {
-          "System.Runtime": "4.0.0-beta-23021"
+          "System.Runtime": "4.0.0-beta-22231"
         },
         "compile": {
-          "ref/dotnet/System.Threading.Tasks.dll": {}
+          "lib/contract/System.Threading.Tasks.dll": {}
         },
         "runtime": {
-          "lib/DNXCore50/System.Threading.Tasks.dll": {}
-        }
-      },
-      "System.Threading.Thread/4.0.0-beta-23019": {
-        "dependencies": {
-          "System.Runtime": "4.0.0-beta-23019"
-        },
-        "compile": {
-          "ref/dotnet/System.Threading.Thread.dll": {}
-        },
-        "runtime": {
-          "lib/DNXCore50/System.Threading.Thread.dll": {}
+          "lib/aspnetcore50/System.Threading.Tasks.dll": {}
         }
       },
       "System.Threading.ThreadPool/4.0.10-beta-23021": {
@@ -962,26 +900,17 @@
         "runtimes/win8-aot/lib/netcore50/System.Collections.dll"
       ]
     },
-    "System.Collections.Concurrent/4.0.10-beta-23021": {
-      "sha512": "U1LF92kyKDW0ytwcSataXNmCMOqQBbP5FXlh67VopSYgDK3GBG8sx7eXbFcagicqw3kAmMwoshsWUtDDcoZmYQ==",
+    "System.Collections.Concurrent/4.0.10-beta-22416": {
+      "sha512": "j2uCH++bbgKdpv+/Z0gdgdoBLukvcxZC/IXWFFJheo8tKrZeKp5LBj3qh92NX+4FH1gVGu4H6+lxdpY2Q7aMRg==",
       "files": [
-        "System.Collections.Concurrent.4.0.10-beta-23021.nupkg",
-        "System.Collections.Concurrent.4.0.10-beta-23021.nupkg.sha512",
+        "License.rtf",
+        "System.Collections.Concurrent.4.0.10-beta-22416.nupkg",
+        "System.Collections.Concurrent.4.0.10-beta-22416.nupkg.sha512",
         "System.Collections.Concurrent.nuspec",
-        "lib/dotnet/System.Collections.Concurrent.dll",
-        "lib/net46/_._",
-        "ref/dotnet/System.Collections.Concurrent.dll",
-        "ref/dotnet/System.Collections.Concurrent.xml",
-        "ref/dotnet/de/System.Collections.Concurrent.xml",
-        "ref/dotnet/es/System.Collections.Concurrent.xml",
-        "ref/dotnet/fr/System.Collections.Concurrent.xml",
-        "ref/dotnet/it/System.Collections.Concurrent.xml",
-        "ref/dotnet/ja/System.Collections.Concurrent.xml",
-        "ref/dotnet/ko/System.Collections.Concurrent.xml",
-        "ref/dotnet/ru/System.Collections.Concurrent.xml",
-        "ref/dotnet/zh-hans/System.Collections.Concurrent.xml",
-        "ref/dotnet/zh-hant/System.Collections.Concurrent.xml",
-        "ref/net46/_._"
+        "lib/aspnetcore50/System.Collections.Concurrent.dll",
+        "lib/contract/System.Collections.Concurrent.dll",
+        "lib/net45/System.Collections.Concurrent.dll",
+        "lib/portable-wpa80+win80+net45+aspnetcore50/System.Collections.Concurrent.dll"
       ]
     },
     "System.Collections.NonGeneric/4.0.0-beta-23021": {
@@ -1006,29 +935,31 @@
         "ref/net46/System.Collections.NonGeneric.dll"
       ]
     },
-    "System.Collections.Specialized/4.0.0-beta-23019": {
-      "sha512": "Z79DO5DQ9Z58p/1n0wW0szP+4UdoJOxGVpX+D3gFXW7g11i+TyZKqg5/OcIjbmgB9RvJkDJBTOs/xtXIu/CZWw==",
+    "System.ComponentModel/4.0.0-beta-23021": {
+      "sha512": "3TSvabECcSZdEJwM8Nef1VYVm7kFWRqFFBFjsQSK6S+PuYIvD/mz9zSiciRDhAVYOW5h6U7G8emxTaDnO3oopQ==",
       "files": [
-        "System.Collections.Specialized.4.0.0-beta-23019.nupkg",
-        "System.Collections.Specialized.4.0.0-beta-23019.nupkg.sha512",
-        "System.Collections.Specialized.nuspec",
-        "lib/dotnet/System.Collections.Specialized.dll",
-        "lib/net46/System.Collections.Specialized.dll",
-        "ref/dotnet/System.Collections.Specialized.dll",
-        "ref/net46/System.Collections.Specialized.dll"
-      ]
-    },
-    "System.ComponentModel/4.0.0-beta-22816": {
-      "sha512": "TX8lTOzeCNocpE5I197CwwgrpWLn99oriw1hOTYVT/9E+QSWIAco6MJBT9KT0W35I24yqihwFL+YxWJL32kBhg==",
-      "files": [
-        "License.rtf",
-        "System.ComponentModel.4.0.0-beta-22816.nupkg",
-        "System.ComponentModel.4.0.0-beta-22816.nupkg.sha512",
+        "System.ComponentModel.4.0.0-beta-23021.nupkg",
+        "System.ComponentModel.4.0.0-beta-23021.nupkg.sha512",
         "System.ComponentModel.nuspec",
-        "lib/aspnetcore50/System.ComponentModel.dll",
-        "lib/contract/System.ComponentModel.dll",
-        "lib/net45/System.ComponentModel.dll",
-        "lib/portable-wpa81+wp80+win80+net45+aspnetcore50/System.ComponentModel.dll"
+        "lib/dotnet/System.ComponentModel.dll",
+        "lib/net45/_._",
+        "lib/netcore50/System.ComponentModel.dll",
+        "lib/win8/_._",
+        "ref/dotnet/System.ComponentModel.dll",
+        "ref/dotnet/System.ComponentModel.xml",
+        "ref/dotnet/de/System.ComponentModel.xml",
+        "ref/dotnet/es/System.ComponentModel.xml",
+        "ref/dotnet/fr/System.ComponentModel.xml",
+        "ref/dotnet/it/System.ComponentModel.xml",
+        "ref/dotnet/ja/System.ComponentModel.xml",
+        "ref/dotnet/ko/System.ComponentModel.xml",
+        "ref/dotnet/ru/System.ComponentModel.xml",
+        "ref/dotnet/zh-hans/System.ComponentModel.xml",
+        "ref/dotnet/zh-hant/System.ComponentModel.xml",
+        "ref/net45/_._",
+        "ref/netcore50/System.ComponentModel.dll",
+        "ref/netcore50/System.ComponentModel.xml",
+        "ref/win8/_._"
       ]
     },
     "System.ComponentModel.EventBasedAsync/4.0.10-beta-23021": {
@@ -1077,52 +1008,26 @@
         "runtimes/win8-aot/lib/netcore50/System.Diagnostics.Debug.dll"
       ]
     },
-    "System.Diagnostics.Tracing/4.0.20-beta-23021": {
-      "sha512": "a04lG2N5PDcpBA0li7LXgYRU0oUZ6qQsw8HLhOOomrifpUaUSgkYS4Zt/CNPhD/ArFo+/er29q7UpkcgxS4wLQ==",
+    "System.Diagnostics.Tracing/4.0.10-beta-22231": {
+      "sha512": "yU1sE9qxobfI3ruRxLH8rsWFBxbWUW9EKhYNIyCVjrH1Y9cvdwmeVXBGkIX6rp89v0grMTXrCn/JCV/LIASo5g==",
       "files": [
-        "System.Diagnostics.Tracing.4.0.20-beta-23021.nupkg",
-        "System.Diagnostics.Tracing.4.0.20-beta-23021.nupkg.sha512",
+        "License.rtf",
+        "System.Diagnostics.Tracing.4.0.10-beta-22231.nupkg",
+        "System.Diagnostics.Tracing.4.0.10-beta-22231.nupkg.sha512",
         "System.Diagnostics.Tracing.nuspec",
-        "lib/DNXCore50/System.Diagnostics.Tracing.dll",
-        "lib/net46/_._",
-        "lib/netcore50/System.Diagnostics.Tracing.dll",
-        "ref/dotnet/System.Diagnostics.Tracing.dll",
-        "ref/dotnet/System.Diagnostics.Tracing.xml",
-        "ref/dotnet/de/System.Diagnostics.Tracing.xml",
-        "ref/dotnet/es/System.Diagnostics.Tracing.xml",
-        "ref/dotnet/fr/System.Diagnostics.Tracing.xml",
-        "ref/dotnet/it/System.Diagnostics.Tracing.xml",
-        "ref/dotnet/ja/System.Diagnostics.Tracing.xml",
-        "ref/dotnet/ko/System.Diagnostics.Tracing.xml",
-        "ref/dotnet/ru/System.Diagnostics.Tracing.xml",
-        "ref/dotnet/zh-hans/System.Diagnostics.Tracing.xml",
-        "ref/dotnet/zh-hant/System.Diagnostics.Tracing.xml",
-        "ref/net46/_._",
-        "runtimes/win8-aot/lib/netcore50/System.Diagnostics.Tracing.dll"
+        "lib/aspnetcore50/System.Diagnostics.Tracing.dll",
+        "lib/contract/System.Diagnostics.Tracing.dll"
       ]
     },
-    "System.Globalization/4.0.10-beta-23021": {
-      "sha512": "qGYLMxlA9ef9HQ1xq154JPf4AUPBSnT8dqW0Wp8gvDEbWU7iBJ1e4DEyxORoJvOaxux6z5a2sFfdWx4otVO1wg==",
+    "System.Globalization/4.0.10-beta-22231": {
+      "sha512": "e9ceyaHF/3UR7KHNWkxrO8xBet58yQdkX6iOYHNFRittu0OPNFXMXNfZJpXnxzI5hWop3zp2/+flyyuMevV+xw==",
       "files": [
-        "System.Globalization.4.0.10-beta-23021.nupkg",
-        "System.Globalization.4.0.10-beta-23021.nupkg.sha512",
+        "License.rtf",
+        "System.Globalization.4.0.10-beta-22231.nupkg",
+        "System.Globalization.4.0.10-beta-22231.nupkg.sha512",
         "System.Globalization.nuspec",
-        "lib/DNXCore50/System.Globalization.dll",
-        "lib/net46/_._",
-        "lib/netcore50/System.Globalization.dll",
-        "ref/dotnet/System.Globalization.dll",
-        "ref/dotnet/System.Globalization.xml",
-        "ref/dotnet/de/System.Globalization.xml",
-        "ref/dotnet/es/System.Globalization.xml",
-        "ref/dotnet/fr/System.Globalization.xml",
-        "ref/dotnet/it/System.Globalization.xml",
-        "ref/dotnet/ja/System.Globalization.xml",
-        "ref/dotnet/ko/System.Globalization.xml",
-        "ref/dotnet/ru/System.Globalization.xml",
-        "ref/dotnet/zh-hans/System.Globalization.xml",
-        "ref/dotnet/zh-hant/System.Globalization.xml",
-        "ref/net46/_._",
-        "runtimes/win8-aot/lib/netcore50/System.Globalization.dll"
+        "lib/aspnetcore50/System.Globalization.dll",
+        "lib/contract/System.Globalization.dll"
       ]
     },
     "System.Globalization.Calendars/4.0.0-beta-23021": {
@@ -1147,18 +1052,6 @@
         "ref/dotnet/zh-hant/System.Globalization.Calendars.xml",
         "ref/net46/System.Globalization.Calendars.dll",
         "runtimes/win8-aot/lib/netcore50/System.Globalization.Calendars.dll"
-      ]
-    },
-    "System.Globalization.Extensions/4.0.0-beta-23019": {
-      "sha512": "k3KrctgKowl9Yv8eFbBIrnU/lL5+uUeaoCSJllwXA1XbQaGCLKVIYsMewgwV66UzkDfMU/65d6XhIcGucx9IAg==",
-      "files": [
-        "System.Globalization.Extensions.4.0.0-beta-23019.nupkg",
-        "System.Globalization.Extensions.4.0.0-beta-23019.nupkg.sha512",
-        "System.Globalization.Extensions.nuspec",
-        "lib/dotnet/System.Globalization.Extensions.dll",
-        "lib/net46/System.Globalization.Extensions.dll",
-        "ref/dotnet/System.Globalization.Extensions.dll",
-        "ref/net46/System.Globalization.Extensions.dll"
       ]
     },
     "System.IO/4.0.10-beta-23021": {
@@ -1505,18 +1398,6 @@
         "ref/win8/_._"
       ]
     },
-    "System.Runtime.Serialization.Primitives/4.0.10-beta-23019": {
-      "sha512": "txtdLZ+b8B5/YIDthLTS4IUkt/pgl/RYIoLwp5ZEJ2dxurzkB99dOOIPFvkWoe3WJF7XWVSgmSZTO/VOvR6UlA==",
-      "files": [
-        "System.Runtime.Serialization.Primitives.4.0.10-beta-23019.nupkg",
-        "System.Runtime.Serialization.Primitives.4.0.10-beta-23019.nupkg.sha512",
-        "System.Runtime.Serialization.Primitives.nuspec",
-        "lib/dotnet/System.Runtime.Serialization.Primitives.dll",
-        "lib/net46/_._",
-        "ref/dotnet/System.Runtime.Serialization.Primitives.dll",
-        "ref/net46/_._"
-      ]
-    },
     "System.Security.Claims/4.0.0-beta-23021": {
       "sha512": "8AeeRQDpF/7uF2YOQ8/BeMhoTlBIX1DM1oyXYf2lxa7v+5Vwnu8ihRYJDA2zDSOXQFbHkLotXvmPeDx0bHvmaA==",
       "files": [
@@ -1859,40 +1740,15 @@
         "ref/net46/System.Threading.Overlapped.dll"
       ]
     },
-    "System.Threading.Tasks/4.0.10-beta-23021": {
-      "sha512": "58bqDHehOBiXmfNzn5aQeOCAnRzUlAB/m/qN8g9ogiuKxcmtFbbgh8G7R2DzlQ5Ze5rbN5iJ5Yxw4hKnksqazQ==",
+    "System.Threading.Tasks/4.0.10-beta-22231": {
+      "sha512": "lPHfw+jq9ENtRDTRgY9gCpiiphQzIi5Oh/Wg/2Jf6xJN+FH+oWWcCozaKvRT8Ovt5iNraDLbGBLoUoQvGTTXog==",
       "files": [
-        "System.Threading.Tasks.4.0.10-beta-23021.nupkg",
-        "System.Threading.Tasks.4.0.10-beta-23021.nupkg.sha512",
+        "License.rtf",
+        "System.Threading.Tasks.4.0.10-beta-22231.nupkg",
+        "System.Threading.Tasks.4.0.10-beta-22231.nupkg.sha512",
         "System.Threading.Tasks.nuspec",
-        "lib/DNXCore50/System.Threading.Tasks.dll",
-        "lib/net46/_._",
-        "lib/netcore50/System.Threading.Tasks.dll",
-        "ref/dotnet/System.Threading.Tasks.dll",
-        "ref/dotnet/System.Threading.Tasks.xml",
-        "ref/dotnet/de/System.Threading.Tasks.xml",
-        "ref/dotnet/es/System.Threading.Tasks.xml",
-        "ref/dotnet/fr/System.Threading.Tasks.xml",
-        "ref/dotnet/it/System.Threading.Tasks.xml",
-        "ref/dotnet/ja/System.Threading.Tasks.xml",
-        "ref/dotnet/ko/System.Threading.Tasks.xml",
-        "ref/dotnet/ru/System.Threading.Tasks.xml",
-        "ref/dotnet/zh-hans/System.Threading.Tasks.xml",
-        "ref/dotnet/zh-hant/System.Threading.Tasks.xml",
-        "ref/net46/_._",
-        "runtimes/win8-aot/lib/netcore50/System.Threading.Tasks.dll"
-      ]
-    },
-    "System.Threading.Thread/4.0.0-beta-23019": {
-      "sha512": "ECx+zZlXCfhkpZ0PUVrzp5UB6zRdzi94LsQhm7DtUS/uB17I3sYh0RsnMu/5jTULByQ1Ju4K/JTbM28InXO/PQ==",
-      "files": [
-        "System.Threading.Thread.4.0.0-beta-23019.nupkg",
-        "System.Threading.Thread.4.0.0-beta-23019.nupkg.sha512",
-        "System.Threading.Thread.nuspec",
-        "lib/DNXCore50/System.Threading.Thread.dll",
-        "lib/net46/System.Threading.Thread.dll",
-        "ref/dotnet/System.Threading.Thread.dll",
-        "ref/net46/System.Threading.Thread.dll"
+        "lib/aspnetcore50/System.Threading.Tasks.dll",
+        "lib/contract/System.Threading.Tasks.dll"
       ]
     },
     "System.Threading.ThreadPool/4.0.10-beta-23021": {
@@ -1926,17 +1782,13 @@
     "DNX,Version=v4.5.1": [],
     "DNXCore,Version=v5.0": [
       "System.Net.Primitives >= 4.0.10-beta-*",
-      "System.Collections.Specialized >= 4.0.0-beta-*",
-      "System.Runtime.Serialization.Primitives >= 4.0.10-beta-*",
-      "System.Threading.Thread >= 4.0.0-beta-*",
       "System.Runtime >= 4.0.20-beta-*",
       "System.Net.Sockets >= 4.0.10-beta-*",
       "System.Threading >= 4.0.10-beta-*",
       "System.Collections >= 4.0.10-beta-*",
-      "System.Collections.Concurrent >= 4.0.10-beta-*",
       "System.Runtime.Extensions >= 4.0.10-beta-*",
       "System.Linq >= 4.0.0-beta-*",
-      "System.ComponentModel >= 4.0.0-beta-22816"
+      "System.ComponentModel >= 4.0.0-beta-*"
     ]
   }
 }

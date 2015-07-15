@@ -16,12 +16,6 @@
     "dnx451": {
     },
     "dnxcore50": {
-      "dependencies": {
-        "System.Runtime.Serialization.Primitives": "4.0.10-beta-*",
-        "System.Collections.Specialized": "4.0.0-beta-*",
-        "System.Threading.Thread": "4.0.0-beta-*",
-        "System.Net.Primitives": "4.0.10-beta-*"
-      }
     }
   }
 }

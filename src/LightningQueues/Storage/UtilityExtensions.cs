@@ -50,5 +50,10 @@ namespace LightningQueues.Storage
                 yield return new KeyValuePair<string, byte[]>(keys[i], values[i]);
             }
         }
+
+        public static IEnumerable<T> Yield<T>(this T item)
+        {
+            yield return item;
+        } 
     }
 }

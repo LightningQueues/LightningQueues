@@ -28,6 +28,7 @@ namespace LightningQueues
             _messageStore = messageStore;
             _receiveSubject = new Subject<Message>();
             _scheduler = scheduler;
+            _messageStore.CreateQueue("outgoing");
             _sender.StartSending();
         }
 
@@ -75,6 +76,7 @@ namespace LightningQueues
                 _receiveSubject.OnNext(msg);
                 return Disposable.Empty;
             });
+            var type = _scheduler.GetType();
         }
 
         public void Send(OutgoingMessage message)

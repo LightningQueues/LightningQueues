@@ -40,9 +40,9 @@ namespace LightningQueues
             }
         }
 
-        public void Send(Uri destination, Message message)
+        public void Send(OutgoingMessage message)
         {
-            _queueActions.Add(new SendAction(this, destination, message));
+            _queueActions.Add(new SendAction(this, message));
         }
 
         public void ReceiveLater(TimeSpan timeSpan)
@@ -79,19 +79,17 @@ namespace LightningQueues
         private class SendAction : IQueueAction
         {
             private readonly QueueContext _context;
-            private readonly Uri _destination;
-            private readonly Message _message;
+            private readonly OutgoingMessage _message;
 
-            public SendAction(QueueContext context, Uri destination, Message message)
+            public SendAction(QueueContext context, OutgoingMessage message)
             {
                 _context = context;
-                _destination = destination;
                 _message = message;
             }
 
             public void Execute()
             {
-                _context._queue.Store.SendMessage(_destination, _message);
+                _context._queue.Store.StoreOutgoing(_context._transaction, _message);
             }
 
             public void Success()
@@ -156,7 +154,7 @@ namespace LightningQueues
 
             public void Execute()
             {
-                _context._queue.Store.SuccessfullyReceived(_context._message);
+                _context._queue.Store.SuccessfullyReceived(_context._transaction, _context._message);
             }
 
             public void Success()

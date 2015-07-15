@@ -19,5 +19,10 @@ namespace LightningQueues.Storage.LMDB
         {
             transaction.Delete(db, Encoding.UTF8.GetBytes(key));
         }
+
+        public static byte[] Get(this LightningTransaction transaction, LightningDatabase db, string key)
+        {
+            return transaction.Get(db, Encoding.UTF8.GetBytes(key));
+        }
     }
 }
