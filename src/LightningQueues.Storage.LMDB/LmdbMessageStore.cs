@@ -62,15 +62,14 @@ namespace LightningQueues.Storage.LMDB
             return ExecuteScheduledAction(transaction, tx => MoveToQueue(tx, queueName, message));
         }
 
-        public Task FailedToSend(IAsyncTransaction transaction, params OutgoingMessage[] messages)
+        public int FailedToSend(OutgoingMessage message)
         {
-            return ExecuteScheduledAction(transaction, tx =>
+            using (var tx = _environment.BeginTransaction())
             {
-                foreach (var message in messages)
-                {
-                    FailedToSend(tx, message);
-                }
-            });
+                var result = FailedToSend(tx, message);
+                tx.Commit();
+                return result;
+            }
         }
 
         private Task ExecuteScheduledAction(IAsyncTransaction transaction, Action<LightningTransaction> action)
@@ -93,14 +92,18 @@ namespace LightningQueues.Storage.LMDB
             return tcs.Task;
         }
 
-        public Task SuccessfullySent(IAsyncTransaction transaction, params OutgoingMessage[] messages)
+        public void SuccessfullySent(params OutgoingMessage[] messages)
         {
-            return ExecuteScheduledAction(transaction, tx => SuccessfullySent(tx, messages));
+            using (var tx = _environment.BeginTransaction())
+            {
+                SuccessfullySent(tx, messages);
+                tx.Commit();
+            }
         }
 
         private void SuccessfullySent(LightningTransaction tx, params OutgoingMessage[] messages)
         {
-            RemoveMessageFromStorage(tx, "outgoing", messages.Cast<Message>().ToArray());
+            RemoveMessageFromStorage(tx, "outgoing", messages);
         }
 
         public void StoreMessages(ITransaction transaction, params Message[] messages)
@@ -215,7 +218,7 @@ namespace LightningQueues.Storage.LMDB
             RemoveMessageFromStorage(tx, message.Queue, message);
         }
 
-        private void RemoveMessageFromStorage(LightningTransaction tx, string queueName, params Message[] messages)
+        private void RemoveMessageFromStorage<T>(LightningTransaction tx, string queueName, params T[] messages) where T : Message
         {
             var db = tx.OpenDatabase(queueName);
             foreach (var message in messages)
@@ -257,15 +260,32 @@ namespace LightningQueues.Storage.LMDB
             tx.Put(db, $"{message.Id}/max", BitConverter.GetBytes(maxAttempts));
         }
 
-        private void FailedToSend(LightningTransaction tx, OutgoingMessage message)
+        private int FailedToSend(LightningTransaction tx, OutgoingMessage message)
         {
             var key = $"{message.Id}/attempts";
             var db = tx.OpenDatabase("outgoing");
             var attemptBytes = tx.Get(db, key);
             var attempts = BitConverter.ToInt32(attemptBytes, 0);
             attempts += 1;
-            attemptBytes = BitConverter.GetBytes(attempts);
-            tx.Put(db, key, attemptBytes);
+            if (attempts >= message.MaxAttempts)
+            {
+                RemoveMessageFromStorage(tx, "outgoing", message);
+            }
+            else
+            {
+                var expireBytes = tx.Get(db, $"{message.Id}/expire");
+                var expire = DateTime.FromBinary(BitConverter.ToInt64(expireBytes, 0));
+                if (expire != DateTime.MinValue && DateTime.Now >= expire)
+                {
+                    RemoveMessageFromStorage(tx, "outgoing", message);
+                }
+                else
+                {
+                    attemptBytes = BitConverter.GetBytes(attempts);
+                }
+                tx.Put(db, key, attemptBytes);
+            }
+            return attempts;
         }
 
         private void MoveToQueue(LightningTransaction tx, string queueName, Message message)
