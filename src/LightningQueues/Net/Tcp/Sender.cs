@@ -29,8 +29,10 @@ namespace LightningQueues.Net.Tcp
         {
             var outgoingByEndpoint = _store.PersistedOutgoingMessages()
                 .Merge(_outgoing)
+                .ObserveOn(TaskPoolScheduler.Default)
                 .Buffer(TimeSpan.FromMilliseconds(100), TaskPoolScheduler.Default)
                 .Where(x => x.Count > 0)
+                .ObserveOn(TaskPoolScheduler.Default)
                 .SelectMany(buffered =>
                 {
                     _logger.Debug($"Buffered {buffered.Count} messages");

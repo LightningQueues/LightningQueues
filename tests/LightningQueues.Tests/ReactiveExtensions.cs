@@ -20,5 +20,10 @@ namespace LightningQueues.Tests
         {
             return stream.FirstAsyncWithTimeout(TimeSpan.FromSeconds(1));
         }
+
+        public static IObservable<int> RunningCount<T>(this IObservable<T> stream)
+        {
+            return stream.Scan(0, (acc, current) => acc + 1);
+        }
     }
 }

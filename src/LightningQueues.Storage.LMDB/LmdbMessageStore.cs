@@ -12,18 +12,41 @@ namespace LightningQueues.Storage.LMDB
     public class LmdbMessageStore : IMessageStore, IAsyncMessageStore
     {
         private readonly LightningEnvironment _environment;
+        private readonly Func<IScheduler, Tuple<TaskCompletionSource<bool>, LightningTransaction, Message[]>, IDisposable> _storeMessages;
 
         public LmdbMessageStore(string path)
         {
             _environment = new LightningEnvironment(path) {MaxDatabases = 5};
+            _environment.MapSize = (long)1e+8;
             _environment.Open();
+
+            _storeMessages = (scheduler, state) =>
+            {
+                try
+                {
+                    StoreMessages(state.Item2, state.Item3);
+                    state.Item1.SetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    state.Item1.SetException(ex);
+                }
+                return Disposable.Empty;
+            };
         }
 
         public LightningEnvironment Environment => _environment;
 
         public Task StoreMessages(IAsyncTransaction transaction, params Message[] messages)
         {
-            return ExecuteScheduledAction(transaction, tx => StoreMessages(tx, messages));
+            //Ensures that all lmdb transactions that may coordinate across async Tasks are executed on the same thread.
+            var lmdbTransaction = (LmdbTransaction)transaction;
+            var tcs = new TaskCompletionSource<bool>();
+            var scheduler = lmdbTransaction.Scheduler;
+            var tx = lmdbTransaction.Transaction;
+            var state = new Tuple<TaskCompletionSource<bool>, LightningTransaction, Message[]>(tcs, tx, messages);
+            scheduler.Schedule(state, _storeMessages);
+            return tcs.Task;
         }
 
         private void StoreMessages(LightningTransaction tx, params Message[] messages)
@@ -57,11 +80,6 @@ namespace LightningQueues.Storage.LMDB
             return new LmdbTransaction(_environment);
         }
 
-        public Task MoveToQueue(IAsyncTransaction transaction, string queueName, Message message)
-        {
-            return ExecuteScheduledAction(transaction, tx => MoveToQueue(tx, queueName, message));
-        }
-
         public int FailedToSend(OutgoingMessage message)
         {
             using (var tx = _environment.BeginTransaction())
@@ -70,26 +88,6 @@ namespace LightningQueues.Storage.LMDB
                 tx.Commit();
                 return result;
             }
-        }
-
-        private Task ExecuteScheduledAction(IAsyncTransaction transaction, Action<LightningTransaction> action)
-        {
-            //Ensures that all lmdb transactions that may coordinate across async Tasks are executed on the same thread.
-            var lmdbTransaction = (LmdbTransaction)transaction;
-            var tcs = new TaskCompletionSource<bool>();
-            var scheduler = lmdbTransaction.Scheduler;
-            var tx = lmdbTransaction.Transaction;
-            var catchAll = scheduler.Catch<Exception>(ex =>
-            {
-                tcs.SetException(ex);
-                return true;
-            });
-            catchAll.Schedule(() =>
-            {
-                action(tx);
-                tcs.SetResult(true);
-            });
-            return tcs.Task;
         }
 
         public void SuccessfullySent(params OutgoingMessage[] messages)

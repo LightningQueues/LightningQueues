@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 namespace LightningQueues.Storage
 {
@@ -7,6 +6,5 @@ namespace LightningQueues.Storage
     {
         Task<IAsyncTransaction> BeginTransaction();
         Task StoreMessages(IAsyncTransaction transaction, params Message[] messages);
-        Task MoveToQueue(IAsyncTransaction transaction, string queueName, Message message);
     }
 }

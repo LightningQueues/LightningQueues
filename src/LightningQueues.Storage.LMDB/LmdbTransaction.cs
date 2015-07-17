@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reactive.Concurrency;
+using System.Reactive.Disposables;
 using System.Threading.Tasks;
 using LightningDB;
 
@@ -8,13 +9,26 @@ namespace LightningQueues.Storage.LMDB
     public class LmdbTransaction : ITransaction, IAsyncTransaction
     {
         private readonly LightningTransaction _transaction;
-        private readonly IScheduler _scheduler;
+        private readonly EventLoopScheduler _scheduler;
+        private readonly Action<LightningTransaction> _commit; 
+        private readonly Action<LightningTransaction> _dispose; 
 
-        private LmdbTransaction(LightningTransaction transaction, IScheduler scheduler)
+        private LmdbTransaction(LightningTransaction transaction, EventLoopScheduler scheduler)
         {
             _scheduler = scheduler;
             _transaction = transaction;
             TransactionId = Guid.NewGuid();
+            _commit = tx =>
+            {
+                using(_scheduler)
+                using(tx)
+                    tx.Commit();
+            };
+            _dispose = tx =>
+            {
+                using(_scheduler)
+                    tx.Dispose();
+            };
         }
 
         public LmdbTransaction(LightningEnvironment env)
@@ -25,20 +39,21 @@ namespace LightningQueues.Storage.LMDB
         public LightningTransaction Transaction => _transaction;
         public IScheduler Scheduler => _scheduler;
 
-        public static async Task<IAsyncTransaction> CreateAsync(LightningEnvironment env, IScheduler scheduler)
+        public static async Task<IAsyncTransaction> CreateAsync(LightningEnvironment env, EventLoopScheduler scheduler)
         {
             var tcs = new TaskCompletionSource<LightningTransaction>();
-            scheduler.Schedule(() =>
+            scheduler.Schedule(tcs, (sch, completionSource) =>
             {
                 try
                 {
                     var tx = env.BeginTransaction();
-                    tcs.SetResult(tx);
+                    completionSource.SetResult(tx);
                 }
                 catch (Exception ex)
                 {
-                    tcs.SetException(ex);
+                    completionSource.SetException(ex);
                 }
+                return Disposable.Empty;
             });
             var transaction = await tcs.Task;
             return new LmdbTransaction(transaction, scheduler);
@@ -48,12 +63,12 @@ namespace LightningQueues.Storage.LMDB
 
         Task IAsyncTransaction.Commit()
         {
-            return AsyncTransactionAction(x => x.Commit());
+            return AsyncTransactionAction(_commit);
         }
 
         Task IAsyncTransaction.Rollback()
         {
-            return AsyncTransactionAction(x => x.Dispose());
+            return AsyncTransactionAction(_dispose);
         }
 
         void ITransaction.Rollback()
@@ -70,15 +85,18 @@ namespace LightningQueues.Storage.LMDB
         private Task AsyncTransactionAction(Action<LightningTransaction> action)
         {
             var tcs = new TaskCompletionSource<bool>();
-            var catchAll = _scheduler.Catch<Exception>(ex =>
+            _scheduler.Schedule(tcs, (sch, completionSource) =>
             {
-                tcs.SetException(ex);
-                return true;
-            });
-            catchAll.Schedule(() =>
-            {
-                action(_transaction);
-                tcs.SetResult(true);
+                try
+                {
+                    action(_transaction);
+                    completionSource.SetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    completionSource.SetException(ex);
+                }
+                return Disposable.Empty;
             });
             return tcs.Task;
         }

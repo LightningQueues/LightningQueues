@@ -6,11 +6,12 @@
     "Rx-Main": "2.2.5",
     "Microsoft.VisualStudio.QualityTools.UnitTestFramework": "11.0.50727.1",
     "LightningQueues": "1.0.0-*",
-    "LightningDB": "0.9.0.24",
+    "LightningDB": "0.9.0.25",
     "LightningQueues.Storage.LMDB": "1.0.0-*"
   },
   "commands": {
-    "test": "xunit.runner.dnx"
+    "test": "xunit.runner.dnx -notrait prof=explicit",
+    "proftest": "xunit.runner.dnx -trait prof=explicit"
   },
   "frameworks": {
     "dnx451": {
