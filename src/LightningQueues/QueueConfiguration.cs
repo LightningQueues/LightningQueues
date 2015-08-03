@@ -65,7 +65,7 @@ namespace LightningQueues
             InitializeDefaults();
 
             var receiver = new Receiver(_endpoint, _receivingProtocol, _logger);
-            var sender = new Sender(_sendingProtocol, _store, _logger);
+            var sender = new Sender(_sendingProtocol, _store.PersistedOutgoingMessages());
             var queue = new Queue(receiver, sender, _store, _scheduler);
             return queue;
         }

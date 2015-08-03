@@ -126,11 +126,7 @@ namespace LightningQueues.Tests.Net.Tcp
             using (var client = new TcpClient())
             {
                 client.Connect(_endpoint);
-                var stream = client.GetStream();
-                var outgoing = new OutgoingMessageBatch(new Uri("lq.tcp://localhost"), messages)
-                {
-                    Stream = stream
-                };
+                var outgoing = new OutgoingMessageBatch(new Uri("lq.tcp://localhost"), messages, client);
                 var completionSource = new TaskCompletionSource<bool>();
                 using (_sender.SendStream(Observable.Return(outgoing)).Subscribe(x => { completionSource.SetResult(true); }))
                 {

@@ -1,62 +1,118 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
-using System.Reactive.Concurrency;
+using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using LightningQueues.Logging;
-using LightningQueues.Storage;
 
 namespace LightningQueues.Net.Tcp
 {
     public class Sender : IDisposable
     {
         private readonly ISendingProtocol _protocol;
-        private readonly IMessageStore _store;
-        private readonly ILogger _logger;
         private readonly ISubject<OutgoingMessage> _outgoing;
+        private readonly ISubject<OutgoingMessageFailure> _failedToSend;
+        private readonly IObservable<OutgoingMessage> _initialSeed;
+        private IObservable<OutgoingMessage> _successfullySent;
         private IDisposable _sendingSubscription;
 
-        public Sender(ISendingProtocol protocol, IMessageStore store, ILogger logger)
+        public Sender(ISendingProtocol protocol, IObservable<OutgoingMessage> initialSeed)
         {
             _protocol = protocol;
-            _store = store;
-            _logger = logger;
+            _initialSeed = initialSeed;
             _outgoing = new Subject<OutgoingMessage>();
+            _failedToSend = new Subject<OutgoingMessageFailure>();
         }
 
-        public IObservable<Message> StartSending()
+        public IObservable<OutgoingMessage> StartSending()
         {
-            var outgoingByEndpoint = _store.PersistedOutgoingMessages()
-                .Merge(_outgoing)
-                .ObserveOn(TaskPoolScheduler.Default)
-                .Buffer(TimeSpan.FromMilliseconds(100), TaskPoolScheduler.Default)
-                .Where(x => x.Count > 0)
-                .ObserveOn(TaskPoolScheduler.Default)
-                .SelectMany(buffered =>
+            _successfullySent = SuccessfullySentMessages().Publish().RefCount();
+            _sendingSubscription = _successfullySent.Subscribe(x => { });
+            return _successfullySent;
+        }
+
+        public IObservable<OutgoingMessage> SuccessfullySentMessages()
+        {
+            return ConnectedOutgoingMessageBatch()
+                .Using(x => _protocol.SendStream(Observable.Return(x))
+                .Catch<OutgoingMessage, Exception>(ex => Observable.Empty<OutgoingMessage>()));
+        }
+
+        public IObservable<OutgoingMessageBatch> ConnectedOutgoingMessageBatch()
+        {
+            return AllOutgoingMessagesBatchedByEndpoint()
+                .SelectMany(batch =>
                 {
-                    _logger.Debug($"Buffered {buffered.Count} messages");
-                    return buffered.GroupBy(x => x.Destination)
-                    .Select(x => new OutgoingMessageBatch(x.Key, x));
+                    return Observable.FromAsync(batch.ConnectAsync)
+                        .Timeout(TimeSpan.FromSeconds(5))
+                        .Catch<Unit, Exception>(ex =>
+                        {
+                            batch.Dispose();
+                            _failedToSend.OnNext(new OutgoingMessageFailure {Batch = batch, Exception = ex});
+                            return Observable.Empty<Unit>();
+                        })
+                        .Select(_ => batch);
                 });
-            var successfullySent = (from outgoing in outgoingByEndpoint
-                                   let client = new TcpClient()
-                                   from message in Observable.FromAsync(() => client.ConnectAsync(outgoing.Destination.Host, outgoing.Destination.Port))
-                                                       .Timeout(TimeSpan.FromSeconds(5))
-                                                       .Retry(5)
-                                                       //CustomRetry here
-                                                       .Select(x => client)
-                                                       .Using(x =>
-                                                       {
-                                                           _logger.Debug($"Client connected to server at: {outgoing.Destination}");
-                                                           outgoing.Stream = x.GetStream();
-                                                           _logger.Debug($"Sending {outgoing.Messages.Count} through protocol");
-                                                           return _protocol.SendStream(Observable.Return(outgoing));
-                                                       })
-                                   select message).Publish().RefCount();
-            //todo something better than subscribe internally
-            _sendingSubscription = successfullySent.Subscribe(x => { });
-            return successfullySent;
+        }
+
+        public IObservable<OutgoingMessageBatch> AllOutgoingMessagesBatchedByEndpoint()
+        {
+            return BufferedAllOutgoingMessages()
+                .SelectMany(x =>
+                {
+                    return x.GroupBy(grouped => grouped.Destination)
+                        .Select(grouped => new OutgoingMessageBatch(grouped.Key, grouped, new TcpClient()));
+                });
+        }
+
+        public IObservable<IList<OutgoingMessage>> BufferedAllOutgoingMessages()
+        {
+            return AllOutgoingMessages().Buffer(TimeSpan.FromMilliseconds(200))
+                .Where(x => x.Count > 0);
+        }
+
+        public IObservable<OutgoingMessage> InitialSeed()
+        {
+            return _initialSeed;
+        }
+
+        public IObservable<OutgoingMessage> OnDemandOutgoingMessages()
+        {
+            return _outgoing;
+        }
+
+        public IObservable<OutgoingMessage> AllOutgoingMessages()
+        {
+            return InitialSeed()
+                .Concat(OnDemandOutgoingMessages());
+        }
+
+
+        //private void FailedToSend(Exception ex, OutgoingMessageBatch batch)
+        //{
+        //    _logger.Info("Failed to connect " + ex);
+        //    foreach (var message in batch.Messages)
+        //    {
+        //        var attempts = _store.FailedToSend(message);
+        //        if (ShouldRetry(message, attempts))
+        //        {
+        //            _scheduler.Schedule(message, TimeSpan.FromSeconds(attempts*attempts),
+        //                (sch, state) =>
+        //                {
+        //                    _outgoing.OnNext(state);
+        //                    return Disposable.Empty;
+        //                });
+        //        }
+        //    }
+        //}
+
+        public bool ShouldRetry(OutgoingMessage message, int attemptCount)
+        {
+            return (attemptCount < (message.MaxAttempts ?? 100))
+                ||
+                DateTime.Now < message.DeliverBy;
         }
 
         public void Send(OutgoingMessage message)

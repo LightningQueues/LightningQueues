@@ -1,4 +1,6 @@
+using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace LightningQueues.Net.Protocol
@@ -17,6 +19,12 @@ namespace LightningQueues.Net.Protocol
             }
             while (totalRead < buffer.Length && current > 0);
             return buffer;
+        }
+
+        public static async Task<bool> ReadExpectedBuffer(this Stream stream, byte[] expected)
+        {
+            var bytes = await stream.ReadBytesAsync(expected.Length);
+            return expected.SequenceEqual(bytes);
         }
     }
 }

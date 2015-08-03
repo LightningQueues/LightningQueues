@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Reactive.Concurrency;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading.Tasks;
 
 namespace LightningQueues.Tests
@@ -24,6 +27,20 @@ namespace LightningQueues.Tests
         public static IObservable<int> RunningCount<T>(this IObservable<T> stream)
         {
             return stream.Scan(0, (acc, current) => acc + 1);
+        }
+
+        public static IObservable<T> ThrowTimes<T>(this IObservable<T> stream, int retries)
+        {
+            var count = 0;
+            return Observable.Create<T>(sub =>
+            {
+                count++;
+                if(count > retries)
+                    sub.OnCompleted();
+                else
+                    sub.OnError(new Exception());
+                return Disposable.Empty;
+            }).Concat(stream);
         }
     }
 }

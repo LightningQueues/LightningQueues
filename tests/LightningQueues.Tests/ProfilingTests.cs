@@ -20,7 +20,7 @@ namespace LightningQueues.Tests
             _receiver = ObjectMother.NewLmdbQueue(testDirectory.CreateNewDirectoryForTest(), logger: new NLogLogger());
         }
 
-        [InlineData(200)] //turn this up after retry logic and sending choke is complete
+        [InlineData(1000)] //turn this up after retry logic and sending choke is complete
         [Theory, Trait("prof", "explicit")]
         public async Task messages_totaling(int numberOfMessages)
         {
