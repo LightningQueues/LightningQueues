@@ -11,10 +11,10 @@
   "licenseUrl": "",
   "dependencies": {
     "LightningQueues": "1.0.0-*",
-    "LightningDB": "0.9.0.25"
+    "LightningDB": "0.9.1.35"
   },
   "frameworks": {
-    "dnx451": {},
-    "dnxcore50": {}
+    "dnx451": { },
+    "dnxcore50": { }
   }
 }
