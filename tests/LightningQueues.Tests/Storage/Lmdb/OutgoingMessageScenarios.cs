@@ -16,7 +16,6 @@ namespace LightningQueues.Tests.Storage.Lmdb
         {
             _queuePath = testDirectory.CreateNewDirectoryForTest();
             _store = new LmdbMessageStore(_queuePath);
-            _store.CreateQueue("outgoing");
         }
 
         [Fact]

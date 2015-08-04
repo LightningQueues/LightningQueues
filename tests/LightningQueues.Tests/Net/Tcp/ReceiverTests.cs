@@ -1,8 +1,6 @@
 using System;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Reactive.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using LightningQueues.Net;
@@ -18,6 +16,7 @@ namespace LightningQueues.Tests.Net.Tcp
     public class ReceiverTests : IDisposable
     {
         readonly IMessageStore _store;
+        readonly IMessageStore _sendingStore;
         readonly SendingProtocol _sender;
         readonly Receiver _receiver;
         readonly IPEndPoint _endpoint;
@@ -28,9 +27,11 @@ namespace LightningQueues.Tests.Net.Tcp
             var port = PortFinder.FindPort(); //to make it possible to run in parallel
             _endpoint = new IPEndPoint(IPAddress.Loopback, port);
             _logger = new RecordingLogger();
-            _sender = new SendingProtocol(_logger);
             _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
             _store.CreateQueue("test");
+            _sendingStore = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
+            _sendingStore.CreateQueue("test");
+            _sender = new SendingProtocol(_sendingStore);
             var protocol = new ReceivingProtocol(_store, _logger);
             _receiver = new Receiver(_endpoint, protocol, _logger);
         }
@@ -128,7 +129,7 @@ namespace LightningQueues.Tests.Net.Tcp
                 client.Connect(_endpoint);
                 var outgoing = new OutgoingMessageBatch(new Uri("lq.tcp://localhost"), messages, client);
                 var completionSource = new TaskCompletionSource<bool>();
-                using (_sender.SendStream(Observable.Return(outgoing)).Subscribe(x => { completionSource.SetResult(true); }))
+                using (_sender.Send(outgoing).Subscribe(x => { completionSource.SetResult(true); }))
                 {
                     await Task.WhenAny(completionSource.Task, Task.Delay(100));
                 }
@@ -146,6 +147,7 @@ namespace LightningQueues.Tests.Net.Tcp
         {
             _receiver.Dispose();
             _store.Dispose();
+            _sendingStore.Dispose();
         }
     }
 }

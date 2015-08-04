@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using System.Reactive;
-using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 
@@ -36,7 +35,7 @@ namespace LightningQueues.Net.Tcp
         public IObservable<OutgoingMessage> SuccessfullySentMessages()
         {
             return ConnectedOutgoingMessageBatch()
-                .Using(x => _protocol.SendStream(Observable.Return(x))
+                .Using(x => _protocol.Send(x)
                 .Catch<OutgoingMessage, Exception>(ex => Observable.Empty<OutgoingMessage>()));
         }
 

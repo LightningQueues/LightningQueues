@@ -76,13 +76,16 @@ namespace LightningQueues.Tests
         [Fact]
         public async Task send_message_to_self()
         {
-            var message = ObjectMother.NewMessage<OutgoingMessage>("test");
-            message.Destination = new Uri($"lq.tcp://localhost:{_queue.Endpoint.Port}");
-            _queue.Send(message);
-            var received = await _queue.ReceiveIncoming("test").FirstAsyncWithTimeout();
-            received.ShouldNotBeNull();
-            received.Message.Queue.ShouldEqual(message.Queue);
-            received.Message.Data.ShouldEqual(message.Data);
+            using (var queue = ObjectMother.NewLmdbQueue("test"))
+            {
+                var message = ObjectMother.NewMessage<OutgoingMessage>("test");
+                message.Destination = new Uri($"lq.tcp://localhost:{queue.Endpoint.Port}");
+                queue.Send(message);
+                var received = await queue.ReceiveIncoming("test").FirstAsyncWithTimeout();
+                received.ShouldNotBeNull();
+                received.Message.Queue.ShouldEqual(message.Queue);
+                received.Message.Data.ShouldEqual(message.Data);
+            }
         }
 
         public void Dispose()

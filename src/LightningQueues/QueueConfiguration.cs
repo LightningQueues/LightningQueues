@@ -72,7 +72,7 @@ namespace LightningQueues
 
         private void InitializeDefaults()
         {
-            _sendingProtocol = _sendingProtocol ?? new SendingProtocol(_logger);
+            _sendingProtocol = _sendingProtocol ?? new SendingProtocol(_store);
             _receivingProtocol = _receivingProtocol ?? new ReceivingProtocol(_store, _logger);
             _scheduler = _scheduler ?? TaskPoolScheduler.Default;
         }

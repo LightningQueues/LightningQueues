@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
@@ -12,27 +13,18 @@ namespace LightningQueues.Storage.LMDB
     public class LmdbMessageStore : IMessageStore, IAsyncMessageStore
     {
         private readonly LightningEnvironment _environment;
-        private readonly Func<IScheduler, Tuple<TaskCompletionSource<bool>, LightningTransaction, Message[]>, IDisposable> _storeMessages;
+        private readonly string[] _outgoingKeys = { "{0}", "{0}/attempts", "{0}/h", "{0}/q", "{0}/sent", "{0}/uri", "{0}/expire", "{0}/max" };
+        private readonly string[] _queueKeys = { "{0}", "{0}/headers", "{0}/sent" };
 
         public LmdbMessageStore(string path)
         {
-            _environment = new LightningEnvironment(path) {MaxDatabases = 5};
-            _environment.MapSize = (long)1e+8;
-            _environment.Open();
-
-            _storeMessages = (scheduler, state) =>
+            _environment = new LightningEnvironment(path)
             {
-                try
-                {
-                    StoreMessages(state.Item2, state.Item3);
-                    state.Item1.SetResult(true);
-                }
-                catch (Exception ex)
-                {
-                    state.Item1.SetException(ex);
-                }
-                return Disposable.Empty;
+                MaxDatabases = 5,
+                MapSize = 1024*1024*100
             };
+            _environment.Open();
+            CreateQueue("outgoing");
         }
 
         public LightningEnvironment Environment => _environment;
@@ -45,7 +37,19 @@ namespace LightningQueues.Storage.LMDB
             var scheduler = lmdbTransaction.Scheduler;
             var tx = lmdbTransaction.Transaction;
             var state = new Tuple<TaskCompletionSource<bool>, LightningTransaction, Message[]>(tcs, tx, messages);
-            scheduler.Schedule(state, _storeMessages);
+            scheduler.Schedule(state, (sch, st) =>
+            {
+                try
+                {
+                    StoreMessages(st.Item2, st.Item3);
+                    state.Item1.SetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    st.Item1.SetException(ex);
+                }
+                return Disposable.Empty;
+            });
             return tcs.Task;
         }
 
@@ -55,7 +59,7 @@ namespace LightningQueues.Storage.LMDB
             {
                 foreach (var messagesByQueue in messages.GroupBy(x => x.Queue))
                 {
-                    var db = tx.OpenDatabase(messagesByQueue.Key);
+                    var db = OpenDatabase(tx, messagesByQueue.Key);
                     foreach (var message in messagesByQueue)
                     {
                         tx.Put(db, message.Id.ToString(), message.Data);
@@ -67,7 +71,7 @@ namespace LightningQueues.Storage.LMDB
             catch (LightningException ex)
             {
                 tx.Dispose();
-                if (ex.StatusCode == -30798) //MDB_NOTFOUND
+                if (ex.StatusCode == LightningDB.Native.Lmdb.MDB_NOTFOUND)
                     throw new QueueDoesNotExistException("Queue doesn't exist", ex);
                 throw;
             }
@@ -101,7 +105,7 @@ namespace LightningQueues.Storage.LMDB
 
         private void SuccessfullySent(LightningTransaction tx, params OutgoingMessage[] messages)
         {
-            RemoveMessageFromStorage(tx, "outgoing", messages);
+            RemoveMessageFromStorage(tx, "outgoing", _outgoingKeys, messages);
         }
 
         public void StoreMessages(ITransaction transaction, params Message[] messages)
@@ -117,24 +121,24 @@ namespace LightningQueues.Storage.LMDB
                 try
                 {
                     using (var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly))
-                    using (var db = tx.OpenDatabase(queueName))
-                    using (var cursor = tx.CreateCursor(db))
                     {
-                        while (cursor.MoveNext())
-                        {
-                            var current = cursor.Current;
-                            var message = new Message();
-                            message.Id = MessageId.Parse(Encoding.UTF8.GetString(current.Key));
-                            message.Data = current.Value;
-                            cursor.MoveNext();
-                            current = cursor.Current;
-                            message.Headers = current.Value.ToDictionary();
-                            cursor.MoveNext();
-                            current = cursor.Current;
-                            message.SentAt = DateTime.FromBinary(BitConverter.ToInt64(current.Value, 0));
-                            message.Queue = queueName;
-                            x.OnNext(message);
-                        }
+                        var db = OpenDatabase(tx, queueName);
+                        using (var cursor = tx.CreateCursor(db))
+                            while (cursor.MoveNext())
+                            {
+                                var current = cursor.Current;
+                                var message = new Message();
+                                message.Id = MessageId.Parse(Encoding.UTF8.GetString(current.Key));
+                                message.Data = current.Value;
+                                cursor.MoveNext();
+                                current = cursor.Current;
+                                message.Headers = current.Value.ToDictionary();
+                                cursor.MoveNext();
+                                current = cursor.Current;
+                                message.SentAt = DateTime.FromBinary(BitConverter.ToInt64(current.Value, 0));
+                                message.Queue = queueName;
+                                x.OnNext(message);
+                            }
                     }
                     x.OnCompleted();
                 }
@@ -153,41 +157,41 @@ namespace LightningQueues.Storage.LMDB
                 try
                 {
                     using (var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly))
-                    using (var db = tx.OpenDatabase("outgoing"))
-                    using (var cursor = tx.CreateCursor(db))
                     {
-                        while (cursor.MoveNext())
-                        {
-                            var current = cursor.Current;
-                            var message = new OutgoingMessage();
-                            var key = Encoding.UTF8.GetString(current.Key);
-                            message.Id = MessageId.Parse(key);
-                            message.Data = current.Value;
-                            cursor.MoveNext();
-                            cursor.MoveNext(); //move past attempts
-                            current = cursor.Current;
-                            var date = DateTime.FromBinary(BitConverter.ToInt64(current.Value, 0));
-                            if (date != DateTime.MinValue)
-                                message.DeliverBy = date;
-                            cursor.MoveNext();
-                            current = cursor.Current;
-                            message.Headers = current.Value.ToDictionary();
-                            cursor.MoveNext();
-                            current = cursor.Current;
-                            var maxAttempts = BitConverter.ToInt32(current.Value, 0);
-                            if (maxAttempts != 0)
-                                message.MaxAttempts = maxAttempts;
-                            cursor.MoveNext();
-                            current = cursor.Current;
-                            message.Queue = Encoding.UTF8.GetString(current.Value);
-                            cursor.MoveNext();
-                            current = cursor.Current;
-                            message.SentAt = DateTime.FromBinary(BitConverter.ToInt64(current.Value, 0));
-                            cursor.MoveNext();
-                            current = cursor.Current;
-                            message.Destination = new Uri(Encoding.UTF8.GetString(current.Value));
-                            x.OnNext(message);
-                        }
+                        var db = OpenDatabase(tx, "outgoing");
+                        using (var cursor = tx.CreateCursor(db))
+                            while (cursor.MoveNext())
+                            {
+                                var current = cursor.Current;
+                                var message = new OutgoingMessage();
+                                var key = Encoding.UTF8.GetString(current.Key);
+                                message.Id = MessageId.Parse(key);
+                                message.Data = current.Value;
+                                cursor.MoveNext();
+                                cursor.MoveNext(); //move past attempts
+                                current = cursor.Current;
+                                var date = DateTime.FromBinary(BitConverter.ToInt64(current.Value, 0));
+                                if (date != DateTime.MinValue)
+                                    message.DeliverBy = date;
+                                cursor.MoveNext();
+                                current = cursor.Current;
+                                message.Headers = current.Value.ToDictionary();
+                                cursor.MoveNext();
+                                current = cursor.Current;
+                                var maxAttempts = BitConverter.ToInt32(current.Value, 0);
+                                if (maxAttempts != 0)
+                                    message.MaxAttempts = maxAttempts;
+                                cursor.MoveNext();
+                                current = cursor.Current;
+                                message.Queue = Encoding.UTF8.GetString(current.Value);
+                                cursor.MoveNext();
+                                current = cursor.Current;
+                                message.SentAt = DateTime.FromBinary(BitConverter.ToInt64(current.Value, 0));
+                                cursor.MoveNext();
+                                current = cursor.Current;
+                                message.Destination = new Uri(Encoding.UTF8.GetString(current.Value));
+                                x.OnNext(message);
+                            }
                     }
                     x.OnCompleted();
                 }
@@ -213,25 +217,19 @@ namespace LightningQueues.Storage.LMDB
 
         private void SuccessfullyReceived(LightningTransaction tx, Message message)
         {
-            RemoveMessageFromStorage(tx, message.Queue, message);
+            RemoveMessageFromStorage(tx, message.Queue, _queueKeys, message);
         }
 
-        private void RemoveMessageFromStorage<T>(LightningTransaction tx, string queueName, params T[] messages) where T : Message
+        private void RemoveMessageFromStorage<T>(LightningTransaction tx, string queueName, string[] keys,
+            params T[] messages) where T : Message
         {
-            var db = tx.OpenDatabase(queueName);
+            var db = OpenDatabase(tx, queueName);
             foreach (var message in messages)
             {
-                using (var cursor = tx.CreateCursor(db))
+                foreach (var keyFormat in keys)
                 {
-                    var idPrefix = Encoding.UTF8.GetBytes(message.Id.ToString());
-                    while (cursor.MoveToFirstAfter(idPrefix))
-                    {
-                        var current = cursor.Current;
-                        if (!current.Key.StartsWith(idPrefix))
-                            break;
-
-                        cursor.Delete();
-                    }
+                    var key = string.Format(keyFormat, message.Id);
+                    tx.Delete(db, Encoding.UTF8.GetBytes(key));
                 }
             }
         }
@@ -244,7 +242,7 @@ namespace LightningQueues.Storage.LMDB
 
         private void StoreOutgoing(LightningTransaction tx, OutgoingMessage message)
         {
-            var db = tx.OpenDatabase("outgoing");
+            var db = OpenDatabase(tx, "outgoing");
             tx.Put(db, $"{message.Id}", message.Data);
             tx.Put(db, $"{message.Id}/attempts", BitConverter.GetBytes(0));
             tx.Put(db, $"{message.Id}/h", message.Headers.ToBytes());
@@ -261,13 +259,13 @@ namespace LightningQueues.Storage.LMDB
         private int FailedToSend(LightningTransaction tx, OutgoingMessage message)
         {
             var key = $"{message.Id}/attempts";
-            var db = tx.OpenDatabase("outgoing");
+            var db = OpenDatabase(tx, "outgoing");
             var attemptBytes = tx.Get(db, key);
             var attempts = BitConverter.ToInt32(attemptBytes, 0);
             attempts += 1;
             if (attempts >= message.MaxAttempts)
             {
-                RemoveMessageFromStorage(tx, "outgoing", message);
+                RemoveMessageFromStorage(tx, "outgoing", _outgoingKeys, message);
             }
             else
             {
@@ -275,7 +273,7 @@ namespace LightningQueues.Storage.LMDB
                 var expire = DateTime.FromBinary(BitConverter.ToInt64(expireBytes, 0));
                 if (expire != DateTime.MinValue && DateTime.Now >= expire)
                 {
-                    RemoveMessageFromStorage(tx, "outgoing", message);
+                    RemoveMessageFromStorage(tx, "outgoing", _outgoingKeys, message);
                 }
                 else
                 {
@@ -290,11 +288,11 @@ namespace LightningQueues.Storage.LMDB
         {
             try
             {
-                var original = tx.OpenDatabase(message.Queue);
+                var original = OpenDatabase(tx, message.Queue);
                 tx.Delete(original, message.Id.ToString());
                 tx.Delete(original, $"{message.Id}/headers");
                 tx.Delete(original, $"{message.Id}/sent");
-                var newDb = tx.OpenDatabase(queueName);
+                var newDb = OpenDatabase(tx, queueName);
                 tx.Put(newDb, message.Id.ToString(), message.Data);
                 tx.Put(newDb, $"{message.Id}/headers", message.Headers.ToBytes());
                 tx.Put(newDb, $"{message.Id}/sent", BitConverter.GetBytes(message.SentAt.ToBinary()));
@@ -302,7 +300,7 @@ namespace LightningQueues.Storage.LMDB
             catch (LightningException ex)
             {
                 tx.Dispose();
-                if (ex.StatusCode == -30798) //MDB_NOTFOUND
+                if (ex.StatusCode == LightningDB.Native.Lmdb.MDB_NOTFOUND)
                     throw new QueueDoesNotExistException("Queue doesn't exist", ex);
                 throw;
             }
@@ -312,15 +310,28 @@ namespace LightningQueues.Storage.LMDB
         {
             using (var tx = _environment.BeginTransaction())
             {
-                using (tx.OpenDatabase(queueName, new DatabaseConfiguration {Flags = DatabaseOpenFlags.Create}))
-                {
-                    tx.Commit();
-                }
+                var db = tx.OpenDatabase(queueName, new DatabaseConfiguration {Flags = DatabaseOpenFlags.Create});
+                _databaseCache[queueName] = db;
+                tx.Commit();
             }
+        }
+
+        private readonly ConcurrentDictionary<string, LightningDatabase> _databaseCache = new ConcurrentDictionary<string, LightningDatabase>();
+        private LightningDatabase OpenDatabase(LightningTransaction transaction, string database)
+        {
+            if (_databaseCache.ContainsKey(database))
+                return _databaseCache[database];
+            var db = transaction.OpenDatabase(database);
+            _databaseCache[database] = db;
+            return db;
         }
 
         public void Dispose()
         {
+            foreach (var database in _databaseCache)
+            {
+                database.Value.Dispose();
+            }
             _environment.Dispose();
         }
 

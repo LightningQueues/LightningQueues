@@ -23,8 +23,15 @@ namespace LightningQueues.Net.Protocol
 
         public static async Task<bool> ReadExpectedBuffer(this Stream stream, byte[] expected)
         {
-            var bytes = await stream.ReadBytesAsync(expected.Length);
-            return expected.SequenceEqual(bytes);
+            try
+            {
+                var bytes = await stream.ReadBytesAsync(expected.Length);
+                return expected.SequenceEqual(bytes);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
     }
 }

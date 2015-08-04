@@ -1,21 +1,25 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Reactive;
 using System.Threading.Tasks;
 using LightningQueues.Net.Protocol.V1;
+using LightningQueues.Storage;
+using LightningQueues.Storage.LMDB;
 using Xunit;
 
 namespace LightningQueues.Tests.Net.Protocol.V1
 {
-    public class SendingProtocolTests
+    [Collection("SharedTestDirectory")]
+    public class SendingProtocolTests : IDisposable
     {
-        readonly RecordingLogger _logger;
         readonly SendingProtocol _sender;
+        readonly IMessageStore _store;
 
-        public SendingProtocolTests()
+        public SendingProtocolTests(SharedTestDirectory testDirectory)
         {
-            _logger = new RecordingLogger();
-            _sender = new SendingProtocol(_logger);
+            _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
+            _sender = new SendingProtocol(_store);
         }
 
         [Fact]
@@ -24,7 +28,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
             var expected = 5;
             using (var ms = new MemoryStream())
             {
-                await _sender.WriteLength(ms, 5);
+                await _sender.WriteLength(ms, 5).FirstAsyncWithTimeout();
                 var actual = BitConverter.ToInt32(ms.ToArray(), 0);
                 actual.ShouldEqual(expected);
             }
@@ -33,10 +37,10 @@ namespace LightningQueues.Tests.Net.Protocol.V1
         [Fact]
         public async Task writing_the_message_bytes()
         {
-            var expected = new byte[] {1, 4, 6};
+            var expected = new byte[] { 1, 4, 6 };
             using (var ms = new MemoryStream())
             {
-                await _sender.WriteMessages(ms, expected);
+                await _sender.WriteMessages(ms, expected).FirstAsyncWithTimeout();
                 var actual = ms.ToArray();
                 actual.SequenceEqual(expected).ShouldBeTrue();
             }
@@ -49,8 +53,8 @@ namespace LightningQueues.Tests.Net.Protocol.V1
             {
                 ms.Write(Constants.ReceivedBuffer, 0, Constants.ReceivedBuffer.Length);
                 ms.Position = 0;
-                var result = await _sender.ReadReceived(ms);
-                result.ShouldBeTrue();
+                var result = await _sender.ReadReceived(ms).FirstAsyncWithTimeout();
+                result.ShouldEqual(Unit.Default);
             }
         }
 
@@ -59,8 +63,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
         {
             using (var ms = new MemoryStream())
             {
-                var result = await _sender.ReadReceived(ms);
-                result.ShouldBeFalse();
+                await Assert.ThrowsAsync<TimeoutException>(() => _sender.ReadReceived(ms).FirstAsyncWithTimeout(TimeSpan.FromMilliseconds(5)));
             }
         }
 
@@ -69,9 +72,14 @@ namespace LightningQueues.Tests.Net.Protocol.V1
         {
             using (var ms = new MemoryStream())
             {
-                await _sender.WriteAcknowledge(ms);
+                await _sender.WriteAcknowledgement(ms).FirstAsyncWithTimeout();
                 ms.ToArray().SequenceEqual(Constants.AcknowledgedBuffer).ShouldBeTrue();
             }
+        }
+
+        public void Dispose()
+        {
+            _store.Dispose();
         }
     }
 }
