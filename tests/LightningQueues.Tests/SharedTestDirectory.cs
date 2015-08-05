@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 using Microsoft.Framework.Runtime;
 using Microsoft.Framework.Runtime.Infrastructure;
 using Xunit;
@@ -21,7 +22,19 @@ namespace LightningQueues.Tests
 
         public void Dispose()
         {
-            Directory.Delete(_testTempDir, true);
+            for (var i = 0; i < 3; ++i)
+            {
+                try
+                {
+                    Directory.Delete(_testTempDir, true);
+                    break;
+                }
+                catch (Exception)
+                {
+                    //timing issues with environment close releasing files and deleting directory
+                    Thread.Sleep(100);
+                }
+            }
         }
 
         public string CreateNewDirectoryForTest()

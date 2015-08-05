@@ -110,7 +110,7 @@ namespace LightningQueues
 
             public void Execute()
             {
-                _context._queue.Store.StoreMessages(_context._transaction, _message);
+                _context._queue.Store.StoreIncomingMessages(_context._transaction, _message);
             }
 
             public void Success()

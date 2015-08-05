@@ -4,10 +4,11 @@ namespace LightningQueues.Storage
 {
     public interface IMessageStore : IDisposable
     {
-        IAsyncMessageStore Async { get; }
         ITransaction BeginTransaction();
         void CreateQueue(string queueName);
-        void StoreMessages(ITransaction transaction, params Message[] messages);
+        void StoreIncomingMessages(params Message[] messages);
+        void StoreIncomingMessages(ITransaction transaction, params Message[] messages);
+        void DeleteIncomingMessages(params Message[] messages);
         IObservable<Message> PersistedMessages(string queueName);
         IObservable<OutgoingMessage> PersistedOutgoingMessages();
         void MoveToQueue(ITransaction transaction, string queueName, Message message);

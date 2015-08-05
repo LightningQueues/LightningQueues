@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using System.Linq;
+using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -37,6 +37,8 @@ namespace LightningQueues.Net.Protocol.V1
             return from stream in streams.Do(x => _logger.Debug("Starting to read stream."))
                    from length in LengthChunk(stream)
                    from messages in MessagesChunk(stream, length).Do(x => StoreMessages(stream, x))
+                   from _r in SendReceived(stream)
+                   from _a in ReceiveAcknowledgement(stream, messages)
                    from message in messages
                    select message; 
         }
@@ -72,20 +74,10 @@ namespace LightningQueues.Net.Protocol.V1
 
         public async Task StoreMessages(Stream stream, params Message[] messages)
         {
-            var transaction = await BeginTransaction(stream, messages);
-            await ReceiveAcknowledgement(stream, transaction);
-            await ActualCommit(stream, transaction);
-            _logger.Debug("Finished storing messages");
-        }
-
-        public async Task<IAsyncTransaction> BeginTransaction(Stream stream, Message[] messages)
-        {
             try
             {
-                var store = _store.Async;
-                var tx = await store.BeginTransaction();
-                await store.StoreMessages(tx, messages);
-                return tx;
+                _store.StoreIncomingMessages(messages);
+                _logger.Debug("Finished storing messages");
             }
             catch(QueueDoesNotExistException)
             {
@@ -101,38 +93,24 @@ namespace LightningQueues.Net.Protocol.V1
             }
         }
 
-        public async Task ReceiveAcknowledgement(Stream stream, IAsyncTransaction transaction)
+        public IObservable<Unit> SendReceived(Stream stream)
         {
-            try
-            {
-                await SendBuffer(stream, Constants.ReceivedBuffer);
-
-                var ackBuffer = await stream.ReadBytesAsync(Constants.AcknowledgedBuffer.Length).ConfigureAwait(false);
-
-                if(!ackBuffer.SequenceEqual(Constants.AcknowledgedBuffer))
-                {
-                    _logger.Debug("Received something that wasn't an acknowledgement");
-                    throw new InvalidOperationException("Unexpected acknowledgement from sender");
-                }
-            }
-            catch(Exception)
-            {
-                await transaction.Rollback();
-                throw;
-            }
+            return Observable.FromAsync(() => SendBuffer(stream, Constants.ReceivedBuffer));
         }
 
-        public async Task ActualCommit(Stream stream, IAsyncTransaction transaction)
+        public IObservable<Unit> ReceiveAcknowledgement(Stream stream, Message[] messages)
         {
-            try
-            {
-                await transaction.Commit();
-            }
-            catch(Exception)
-            {
-                await SendBuffer(stream, Constants.RevertBuffer);
-                throw;
-            }
+            return Observable.FromAsync(() => stream.ReadExpectedBuffer(Constants.AcknowledgedBuffer))
+                .Do(acknowledged =>
+                {
+                    if (!acknowledged)
+                    {
+                        _store.DeleteIncomingMessages(messages);
+                    }
+                    _logger.Debug("Acknowledgement received was " + acknowledged);
+                })
+                .Where(x => x)
+                .Select(x => Unit.Default);
         }
     }
 }

@@ -7,11 +7,13 @@ namespace LightningQueues.Tests
     [Collection("SharedTestDirectory")]
     public class QueueTests : IDisposable
     {
+        private readonly SharedTestDirectory _testDirectory;
         private readonly TestScheduler _scheduler;
         private readonly Queue _queue;
 
         public QueueTests(SharedTestDirectory testDirectory)
         {
+            _testDirectory = testDirectory;
             _scheduler = new TestScheduler();
             _queue = ObjectMother.NewLmdbQueue(testDirectory.CreateNewDirectoryForTest(), scheduler: _scheduler);
         }
@@ -76,7 +78,7 @@ namespace LightningQueues.Tests
         [Fact]
         public async Task send_message_to_self()
         {
-            using (var queue = ObjectMother.NewLmdbQueue("test"))
+            using (var queue = ObjectMother.NewLmdbQueue(_testDirectory.CreateNewDirectoryForTest()))
             {
                 var message = ObjectMother.NewMessage<OutgoingMessage>("test");
                 message.Destination = new Uri($"lq.tcp://localhost:{queue.Endpoint.Port}");

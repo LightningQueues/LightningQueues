@@ -1,16 +1,14 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Linq;
-using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using LightningDB;
 
 namespace LightningQueues.Storage.LMDB
 {
-    public class LmdbMessageStore : IMessageStore, IAsyncMessageStore
+    public class LmdbMessageStore : IMessageStore
     {
         private readonly LightningEnvironment _environment;
         private readonly string[] _outgoingKeys = { "{0}", "{0}/attempts", "{0}/h", "{0}/q", "{0}/sent", "{0}/uri", "{0}/expire", "{0}/max" };
@@ -29,34 +27,26 @@ namespace LightningQueues.Storage.LMDB
 
         public LightningEnvironment Environment => _environment;
 
-        public Task StoreMessages(IAsyncTransaction transaction, params Message[] messages)
+        public void StoreIncomingMessages(params Message[] messages)
         {
-            //Ensures that all lmdb transactions that may coordinate across async Tasks are executed on the same thread.
-            var lmdbTransaction = (LmdbTransaction)transaction;
-            var tcs = new TaskCompletionSource<bool>();
-            var scheduler = lmdbTransaction.Scheduler;
-            var tx = lmdbTransaction.Transaction;
-            var state = new Tuple<TaskCompletionSource<bool>, LightningTransaction, Message[]>(tcs, tx, messages);
-            scheduler.Schedule(state, (sch, st) =>
+            using (var tx = _environment.BeginTransaction())
             {
-                try
-                {
-                    StoreMessages(st.Item2, st.Item3);
-                    state.Item1.SetResult(true);
-                }
-                catch (Exception ex)
-                {
-                    st.Item1.SetException(ex);
-                }
-                return Disposable.Empty;
-            });
-            return tcs.Task;
+                StoreIncomingMessages(tx, messages);
+                tx.Commit();
+            }
         }
 
-        private void StoreMessages(LightningTransaction tx, params Message[] messages)
+        public void StoreIncomingMessages(ITransaction transaction, params Message[] messages)
+        {
+            var tx = ((LmdbTransaction) transaction).Transaction;
+            StoreIncomingMessages(tx, messages);
+        }
+
+        private void StoreIncomingMessages(LightningTransaction tx, params Message[] messages)
         {
             try
             {
+
                 foreach (var messagesByQueue in messages.GroupBy(x => x.Queue))
                 {
                     var db = OpenDatabase(tx, messagesByQueue.Key);
@@ -70,14 +60,23 @@ namespace LightningQueues.Storage.LMDB
             }
             catch (LightningException ex)
             {
-                tx.Dispose();
                 if (ex.StatusCode == LightningDB.Native.Lmdb.MDB_NOTFOUND)
                     throw new QueueDoesNotExistException("Queue doesn't exist", ex);
                 throw;
             }
         }
 
-        public IAsyncMessageStore Async => this;
+        public void DeleteIncomingMessages(params Message[] messages)
+        {
+            using (var tx = _environment.BeginTransaction())
+            {
+                foreach (var grouping in messages.GroupBy(x => x.Queue))
+                {
+                    RemoveMessageFromStorage(tx, grouping.Key, _queueKeys, grouping.ToArray());
+                }
+                tx.Commit();
+            }
+        }
 
         public ITransaction BeginTransaction()
         {
@@ -106,12 +105,6 @@ namespace LightningQueues.Storage.LMDB
         private void SuccessfullySent(LightningTransaction tx, params OutgoingMessage[] messages)
         {
             RemoveMessageFromStorage(tx, "outgoing", _outgoingKeys, messages);
-        }
-
-        public void StoreMessages(ITransaction transaction, params Message[] messages)
-        {
-            var tx = ((LmdbTransaction)transaction).Transaction;
-            StoreMessages(tx, messages);
         }
 
         public IObservable<Message> PersistedMessages(string queueName)
@@ -333,11 +326,6 @@ namespace LightningQueues.Storage.LMDB
                 database.Value.Dispose();
             }
             _environment.Dispose();
-        }
-
-        async Task<IAsyncTransaction> IAsyncMessageStore.BeginTransaction()
-        {
-            return await LmdbTransaction.CreateAsync(_environment, new EventLoopScheduler());
         }
     }
 }

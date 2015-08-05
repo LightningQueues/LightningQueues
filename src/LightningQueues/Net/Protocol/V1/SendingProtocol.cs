@@ -24,8 +24,7 @@ namespace LightningQueues.Net.Protocol.V1
                    from _l in WriteLength(stream, messageBytes.Length)
                    from _m in WriteMessages(stream, messageBytes)
                    from _r in ReadReceived(stream)
-                   from _a in WriteAcknowledgement(stream)
-                   from _rv in ReadRevert(stream).Do(_ => _store.SuccessfullySent(outgoing.Messages.ToArray()))
+                   from _a in WriteAcknowledgement(stream).Do(_ => _store.SuccessfullySent(outgoing.Messages.ToArray()))
                    from message in outgoing.Messages
                    select message;
         }
@@ -57,13 +56,6 @@ namespace LightningQueues.Net.Protocol.V1
         public IObservable<Unit> WriteAcknowledgement(Stream stream)
         {
             return Observable.FromAsync(() => stream.WriteAsync(Constants.AcknowledgedBuffer, 0, Constants.AcknowledgedBuffer.Length));
-        }
-
-        public IObservable<Unit> ReadRevert(Stream stream)
-        {
-            return Observable.FromAsync(() => stream.ReadExpectedBuffer(Constants.RevertBuffer))
-                .Where(shouldRevert => !shouldRevert)
-                .Select(x => Unit.Default);
         }
     }
 }

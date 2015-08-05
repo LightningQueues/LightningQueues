@@ -26,7 +26,7 @@ namespace LightningQueues.Tests.Storage.Lmdb
             var message = NewMessage<Message>();
             _store.CreateQueue(message.Queue);
             var transaction = _store.BeginTransaction();
-            _store.StoreMessages(transaction, message);
+            _store.StoreIncomingMessages(transaction, message);
             transaction.Commit();
             using (var tx = _store.Environment.BeginTransaction())
             {
@@ -47,7 +47,7 @@ namespace LightningQueues.Tests.Storage.Lmdb
             Assert.Throws<QueueDoesNotExistException>(() =>
             {
                 var tx = _store.BeginTransaction();
-                _store.StoreMessages(tx, message);
+                _store.StoreIncomingMessages(tx, message);
             });
         }
 
@@ -57,7 +57,7 @@ namespace LightningQueues.Tests.Storage.Lmdb
             var message = NewMessage<Message>();
             _store.CreateQueue(message.Queue);
             var transaction = _store.BeginTransaction();
-            _store.StoreMessages(transaction, message);
+            _store.StoreIncomingMessages(transaction, message);
             _store.Dispose();
             //crash
             _store = new LmdbMessageStore(_queuePath);
@@ -77,7 +77,7 @@ namespace LightningQueues.Tests.Storage.Lmdb
             var message = NewMessage<Message>();
             _store.CreateQueue(message.Queue);
             var transaction = _store.BeginTransaction();
-            _store.StoreMessages(transaction, message);
+            _store.StoreIncomingMessages(transaction, message);
             transaction.Rollback();
             using (var tx = _store.Environment.BeginTransaction())
             {

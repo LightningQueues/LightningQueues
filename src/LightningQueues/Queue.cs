@@ -63,9 +63,7 @@ namespace LightningQueues
 
         public void Enqueue(Message message)
         {
-            var tx = _messageStore.BeginTransaction();
-            _messageStore.StoreMessages(tx, message);
-            tx.Commit();
+            _messageStore.StoreIncomingMessages(message);
             _receiveSubject.OnNext(message);
         }
 

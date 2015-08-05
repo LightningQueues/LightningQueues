@@ -115,21 +115,25 @@ namespace LightningQueues.Tests.Net.Tcp
         [Fact]
         public async Task receiving_a_valid_message()
         {
-            var expected = new OutgoingMessage
-            {
-                Id = MessageId.GenerateRandom(),
-                Queue = "test",
-                Data = Encoding.UTF8.GetBytes("hello")
-            };
+            var expected = ObjectMother.NewMessage<OutgoingMessage>("test");
+            expected.Data = Encoding.UTF8.GetBytes("hello");
+            expected.Destination = new Uri($"lq.tcp://localhost:{_endpoint.Port}");
+            var tx = _store.BeginTransaction();
+            _sendingStore.StoreOutgoing(tx, expected);
+            tx.Commit();
             var messages = new[] {expected};
             var receivingCompletionSource = new TaskCompletionSource<Message>();
             using (_receiver.StartReceiving().Subscribe(x => { receivingCompletionSource.SetResult(x); }))
             using (var client = new TcpClient())
             {
                 client.Connect(_endpoint);
-                var outgoing = new OutgoingMessageBatch(new Uri("lq.tcp://localhost"), messages, client);
+                var outgoing = new OutgoingMessageBatch(expected.Destination, messages, client);
                 var completionSource = new TaskCompletionSource<bool>();
-                using (_sender.Send(outgoing).Subscribe(x => { completionSource.SetResult(true); }))
+
+                using (_sender.Send(outgoing).Subscribe(x =>
+                {
+                    completionSource.SetResult(true);
+                }))
                 {
                     await Task.WhenAny(completionSource.Task, Task.Delay(100));
                 }
