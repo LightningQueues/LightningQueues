@@ -32,22 +32,26 @@ namespace LightningQueues.Net.Protocol.V1
         public IObservable<Unit> WriteLength(Stream stream, int length)
         {
             var lengthBytes = BitConverter.GetBytes(length);
-            return Observable.FromAsync(() => stream.WriteAsync(lengthBytes, 0, lengthBytes.Length));
+            return Observable.FromAsync(async () => await stream.WriteAsync(lengthBytes, 0, lengthBytes.Length).ConfigureAwait(false));
         }
 
         public IObservable<Unit> WriteMessages(Stream stream, byte[] messageBytes)
         {
-            return Observable.FromAsync(() => stream.WriteAsync(messageBytes, 0, messageBytes.Length));
+            return Observable.FromAsync(async () => await stream.WriteAsync(messageBytes, 0, messageBytes.Length).ConfigureAwait(false));
         }
 
         public IObservable<Unit> ReadReceived(Stream stream)
         {
             return Observable.FromAsync(async () =>
             {
-                var bytes = await stream.ReadBytesAsync(Constants.ReceivedBuffer.Length);
+                var bytes = await stream.ReadBytesAsync(Constants.ReceivedBuffer.Length).ConfigureAwait(false);
                 if (bytes.SequenceEqual(Constants.ReceivedBuffer))
                 {
                     return true;
+                }
+                if (bytes.SequenceEqual(Constants.SerializationFailureBuffer))
+                {
+                    throw new IOException("Failed to send messages, received serialization failed message.");
                 }
                 return false;
             }).Where(x => x).Select(x => Unit.Default);
@@ -55,7 +59,7 @@ namespace LightningQueues.Net.Protocol.V1
 
         public IObservable<Unit> WriteAcknowledgement(Stream stream)
         {
-            return Observable.FromAsync(() => stream.WriteAsync(Constants.AcknowledgedBuffer, 0, Constants.AcknowledgedBuffer.Length));
+            return Observable.FromAsync(async () => await stream.WriteAsync(Constants.AcknowledgedBuffer, 0, Constants.AcknowledgedBuffer.Length).ConfigureAwait(false));
         }
     }
 }

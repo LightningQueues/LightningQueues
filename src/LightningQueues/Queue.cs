@@ -4,6 +4,7 @@ using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using LightningQueues.Net;
 using LightningQueues.Net.Tcp;
 using LightningQueues.Storage;
 
@@ -15,6 +16,7 @@ namespace LightningQueues
         private readonly Receiver _receiver;
         private readonly IMessageStore _messageStore;
         private readonly Subject<Message> _receiveSubject;
+        private readonly Subject<OutgoingMessage> _sendSubject;
         private readonly IScheduler _scheduler;
 
         public Queue(Receiver receiver, Sender sender, IMessageStore messageStore) : this(receiver, sender, messageStore, TaskPoolScheduler.Default)
@@ -27,9 +29,14 @@ namespace LightningQueues
             _sender = sender;
             _messageStore = messageStore;
             _receiveSubject = new Subject<Message>();
+            _sendSubject = new Subject<OutgoingMessage>();
             _scheduler = scheduler;
             _messageStore.CreateQueue("outgoing");
-            _sender.StartSending();
+            var errorPolicy = new SendingErrorPolicy(messageStore, scheduler, _sender.FailedToSend());
+            _sender.StartSending(_messageStore.PersistedOutgoingMessages()
+                .Merge(_sendSubject)
+                .Merge(errorPolicy.RetryStream)
+                .ObserveOn(scheduler));
         }
 
         public IPEndPoint Endpoint => _receiver.Endpoint;
@@ -74,7 +81,6 @@ namespace LightningQueues
                 _receiveSubject.OnNext(msg);
                 return Disposable.Empty;
             });
-            var type = _scheduler.GetType();
         }
 
         public void Send(OutgoingMessage message)
@@ -82,7 +88,7 @@ namespace LightningQueues
             var tx = _messageStore.BeginTransaction();
             _messageStore.StoreOutgoing(tx, message);
             tx.Commit();
-            _sender.Send(message);
+            _sendSubject.OnNext(message);
         }
 
         public void ReceiveLater(Message message, DateTimeOffset time)
@@ -99,6 +105,7 @@ namespace LightningQueues
             _sender.Dispose();
             _receiver.Dispose();
             _receiveSubject.Dispose();
+            _sendSubject.Dispose();
             _messageStore.Dispose();
         }
     }

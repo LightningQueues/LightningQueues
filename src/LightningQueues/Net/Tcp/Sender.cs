@@ -5,28 +5,31 @@ using System.Net.Sockets;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using LightningQueues.Logging;
 
 namespace LightningQueues.Net.Tcp
 {
     public class Sender : IDisposable
     {
+        private readonly ILogger _logger;
         private readonly ISendingProtocol _protocol;
-        private readonly ISubject<OutgoingMessage> _outgoing;
         private readonly ISubject<OutgoingMessageFailure> _failedToSend;
-        private readonly IObservable<OutgoingMessage> _initialSeed;
+        private IObservable<OutgoingMessage> _outgoingStream; 
         private IObservable<OutgoingMessage> _successfullySent;
         private IDisposable _sendingSubscription;
 
-        public Sender(ISendingProtocol protocol, IObservable<OutgoingMessage> initialSeed)
+        public Sender(ILogger logger, ISendingProtocol protocol)
         {
+            _logger = logger;
             _protocol = protocol;
-            _initialSeed = initialSeed;
-            _outgoing = new Subject<OutgoingMessage>();
             _failedToSend = new Subject<OutgoingMessageFailure>();
         }
 
-        public IObservable<OutgoingMessage> StartSending()
+        public IObservable<OutgoingMessageFailure> FailedToSend() => _failedToSend;
+
+        public IObservable<OutgoingMessage> StartSending(IObservable<OutgoingMessage> outgoingStream)
         {
+            _outgoingStream = outgoingStream;
             _successfullySent = SuccessfullySentMessages().Publish().RefCount();
             _sendingSubscription = _successfullySent.Subscribe(x => { });
             return _successfullySent;
@@ -36,7 +39,7 @@ namespace LightningQueues.Net.Tcp
         {
             return ConnectedOutgoingMessageBatch()
                 .Using(x => _protocol.Send(x)
-                .Catch<OutgoingMessage, Exception>(ex => Observable.Empty<OutgoingMessage>()));
+                .Catch<OutgoingMessage, Exception>(ex => HandleException<OutgoingMessage>(ex, x)));
         }
 
         public IObservable<OutgoingMessageBatch> ConnectedOutgoingMessageBatch()
@@ -46,12 +49,7 @@ namespace LightningQueues.Net.Tcp
                 {
                     return Observable.FromAsync(batch.ConnectAsync)
                         .Timeout(TimeSpan.FromSeconds(5))
-                        .Catch<Unit, Exception>(ex =>
-                        {
-                            batch.Dispose();
-                            _failedToSend.OnNext(new OutgoingMessageFailure {Batch = batch, Exception = ex});
-                            return Observable.Empty<Unit>();
-                        })
+                        .Catch<Unit, Exception>(ex => HandleException<Unit>(ex, batch))
                         .Select(_ => batch);
                 });
         }
@@ -72,51 +70,16 @@ namespace LightningQueues.Net.Tcp
                 .Where(x => x.Count > 0);
         }
 
-        public IObservable<OutgoingMessage> InitialSeed()
-        {
-            return _initialSeed;
-        }
-
-        public IObservable<OutgoingMessage> OnDemandOutgoingMessages()
-        {
-            return _outgoing;
-        }
-
         public IObservable<OutgoingMessage> AllOutgoingMessages()
         {
-            return InitialSeed()
-                .Concat(OnDemandOutgoingMessages());
+            return _outgoingStream;
         }
 
-
-        //private void FailedToSend(Exception ex, OutgoingMessageBatch batch)
-        //{
-        //    _logger.Info("Failed to connect " + ex);
-        //    foreach (var message in batch.Messages)
-        //    {
-        //        var attempts = _store.FailedToSend(message);
-        //        if (ShouldRetry(message, attempts))
-        //        {
-        //            _scheduler.Schedule(message, TimeSpan.FromSeconds(attempts*attempts),
-        //                (sch, state) =>
-        //                {
-        //                    _outgoing.OnNext(state);
-        //                    return Disposable.Empty;
-        //                });
-        //        }
-        //    }
-        //}
-
-        public bool ShouldRetry(OutgoingMessage message, int attemptCount)
+        private IObservable<T> HandleException<T>(Exception ex, OutgoingMessageBatch batch)
         {
-            return (attemptCount < (message.MaxAttempts ?? 100))
-                ||
-                DateTime.Now < message.DeliverBy;
-        }
-
-        public void Send(OutgoingMessage message)
-        {
-            _outgoing.OnNext(message);
+            _logger.Error("Got an error sending message.", ex);
+            _failedToSend.OnNext(new OutgoingMessageFailure {Batch = batch, Exception = ex});
+            return Observable.Empty<T>();
         }
 
         public void Dispose()

@@ -14,10 +14,10 @@ namespace LightningQueues.Net.Protocol
             int current;
             do
             {
-                current = await stream.ReadAsync(buffer, 0, buffer.Length - totalRead).ConfigureAwait(false);
+                current = await stream.ReadAsync(buffer, totalRead, buffer.Length - totalRead).ConfigureAwait(false);
                 totalRead += current;
             }
-            while (totalRead < buffer.Length && current > 0);
+            while (totalRead < length && current > 0);
             return buffer;
         }
 
@@ -25,7 +25,7 @@ namespace LightningQueues.Net.Protocol
         {
             try
             {
-                var bytes = await stream.ReadBytesAsync(expected.Length);
+                var bytes = await stream.ReadBytesAsync(expected.Length).ConfigureAwait(false);
                 return expected.SequenceEqual(bytes);
             }
             catch (Exception)

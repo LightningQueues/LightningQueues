@@ -29,6 +29,11 @@ namespace LightningQueues.Tests
             return stream.Scan(0, (acc, current) => acc + 1);
         }
 
+        public static IObservable<int> RunningSum(this IObservable<int> stream)
+        {
+            return stream.Scan(0, (acc, current) => acc + current);
+        }
+
         public static IObservable<T> ThrowTimes<T>(this IObservable<T> stream, int retries)
         {
             var count = 0;

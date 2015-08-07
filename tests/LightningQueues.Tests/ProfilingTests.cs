@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Reactive.Concurrency;
-using System.Reactive.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using LightningQueues.Logging;
 using Xunit;
@@ -20,11 +17,10 @@ namespace LightningQueues.Tests
             _receiver = ObjectMother.NewLmdbQueue(testDirectory.CreateNewDirectoryForTest(), logger: new NLogLogger());
         }
 
-        [InlineData(1000)] //turn this up after retry logic and sending choke is complete
-        [Theory, Trait("prof", "explicit")]
-        public async Task messages_totaling(int numberOfMessages)
+        [Fact, Trait("prof", "explicit")]
+        public async Task messages_totaling()
         {
-            await messages_totaling_helper(numberOfMessages);
+            await messages_totaling_helper(10000);
             //Console.WriteLine("Get new snapshot for comparison and press enter when done.");
             //Console.ReadLine();
         }
@@ -37,21 +33,17 @@ namespace LightningQueues.Tests
                 if (x == numberOfMessages)
                     taskCompletionSource.SetResult(true);
             });
+
             //Console.WriteLine("Get a baseline snapshot for comparison and press enter when done.");
             //Console.ReadLine();
             var destination = new Uri($"lq.tcp://localhost:{_receiver.Endpoint.Port}");
-            var generator = Observable.Range(0, numberOfMessages).Buffer(TimeSpan.FromMilliseconds(100)).Subscribe(x =>
+            for (var i = 0; i < numberOfMessages; ++i)
             {
-                foreach (var item in x)
-                {
-                    var message = ObjectMother.NewMessage<OutgoingMessage>("test");
-                    message.Id = MessageId.GenerateRandom();
-                    message.Destination = destination;
-                    _sender.Send(message);
-                }
-            });
+                var message = ObjectMother.NewMessage<OutgoingMessage>("test");
+                message.Destination = destination;
+                _sender.Send(message);
+            }
             await taskCompletionSource.Task;
-            generator.Dispose();
             subscription.Dispose();
         }
 
