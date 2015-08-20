@@ -20,7 +20,7 @@ elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
     cd lmdb/libraries/liblmdb/
     make
     cd ../../../
-    LD_LIBRARY_PATH=./lmdb/libraries/liblmdb/:$LD_LIBRARY_PATH dnx ./tests/LightningDB.Tests test
+    LD_LIBRARY_PATH=./lmdb/libraries/liblmdb/:$LD_LIBRARY_PATH dnx ./tests/LightningQueues.Tests test
 fi
 
 rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
