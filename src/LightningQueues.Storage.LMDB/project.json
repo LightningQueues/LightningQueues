@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0-*",
+  "version": "0.2.0-dnx-*",
   "authors": ["Corey Kaylor", "Ryan Hauert"],
   "owners": ["Corey Kaylor"],
   "title": "LightningQueues.Storage.LMDB",
@@ -8,7 +8,7 @@
   "description": "LMDB storage for LightningQueues",
   "tags": ["queue", "persistence", "messaging", "msmq", "lmdb", "lightningdb"],
   "dependencies": {
-    "LightningQueues": "0.2.0-*",
+    "LightningQueues": "0.2.0-dnx-*",
     "LightningDB": "0.9.1.35"
   },
   "frameworks": {

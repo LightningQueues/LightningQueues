@@ -1609,7 +1609,7 @@
   },
   "projectFileDependencyGroups": {
     "": [
-      "LightningQueues >= 0.2.0-*",
+      "LightningQueues >= 0.2.0-dnx-*",
       "LightningDB >= 0.9.1.35"
     ],
     "DNX,Version=v4.5.1": [],

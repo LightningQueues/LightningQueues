@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0-*",
+  "version": "0.2.0-dnx-*",
   "authors": ["Corey Kaylor", "Ryan Hauert"],
   "owners": ["Corey Kaylor"],
   "title": "LightningQueues",

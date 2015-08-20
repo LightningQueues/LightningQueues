@@ -4400,9 +4400,9 @@
       "xunit >= 2.1.0-*",
       "xunit.runner.dnx >= 2.1.0-beta4-*",
       "Rx-Main >= 2.2.5",
-      "LightningQueues >= 0.2.0-*",
+      "LightningQueues >= 0.2.0-dnx-*",
       "LightningDB >= 0.9.1.35",
-      "LightningQueues.Storage.LMDB >= 0.2.0-*"
+      "LightningQueues.Storage.LMDB >= 0.2.0-dnx-*"
     ],
     "DNX,Version=v4.5.1": [],
     "DNXCore,Version=v5.0": []
