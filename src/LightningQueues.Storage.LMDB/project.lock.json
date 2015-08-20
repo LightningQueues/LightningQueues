@@ -63,6 +63,67 @@
         }
       }
     },
+    ".NETFramework,Version=v4.6": {
+      "LightningDB/0.9.1.35": {
+        "compile": {
+          "lib/net45/LightningDB.dll": {}
+        },
+        "runtime": {
+          "lib/net45/LightningDB.dll": {}
+        }
+      },
+      "Rx-Core/2.2.5": {
+        "dependencies": {
+          "Rx-Interfaces": "2.2.5"
+        },
+        "compile": {
+          "lib/net45/System.Reactive.Core.dll": {}
+        },
+        "runtime": {
+          "lib/net45/System.Reactive.Core.dll": {}
+        }
+      },
+      "Rx-Interfaces/2.2.5": {
+        "compile": {
+          "lib/net45/System.Reactive.Interfaces.dll": {}
+        },
+        "runtime": {
+          "lib/net45/System.Reactive.Interfaces.dll": {}
+        }
+      },
+      "Rx-Linq/2.2.5": {
+        "dependencies": {
+          "Rx-Core": "2.2.5",
+          "Rx-Interfaces": "2.2.5"
+        },
+        "compile": {
+          "lib/net45/System.Reactive.Linq.dll": {}
+        },
+        "runtime": {
+          "lib/net45/System.Reactive.Linq.dll": {}
+        }
+      },
+      "Rx-Main/2.2.5": {
+        "dependencies": {
+          "Rx-Core": "2.2.5",
+          "Rx-Interfaces": "2.2.5",
+          "Rx-Linq": "2.2.5",
+          "Rx-PlatformServices": "2.2.5"
+        }
+      },
+      "Rx-PlatformServices/2.2.5": {
+        "dependencies": {
+          "Rx-Core": "2.2.5",
+          "Rx-Interfaces": "2.2.5"
+        },
+        "compile": {
+          "lib/net45/System.Reactive.PlatformServices.dll": {}
+        },
+        "runtime": {
+          "lib/net45/System.Reactive.PlatformServices.dll": {}
+        }
+      }
+    },
     "DNXCore,Version=v5.0": {
       "LightningDB/0.9.1.35": {
         "compile": {
@@ -1548,10 +1609,11 @@
   },
   "projectFileDependencyGroups": {
     "": [
-      "LightningQueues >= 1.0.0-*",
+      "LightningQueues >= 0.2.0-*",
       "LightningDB >= 0.9.1.35"
     ],
     "DNX,Version=v4.5.1": [],
+    ".NETFramework,Version=v4.6": [],
     "DNXCore,Version=v5.0": []
   }
 }

@@ -1,10 +1,18 @@
 {
-  "version": "1.0.0-*",
+  "version": "0.2.0-*",
+  "authors": ["Corey Kaylor", "Ryan Hauert"],
+  "owners": ["Corey Kaylor"],
+  "title": "LightningQueues",
+  "projectUrl": "https://github.com/LightningQueues/LightningQueues",
+  "requireLicenseAcceptance": false,
+  "description": "Fast persistent queues for .NET",
+  "tags": ["queue", "persistence", "messaging", "msmq"],
   "dependencies": {
     "Rx-Main": "2.2.5"
   },
   "frameworks": {
     "dnx451": { },
+    "net46": { },
     "dnxcore50": {
       "dependencies": {
         "System.Net.Primitives": "4.0.10-beta-*",

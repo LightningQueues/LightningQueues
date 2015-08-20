@@ -1,20 +1,19 @@
 {
-  "version": "1.0.0-*",
-  "description": "",
-  "authors": [
-    ""
-  ],
-  "tags": [
-    ""
-  ],
-  "projectUrl": "",
-  "licenseUrl": "",
+  "version": "0.2.0-*",
+  "authors": ["Corey Kaylor", "Ryan Hauert"],
+  "owners": ["Corey Kaylor"],
+  "title": "LightningQueues.Storage.LMDB",
+  "projectUrl": "https://github.com/LightningQueues/LightningQueues",
+  "requireLicenseAcceptance": false,
+  "description": "LMDB storage for LightningQueues",
+  "tags": ["queue", "persistence", "messaging", "msmq", "lmdb", "lightningdb"],
   "dependencies": {
-    "LightningQueues": "1.0.0-*",
+    "LightningQueues": "0.2.0-*",
     "LightningDB": "0.9.1.35"
   },
   "frameworks": {
     "dnx451": { },
+    "net46": { },
     "dnxcore50": { }
   }
 }
