@@ -1,48 +1,28 @@
 ﻿using System;
-using System.Reactive.Concurrency;
-using System.Reactive.Disposables;
-using System.Reactive.Subjects;
+using System.Reactive.Linq;
 using LightningQueues.Storage;
 
 namespace LightningQueues.Net
 {
-    public class SendingErrorPolicy : IDisposable
+    public class SendingErrorPolicy
     {
-        private readonly ISubject<OutgoingMessage> _retrySubject;
-        private readonly IDisposable _errorSubscription;
+        private readonly IObservable<OutgoingMessage> _retryStream;
 
-        public SendingErrorPolicy(IMessageStore store, IScheduler scheduler, IObservable<OutgoingMessageFailure> failedToConnect)
+        public SendingErrorPolicy(IMessageStore store, IObservable<OutgoingMessageFailure> failedToConnect)
         {
-            _retrySubject = new Subject<OutgoingMessage>();
-            _errorSubscription = failedToConnect.Subscribe(x =>
-            {
-                foreach (var message in x.Batch.Messages)
-                {
-                    var count = store.FailedToSend(message);
-                    if (ShouldRetry(message, count))
-                    {
-                        scheduler.Schedule(x, TimeSpan.FromSeconds(count*count), (sch, state) =>
-                        {
-                            _retrySubject.OnNext(message);
-                            return Disposable.Empty;
-                        });
-                    }
-                }
-            });
+            _retryStream = failedToConnect.SelectMany(x => x.Batch.Messages)
+                .Select(x => new { Message = x, AttemptCount = store.FailedToSend(x) })
+                .Where(x => ShouldRetry(x.Message, x.AttemptCount))
+                .SelectMany(x => Observable.Return(x.Message).Delay(TimeSpan.FromSeconds(x.AttemptCount * x.AttemptCount)));
         }
 
-        public IObservable<OutgoingMessage> RetryStream => _retrySubject;
+        public IObservable<OutgoingMessage> RetryStream => _retryStream;
 
         public bool ShouldRetry(OutgoingMessage message, int attemptCount)
         {
             return (attemptCount < (message.MaxAttempts ?? 100))
                 &&
                 (!message.DeliverBy.HasValue || DateTime.Now < message.DeliverBy);
-        }
-
-        public void Dispose()
-        {
-            _errorSubscription.Dispose();
         }
     }
 }

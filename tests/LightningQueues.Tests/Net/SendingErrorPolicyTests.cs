@@ -13,8 +13,7 @@ namespace LightningQueues.Tests.Net
         public SendingErrorPolicyTests()
         {
             var subject = new Subject<OutgoingMessageFailure>();
-            var scheduler = new TestScheduler();
-            _errorPolicy = new SendingErrorPolicy(new EmptyStore(), scheduler, subject);
+            _errorPolicy = new SendingErrorPolicy(new EmptyStore(), subject);
         }
 
         [Fact]

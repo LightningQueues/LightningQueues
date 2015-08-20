@@ -32,7 +32,7 @@ namespace LightningQueues
             _sendSubject = new Subject<OutgoingMessage>();
             _scheduler = scheduler;
             _messageStore.CreateQueue("outgoing");
-            var errorPolicy = new SendingErrorPolicy(messageStore, scheduler, _sender.FailedToSend());
+            var errorPolicy = new SendingErrorPolicy(messageStore, _sender.FailedToSend());
             _sender.StartSending(_messageStore.PersistedOutgoingMessages()
                 .Merge(_sendSubject)
                 .Merge(errorPolicy.RetryStream)
