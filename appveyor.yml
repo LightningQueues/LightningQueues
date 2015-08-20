@@ -16,5 +16,5 @@ deploy:
     server: https://www.myget.org/F/lightning-queues
     api_key:
       secure: b+9XvzLEX6W3iqiZrv63FULtubb74MElmHHWoz2fV31A+B0L58h1l2h15IjfRk+q
-    skip_symbols: false
+    skip_symbols: true
     artifact: /.*\.nupkg/
