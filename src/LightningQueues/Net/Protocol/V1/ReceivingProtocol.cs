@@ -15,7 +15,7 @@ namespace LightningQueues.Net.Protocol.V1
         readonly ILogger _logger;
         private readonly IScheduler _scheduler;
 
-        public ReceivingProtocol(IMessageStore store, ILogger logger) : this(store, logger, Scheduler.Default)
+        public ReceivingProtocol(IMessageStore store, ILogger logger) : this(store, logger, TaskPoolScheduler.Default)
         {
         }
 
