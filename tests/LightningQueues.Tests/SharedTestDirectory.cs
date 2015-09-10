@@ -1,8 +1,8 @@
 ﻿using System;
 using System.IO;
 using System.Threading;
-using Microsoft.Framework.Runtime;
-using Microsoft.Framework.Runtime.Infrastructure;
+using Microsoft.Dnx.Runtime;
+using Microsoft.Dnx.Runtime.Infrastructure;
 using Xunit;
 
 namespace LightningQueues.Tests
@@ -16,7 +16,7 @@ namespace LightningQueues.Tests
             var locator = CallContextServiceLocator.Locator;
             var services = locator.ServiceProvider;
             var libraryManager = (ILibraryManager)services.GetService(typeof(ILibraryManager));
-            var testProjectDir = Path.GetDirectoryName(libraryManager.GetLibraryInformation("LightningQueues.Tests").Path);
+            var testProjectDir = Path.GetDirectoryName(libraryManager.GetLibrary("LightningQueues.Tests").Path);
             _testTempDir = Path.Combine(Directory.GetParent(testProjectDir).Parent.FullName, "TestData");
         }
 

@@ -12,14 +12,14 @@ if %ERRORLEVEL% neq 0 (
 )
 
 :install
-call dnvm install 1.0.0-beta6
-call dnvm use 1.0.0-beta6
+call dnvm install 1.0.0-beta7
+call dnvm use 1.0.0-beta7
 rem set the runtime path because the above commands set \.dnx<space>\runtimes
-set PATH=!USERPROFILE!\.dnx\runtimes\dnx-clr-win-x86.1.0.0-beta6\bin;!PATH!
+set PATH=!USERPROFILE!\.dnx\runtimes\dnx-clr-win-x86.1.0.0-beta7\bin;!PATH!
 
 call dnu restore
 if %errorlevel% neq 0 exit /b %errorlevel%
-call dnx .\tests\LightningQueues.Tests test
+call dnx -p .\tests\LightningQueues.Tests test
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 echo Packing LightningQueues Nuget Version %LQ_NUGET_VERSION%

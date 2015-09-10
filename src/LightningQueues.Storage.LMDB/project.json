@@ -9,7 +9,7 @@
   "tags": ["queue", "persistence", "messaging", "msmq", "lmdb", "lightningdb"],
   "dependencies": {
     "LightningQueues": "0.2.0-dnx-*",
-    "LightningDB": "0.9.1.35"
+    "LightningDB": "0.9.2.40"
   },
   "frameworks": {
     "dnx451": { },
