@@ -19,7 +19,7 @@ set PATH=!USERPROFILE!\.dnx\runtimes\dnx-clr-win-x64.1.0.0-beta7\bin;!PATH!
 
 call dnu restore
 if %errorlevel% neq 0 exit /b %errorlevel%
-call dnx -p .\tests\LightningQueues.Tests test
+call dnx -p .\tests\LightningQueues.Tests test -parallel none
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 echo Packing LightningQueues Nuget Version %LQ_NUGET_VERSION%
