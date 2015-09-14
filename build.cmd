@@ -12,10 +12,10 @@ if %ERRORLEVEL% neq 0 (
 )
 
 :install
-call dnvm install 1.0.0-beta7
-call dnvm use 1.0.0-beta7
+call dnvm install 1.0.0-beta7 -arch x64
+call dnvm use 1.0.0-beta7 -arch x64
 rem set the runtime path because the above commands set \.dnx<space>\runtimes
-set PATH=!USERPROFILE!\.dnx\runtimes\dnx-clr-win-x86.1.0.0-beta7\bin;!PATH!
+set PATH=!USERPROFILE!\.dnx\runtimes\dnx-clr-win-x64.1.0.0-beta7\bin;!PATH!
 
 call dnu restore
 if %errorlevel% neq 0 exit /b %errorlevel%
