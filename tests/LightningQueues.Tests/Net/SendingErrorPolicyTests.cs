@@ -121,6 +121,11 @@ namespace LightningQueues.Tests.Net
             {
                 throw new NotImplementedException();
             }
+
+            public string[] GetAllQueues()
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }

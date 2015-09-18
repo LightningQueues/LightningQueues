@@ -31,7 +31,6 @@ namespace LightningQueues
             _receiveSubject = new Subject<Message>();
             _sendSubject = new Subject<OutgoingMessage>();
             _scheduler = scheduler;
-            _messageStore.CreateQueue("outgoing");
             var errorPolicy = new SendingErrorPolicy(messageStore, _sender.FailedToSend());
             _sender.StartSending(_messageStore.PersistedOutgoingMessages()
                 .Merge(_sendSubject)
@@ -40,6 +39,8 @@ namespace LightningQueues
         }
 
         public IPEndPoint Endpoint => _receiver.Endpoint;
+
+        public string[] Queues => _messageStore.GetAllQueues();
 
         internal IMessageStore Store => _messageStore;
 

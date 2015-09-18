@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -13,6 +14,7 @@ namespace LightningQueues.Storage.LMDB
         private readonly LightningEnvironment _environment;
         private readonly string[] _outgoingKeys = { "{0}", "{0}/attempts", "{0}/h", "{0}/q", "{0}/sent", "{0}/uri", "{0}/expire", "{0}/max" };
         private readonly string[] _queueKeys = { "{0}", "{0}/headers", "{0}/sent" };
+        private const string OutgoingQueue = "outgoing";
 
         public LmdbMessageStore(string path)
         {
@@ -22,7 +24,7 @@ namespace LightningQueues.Storage.LMDB
                 MapSize = 1024*1024*100
             };
             _environment.Open();
-            CreateQueue("outgoing");
+            CreateQueue(OutgoingQueue);
         }
 
         public LightningEnvironment Environment => _environment;
@@ -99,6 +101,24 @@ namespace LightningQueues.Storage.LMDB
             {
                 SuccessfullySent(tx, messages);
                 tx.Commit();
+            }
+        }
+
+        public string[] GetAllQueues()
+        {
+            return GetAllQueuesImpl().Where(x => OutgoingQueue != x).ToArray();
+        }
+
+        private IEnumerable<string> GetAllQueuesImpl()
+        {
+            using (var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly))
+            using(var db = tx.OpenDatabase())
+            using (var cursor = tx.CreateCursor(db))
+            {
+                foreach (var item in cursor)
+                {
+                    yield return Encoding.UTF8.GetString(item.Key);
+                }
             }
         }
 

@@ -16,5 +16,6 @@ namespace LightningQueues.Storage
         void StoreOutgoing(ITransaction tx, OutgoingMessage message);
         int FailedToSend(OutgoingMessage message);
         void SuccessfullySent(params OutgoingMessage[] messages);
+        string[] GetAllQueues();
     }
 }
