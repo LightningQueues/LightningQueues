@@ -41,6 +41,11 @@ namespace LightningQueues.Tests
             _debug.Add(message);
         }
 
+        public void DebugFormat(string message, params object[] args)
+        {
+            Debug(string.Format(message, args));
+        }
+
 
         public void Debug<TMessage>(TMessage message)
         {
@@ -53,6 +58,11 @@ namespace LightningQueues.Tests
             _info.Add(message);
         }
 
+        public void InfoFormat(string message, params object[] args)
+        {
+            Info(string.Format(message, args));
+        }
+
         public void Info<TMessage>(TMessage message)
         {
             Info(message.ToString());
@@ -62,6 +72,11 @@ namespace LightningQueues.Tests
         {
             _outputHook(message + exception);
             _error.Add(message);
+        }
+
+        public void ErrorFormat(string message, Exception ex, params object[] args)
+        {
+            Error(string.Format(message, args), ex);
         }
     }
 }

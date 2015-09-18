@@ -13,8 +13,8 @@ namespace LightningQueues.Tests
 
         public ProfilingTests(SharedTestDirectory testDirectory)
         {
-            _sender = ObjectMother.NewLmdbQueue(testDirectory.CreateNewDirectoryForTest(), logger: new NLogLogger());
-            _receiver = ObjectMother.NewLmdbQueue(testDirectory.CreateNewDirectoryForTest(), logger: new NLogLogger());
+            _sender = ObjectMother.NewLmdbQueue(testDirectory.CreateNewDirectoryForTest(), logger: new NulloLogger());
+            _receiver = ObjectMother.NewLmdbQueue(testDirectory.CreateNewDirectoryForTest(), logger: new NulloLogger());
         }
 
         [Fact, Trait("prof", "explicit")]

@@ -18,6 +18,11 @@ namespace LightningQueues
         private ISendingProtocol _sendingProtocol;
         private ILogger _logger;
 
+        public QueueConfiguration()
+        {
+            _logger = new NulloLogger();
+        }
+
         public QueueConfiguration StoreMessagesWith(IMessageStore store)
         {
             _store = store;

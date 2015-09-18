@@ -48,7 +48,7 @@ namespace LightningQueues.Net.Protocol.V1
             return Observable.FromAsync(() => stream.ReadBytesAsync(sizeof(int)))
                 .Select(x => BitConverter.ToInt32(x, 0))
                 .Catch((Exception ex) => sendSerializationError<int>(stream, ex))
-                .Do(x => _logger.Debug($"Read in length value of {x}"))
+                .Do(x => _logger.DebugFormat("Read in length value of {0}", x))
                 .Where(x => x >= 0);
         }
 
