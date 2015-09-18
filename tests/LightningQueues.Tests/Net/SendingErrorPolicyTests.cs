@@ -126,6 +126,10 @@ namespace LightningQueues.Tests.Net
             {
                 throw new NotImplementedException();
             }
+
+            public void ClearAllStorage()
+            {
+            }
         }
     }
 }

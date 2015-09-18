@@ -17,5 +17,6 @@ namespace LightningQueues.Storage
         int FailedToSend(OutgoingMessage message);
         void SuccessfullySent(params OutgoingMessage[] messages);
         string[] GetAllQueues();
+        void ClearAllStorage();
     }
 }

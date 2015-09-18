@@ -109,6 +109,20 @@ namespace LightningQueues.Storage.LMDB
             return GetAllQueuesImpl().Where(x => OutgoingQueue != x).ToArray();
         }
 
+        public void ClearAllStorage()
+        {
+            var databases = GetAllQueuesImpl().ToArray();
+            using (var tx = _environment.BeginTransaction())
+            {
+                foreach (var databaseName in databases)
+                {
+                    var db = OpenDatabase(tx, databaseName);
+                    tx.TruncateDatabase(db);
+                }
+                tx.Commit();
+            }
+        }
+
         private IEnumerable<string> GetAllQueuesImpl()
         {
             using (var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly))

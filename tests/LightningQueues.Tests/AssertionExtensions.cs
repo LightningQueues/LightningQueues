@@ -6,7 +6,7 @@ namespace LightningQueues.Tests
     {
         public static void ShouldEqual<T>(this T expected, T target)
         {
-            Assert.Equal(expected, target);
+            Assert.Equal(target, expected);
         }
 
         public static void ShouldBeFalse(this bool value)
