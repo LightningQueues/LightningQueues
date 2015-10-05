@@ -37,7 +37,7 @@ namespace LightningQueues
 
         public string[] Queues => _messageStore.GetAllQueues();
 
-        internal IMessageStore Store => _messageStore;
+        public IMessageStore Store => _messageStore;
 
         internal ISubject<Message> ReceiveLoop => _receiveSubject;
 
