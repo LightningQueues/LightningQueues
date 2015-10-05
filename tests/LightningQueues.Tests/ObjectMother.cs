@@ -35,6 +35,7 @@ namespace LightningQueues.Tests
             queueConfiguration.StoreWithLmdb(path);
             var queue = queueConfiguration.BuildQueue();
             queue.CreateQueue(queueName);
+            queue.Start();
             return queue;
         }
     }

@@ -31,11 +31,6 @@ namespace LightningQueues
             _receiveSubject = new Subject<Message>();
             _sendSubject = new Subject<OutgoingMessage>();
             _scheduler = scheduler;
-            var errorPolicy = new SendingErrorPolicy(messageStore, _sender.FailedToSend());
-            _sender.StartSending(_messageStore.PersistedOutgoingMessages()
-                .Merge(_sendSubject)
-                .Merge(errorPolicy.RetryStream)
-                .ObserveOn(scheduler));
         }
 
         public IPEndPoint Endpoint => _receiver.Endpoint;
@@ -51,7 +46,16 @@ namespace LightningQueues
             _messageStore.CreateQueue(queueName);
         }
 
-        public IObservable<MessageContext> ReceiveIncoming(string queueName)
+        public void Start()
+        {
+            var errorPolicy = new SendingErrorPolicy(_messageStore, _sender.FailedToSend());
+            _sender.StartSending(_messageStore.PersistedOutgoingMessages()
+                .Merge(_sendSubject)
+                .Merge(errorPolicy.RetryStream)
+                .ObserveOn(_scheduler));
+        }
+
+        public IObservable<MessageContext> Receive(string queueName)
         {
             return _messageStore.PersistedMessages(queueName)
                 .Concat(_receiver.StartReceiving())

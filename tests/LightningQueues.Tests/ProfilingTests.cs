@@ -28,7 +28,7 @@ namespace LightningQueues.Tests
         private async Task messages_totaling_helper(int numberOfMessages)
         {
             var taskCompletionSource = new TaskCompletionSource<bool>();
-            var subscription = _receiver.ReceiveIncoming("test").RunningCount().Subscribe(x =>
+            var subscription = _receiver.Receive("test").RunningCount().Subscribe(x =>
             {
                 if (x == numberOfMessages)
                     taskCompletionSource.SetResult(true);

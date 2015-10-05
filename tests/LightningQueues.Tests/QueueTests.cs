@@ -23,7 +23,7 @@ namespace LightningQueues.Tests
         {
             var received = false;
             _queue.ReceiveLater(new Message {Queue = "test"}, TimeSpan.FromSeconds(3));
-            using (_queue.ReceiveIncoming("test").Subscribe(x => received = true))
+            using (_queue.Receive("test").Subscribe(x => received = true))
             {
                 _scheduler.AdvanceBy(TimeSpan.FromSeconds(2).Ticks);
                 received.ShouldBeFalse();
@@ -38,7 +38,7 @@ namespace LightningQueues.Tests
             var received = false;
             var time = DateTimeOffset.Now.AddSeconds(5);
             _queue.ReceiveLater(new Message {Queue = "test"}, time);
-            using (_queue.ReceiveIncoming("test").Subscribe(x => received = true))
+            using (_queue.Receive("test").Subscribe(x => received = true))
             {
                 _scheduler.AdvanceBy(time.AddSeconds(-3).Ticks);
                 received.ShouldBeFalse();
@@ -52,7 +52,7 @@ namespace LightningQueues.Tests
         {
             Message result = null;
             var expected = ObjectMother.NewMessage<Message>("test");
-            using (_queue.ReceiveIncoming("test").Subscribe(x => result = x.Message))
+            using (_queue.Receive("test").Subscribe(x => result = x.Message))
             {
                 _queue.Enqueue(expected);
             }
@@ -66,8 +66,8 @@ namespace LightningQueues.Tests
             Message first = null;
             Message afterMove = null;
             var expected = ObjectMother.NewMessage<Message>("test");
-            using (_queue.ReceiveIncoming("another").Subscribe(x => afterMove = x.Message))
-            using (_queue.ReceiveIncoming("test").Subscribe(x => first = x.Message))
+            using (_queue.Receive("another").Subscribe(x => afterMove = x.Message))
+            using (_queue.Receive("test").Subscribe(x => first = x.Message))
             {
                 _queue.Enqueue(expected);
                 _queue.MoveToQueue("another", first);
@@ -83,7 +83,7 @@ namespace LightningQueues.Tests
                 var message = ObjectMother.NewMessage<OutgoingMessage>("test");
                 message.Destination = new Uri($"lq.tcp://localhost:{queue.Endpoint.Port}");
                 queue.Send(message);
-                var received = await queue.ReceiveIncoming("test").FirstAsyncWithTimeout();
+                var received = await queue.Receive("test").FirstAsyncWithTimeout();
                 received.ShouldNotBeNull();
                 received.Message.Queue.ShouldEqual(message.Queue);
                 received.Message.Data.ShouldEqual(message.Data);
