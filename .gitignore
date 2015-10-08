@@ -10,6 +10,7 @@ logs/
 [Oo]bj/
 *DotSettings*
 *.suo
+.vs/
 *.sln.cache
 _ReSharper.*/
 CommonAssemblyInfo.cs
