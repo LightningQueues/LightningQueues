@@ -279,10 +279,6 @@ namespace LightningQueues.Storage
 			    var bookmark = enumerator.Current;
 			    bookmark.QueueName = _queueName;
 
-			    var status = (MessageStatus) _messages.ForColumnType<IntColumn>().Get("status");
-
-				if (status != MessageStatus.ReadyToDeliver)
-					continue;
 			    return _messages.ReadMessageWithId<PersistentMessage>(bookmark, _queueName);
 			}
 

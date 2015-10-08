@@ -58,6 +58,20 @@ namespace LightningQueues.Tests
             new byte[] {1, 2, 4, 5}.ShouldEqual(message.Data);
         }
 
+        [Test]
+        public void peek_by_id_while_processing()
+        {
+            _receiver.Start();
+            using (var tx = new TransactionScope())
+            {
+                var message = _receiver.Receive("h", null);
+                var peekedMessage = _receiver.PeekById("h", message.Id);
+                peekedMessage.Id.ShouldEqual(message.Id);
+                peekedMessage.Data.ShouldEqual(message.Data);
+                tx.Complete();
+            }
+        }
+
         [TearDown]
         public void Teardown()
         {
