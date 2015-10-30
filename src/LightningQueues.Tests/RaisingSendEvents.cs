@@ -126,7 +126,8 @@ namespace LightningQueues.Tests
         [Test]
         public void MessageSent_IsNotLogged_IfReceiverReverts()
         {
-            Directory.Delete(TEST_QUEUE_2, true);
+            if(Directory.Exists(TEST_QUEUE_2))
+                Directory.Delete(TEST_QUEUE_2, true);
             using (var receiver = new RevertingQueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2, new QueueManagerConfiguration()))
             {
                 receiver.CreateQueues("h");
