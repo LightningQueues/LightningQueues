@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Transactions;
@@ -125,6 +126,7 @@ namespace LightningQueues.Tests
         [Test]
         public void MessageSent_IsNotLogged_IfReceiverReverts()
         {
+            Directory.Delete(TEST_QUEUE_2, true);
             using (var receiver = new RevertingQueueManager(new IPEndPoint(IPAddress.Loopback, 23457), TEST_QUEUE_2, new QueueManagerConfiguration()))
             {
                 receiver.CreateQueues("h");

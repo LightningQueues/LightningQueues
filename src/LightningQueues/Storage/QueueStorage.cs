@@ -12,7 +12,7 @@ namespace LightningQueues.Storage
 {
 	public class QueueStorage : CriticalFinalizerObject, IDisposable
 	{
-		private JET_INSTANCE _instance;
+        private JET_INSTANCE _instance;
 	    private readonly string _database;
 	    private readonly string _path;
 	    private ColumnsInformation _columnsInformation;
@@ -100,8 +100,11 @@ namespace LightningQueues.Storage
 				TempDirectory = Path.Combine(_path, "temp"),
 				SystemDirectory = Path.Combine(_path, "system"),
 				LogFileDirectory = Path.Combine(_path, "logs"),
-				MaxVerPages = 8192,
-				MaxTemporaryTables = 8192
+                LogFileSize = 26 * 1024,
+                LogBuffers = 2 * 1024,
+                MaxSessions = 256,
+				MaxVerPages = 16 * 1024,
+                MaxTemporaryTables = 8 * 1024
 			};
 		}
 
@@ -133,7 +136,7 @@ namespace LightningQueues.Storage
 
 		private void EnsureDatabaseIsCreatedAndAttachToDatabase()
 		{
-			using (var session = new Session(_instance))
+            using (var session = new Session(_instance))
 			{
 				try
 				{
