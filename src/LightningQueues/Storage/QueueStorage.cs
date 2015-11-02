@@ -103,6 +103,7 @@ namespace LightningQueues.Storage
                 LogFileSize = 26 * 1024,
                 LogBuffers = 2 * 1024,
                 MaxSessions = 256,
+                MaxCursors = 4096,
 				MaxVerPages = 16 * 1024,
                 MaxTemporaryTables = 8 * 1024
 			};
