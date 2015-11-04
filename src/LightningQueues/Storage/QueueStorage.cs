@@ -12,11 +12,13 @@ namespace LightningQueues.Storage
 {
 	public class QueueStorage : CriticalFinalizerObject, IDisposable
 	{
+	    private const int MaxSessions = 256;
         private JET_INSTANCE _instance;
 	    private readonly string _database;
 	    private readonly string _path;
 	    private ColumnsInformation _columnsInformation;
 	    private readonly QueueManagerConfiguration _configuration;
+	    private readonly SemaphoreSlim _sessionLimits;
 	    private readonly ILogger _logger = LogManager.GetLogger<QueueStorage>();
 
 	    private readonly ReaderWriterLockSlim _usageLock = new ReaderWriterLockSlim();
@@ -27,6 +29,7 @@ namespace LightningQueues.Storage
 		{
 		    _configuration = configuration;
 		    _database = database;
+            _sessionLimits = new SemaphoreSlim(MaxSessions);
 		    _path = database;
 			if (Path.IsPathRooted(database) == false)
 				_path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, database);
@@ -102,7 +105,7 @@ namespace LightningQueues.Storage
 				LogFileDirectory = Path.Combine(_path, "logs"),
                 LogFileSize = 26 * 1024,
                 LogBuffers = 2 * 1024,
-                MaxSessions = 256,
+                MaxSessions = MaxSessions,
                 MaxCursors = 4096,
 				MaxVerPages = 16 * 1024,
                 MaxTemporaryTables = 8 * 1024
@@ -272,6 +275,7 @@ namespace LightningQueues.Storage
 			var shouldTakeLock = _usageLock.IsReadLockHeld == false;
 			try
 			{
+			    _sessionLimits.Wait();
 				if (shouldTakeLock)
 					_usageLock.EnterReadLock();
 				using (var qa = constructor())
@@ -283,6 +287,7 @@ namespace LightningQueues.Storage
 			}
 			finally
 			{
+			    _sessionLimits.Release();
 				if (shouldTakeLock)
 					_usageLock.ExitReadLock();
 			}
