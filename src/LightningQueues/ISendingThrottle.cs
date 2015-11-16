@@ -35,8 +35,8 @@ namespace LightningQueues
 
         public SendingChoke()
         {
-            _maxConnectingCount = 30;
-            _maxSendingCount = 5;
+            _maxConnectingCount = 200;
+            _maxSendingCount = 30;
         }
 
         public int CurrentlySendingCount
