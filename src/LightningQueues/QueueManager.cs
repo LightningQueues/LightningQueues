@@ -648,10 +648,12 @@ namespace LightningQueues
                 {
                     var message = GetMessageFromQueue(scope.Transaction, queueName, subqueue);
                     if (message == null)
+                    {
+                        scope.Rollback();
                         continue;
+                    }
 
                     streamedMessage = new StreamedMessage {Message = message, TransactionalScope = scope};
-                    scope.Rollback();
                     concurrentErrorCount = 0;
                 }
                 catch (Exception ex)
