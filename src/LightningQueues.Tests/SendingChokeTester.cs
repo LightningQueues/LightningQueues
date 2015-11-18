@@ -8,14 +8,6 @@ namespace LightningQueues.Tests
     public class SendingChokeTester
     {
         [Test]
-        public void the_defaults()
-        {
-            var choke = new SendingChoke();
-            choke.MaxConnectingCount.ShouldEqual(30);
-            choke.MaxSendingCount.ShouldEqual(5);
-        }
-
-        [Test]
         public void choke_should_send_returns_true_if_havent_sent_anything()
         {
             var choke = new SendingChoke();
@@ -26,7 +18,7 @@ namespace LightningQueues.Tests
         public void choke_returns_false_if_at_max_sending_count()
         {
             var choke = new SendingChoke();
-            5.Times(x =>
+            choke.MaxSendingCount.Times(x =>
             {
                 choke.StartSend();
                 choke.SuccessfullyConnected();
@@ -59,7 +51,7 @@ namespace LightningQueues.Tests
                 choke.StartSend();
                 choke.SuccessfullyConnected();
             });
-            31.Times(x => choke.StartSend());
+            (choke.MaxConnectingCount + 1).Times(x => choke.StartSend());
             choke.ShouldBeginSend().ShouldBeFalse();
         }
 
@@ -95,15 +87,15 @@ namespace LightningQueues.Tests
         public void available_sending_count_with_connecting_endpoints()
         {
             var choke = new SendingChoke();
-            5.Times(x => choke.StartSend());
-            choke.AvailableSendingCount.ShouldEqual(5);
+            choke.MaxSendingCount.Times(x => choke.StartSend());
+            choke.AvailableSendingCount.ShouldEqual(choke.MaxSendingCount);
         }
 
         [Test]
         public void available_sending_count_with_all_connected()
         {
             var choke = new SendingChoke();
-            5.Times(x =>
+            choke.MaxSendingCount.Times(x =>
             {
                 choke.StartSend();
                 choke.SuccessfullyConnected();
@@ -115,12 +107,12 @@ namespace LightningQueues.Tests
         public void available_sending_count_some_connected_some_still_connecting()
         {
             var choke = new SendingChoke();
-            4.Times(x =>
+            (choke.MaxSendingCount - 1).Times(x =>
             {
                 choke.StartSend();
                 choke.SuccessfullyConnected();
             });
-            25.Times(x => choke.StartSend());
+            (choke.MaxConnectingCount - choke.MaxSendingCount).Times(x => choke.StartSend());
             choke.AvailableSendingCount.ShouldEqual(1);
         }
 
@@ -128,7 +120,7 @@ namespace LightningQueues.Tests
         public void available_sending_count_with_max_connecting()
         {
             var choke = new SendingChoke();
-            30.Times(x => choke.StartSend());
+            choke.MaxConnectingCount.Times(x => choke.StartSend());
             choke.AvailableSendingCount.ShouldEqual(0);
         }
     }
