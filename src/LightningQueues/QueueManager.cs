@@ -628,6 +628,7 @@ namespace LightningQueues
 
         public IEnumerable<StreamedMessage> ReceiveStream(string queueName, string subqueue)
         {
+            var concurrentErrorCount = 0;
             while (!_disposing)
             {
                 var peekedMessage = PeekMessageFromQueue(queueName, subqueue);
@@ -642,13 +643,30 @@ namespace LightningQueues
 
                 Interlocked.Increment(ref _currentlyInsideTransaction);
                 var scope = BeginTransactionalScope();
-                var message = GetMessageFromQueue(scope.Transaction, queueName, subqueue);
-                if (message != null)
+                StreamedMessage streamedMessage;
+                try
                 {
-                    yield return new StreamedMessage { Message = message, TransactionalScope = scope };
+                    var message = GetMessageFromQueue(scope.Transaction, queueName, subqueue);
+                    if (message == null)
+                        continue;
+
+                    streamedMessage = new StreamedMessage {Message = message, TransactionalScope = scope};
+                    scope.Rollback();
+                    concurrentErrorCount = 0;
+                }
+                catch (Exception ex)
+                {
+                    concurrentErrorCount++;
+                    if (concurrentErrorCount >= 5)
+                    {
+                        throw;
+                    }
+                    //Run into ocassional race conditions on startup
+                   _logger.Error("Error receiving from queue", ex);
+                    Thread.SpinWait(10);
                     continue;
                 }
-                scope.Rollback();
+                yield return streamedMessage;
             }
         }
 
