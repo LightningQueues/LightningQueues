@@ -12,7 +12,7 @@ namespace LightningQueues.Storage
 {
 	public class QueueStorage : CriticalFinalizerObject, IDisposable
 	{
-	    private const int MaxSessions = 48;
+	    private const int MaxSessions = 256;
         private JET_INSTANCE _instance;
 	    private readonly string _database;
 	    private readonly string _path;
@@ -29,7 +29,7 @@ namespace LightningQueues.Storage
 		{
 		    _configuration = configuration;
 		    _database = database;
-            _sessionLimits = new SemaphoreSlim(MaxSessions);
+            _sessionLimits = new SemaphoreSlim(MaxSessions - 1);
 		    _path = database;
 			if (Path.IsPathRooted(database) == false)
 				_path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, database);
