@@ -664,8 +664,8 @@ namespace LightningQueues
                         throw;
                     }
                     //Run into ocassional race conditions on startup
-                   _logger.Error("Error receiving from queue", ex);
-                    Thread.SpinWait(10);
+                    _logger.Error("Error receiving from queue", ex);
+                    Thread.SpinWait(10000);
                     continue;
                 }
                 yield return streamedMessage;

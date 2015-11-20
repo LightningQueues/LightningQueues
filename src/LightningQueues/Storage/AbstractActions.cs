@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using FubuCore;
 using LightningQueues.Exceptions;
 using LightningQueues.Logging;
 using Microsoft.Isam.Esent.Interop;
@@ -129,41 +130,47 @@ namespace LightningQueues.Storage
 
         public void Dispose()
         {
-        	try
-        	{
-        		foreach (var action in queuesByName.Values)
-        		{
-        			action.Dispose();
-        		}
+            foreach (var action in queuesByName.Values)
+            {
+                SafeDispose(action, "queue");
+            }
 
-        		if (queues != null)
-        			queues.Dispose();
-        		if (subqueues != null)
-        			subqueues.Dispose();
-        		if (txs != null)
-        			txs.Dispose();
-        		if (recovery != null)
-        			recovery.Dispose();
-        		if (outgoing != null)
-        			outgoing.Dispose();
-        		if (outgoingHistory != null)
-        			outgoingHistory.Dispose();
-        		if (recveivedMsgs != null)
-        			recveivedMsgs.Dispose();
+            SafeDispose(queues, "queues");
+            SafeDispose(subqueues, "subqueues");
+            SafeDispose(txs, "txs");
+            SafeDispose(recovery, "recovery");
+            SafeDispose(outgoing, "outgoing");
+            SafeDispose(outgoingHistory, "outgoingHistory");
+            SafeDispose(recveivedMsgs, "recveivedMsgs");
 
-        		if (Equals(dbid, JET_DBID.Nil) == false)
-        			Api.JetCloseDatabase(session, dbid, CloseDatabaseGrbit.None);
+            try
+            {
+                if (Equals(dbid, JET_DBID.Nil) == false)
+                    Api.JetCloseDatabase(session, dbid, CloseDatabaseGrbit.None);
+            }
+            catch (Exception e)
+            {
+                logger.Error("Error occurred while closing database " + GetType().Name, e);
+            }
+            SafeDispose(transaction, "transaction");
+            SafeDispose(session, "session");
+        }
 
-        		if (transaction != null)
-        			transaction.Dispose();
-
-        		if (session != null)
-        			session.Dispose();
-        	}
-        	catch (Exception e)
-        	{
-				logger.Error("Error occurred while disposing " + GetType().Name, e);
-        	}
+        public void SafeDispose(IDisposable disposable, string name)
+        {
+            if (disposable == null)
+            {
+                logger.Error("Failed to dispose " + name, null);
+                return;
+            }
+            try
+            {
+                disposable.Dispose();
+            }
+            catch (Exception e)
+            {
+                logger.Error("Error occurred while disposing {0}, for {1}".ToFormat(GetType().Name, name), e);
+            }
         }
 
     	public void Commit()

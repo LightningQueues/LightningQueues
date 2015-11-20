@@ -12,7 +12,7 @@ namespace LightningQueues.Storage
 {
 	public class QueueStorage : CriticalFinalizerObject, IDisposable
 	{
-	    private const int MaxSessions = 256;
+	    private const int MaxSessions = 50;
         private JET_INSTANCE _instance;
 	    private readonly string _database;
 	    private readonly string _path;
@@ -103,6 +103,7 @@ namespace LightningQueues.Storage
 				TempDirectory = Path.Combine(_path, "temp"),
 				SystemDirectory = Path.Combine(_path, "system"),
 				LogFileDirectory = Path.Combine(_path, "logs"),
+                MaxSessions = MaxSessions,
 				MaxVerPages = 8 * 1024,
                 MaxTemporaryTables = 8 * 1024
 			};
