@@ -1,8 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Threading;
-using Microsoft.Dnx.Runtime;
-using Microsoft.Dnx.Runtime.Infrastructure;
+using Microsoft.Extensions.PlatformAbstractions;
 using Xunit;
 
 namespace LightningQueues.Tests

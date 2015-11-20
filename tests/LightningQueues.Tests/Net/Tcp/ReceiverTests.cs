@@ -78,35 +78,35 @@ namespace LightningQueues.Tests.Net.Tcp
         }
 
         [Fact]
-        public void can_handle_connect_then_disconnect()
+        public async Task can_handle_connect_then_disconnect()
         {
             using (_receiver.StartReceiving().Subscribe(x => true.ShouldBeFalse()))
             using (var client = new TcpClient())
             {
-                client.Connect(_endpoint);
+                await client.ConnectAsync(_endpoint.Address, _endpoint.Port);
             }
         }
 
         [Fact]
-        public void can_handle_sending_three_bytes_then_disconnect()
+        public async Task can_handle_sending_three_bytes_then_disconnect()
         {
             using (_receiver.StartReceiving().Subscribe(x => true.ShouldBeFalse()))
             using (var client = new TcpClient())
             {
-                client.Connect(_endpoint);
+                await client.ConnectAsync(_endpoint.Address, _endpoint.Port);
                 client.GetStream().Write(new byte[] { 1, 4, 6 }, 0, 3);
             }
         }
 
         [Fact]
-        public void accepts_concurrently_connected_clients()
+        public async Task accepts_concurrently_connected_clients()
         {
             using (_receiver.StartReceiving().Subscribe(x => true.ShouldBeFalse()))
             using(var client1 = new TcpClient())
             using(var client2 = new TcpClient())
             {
-                client1.Connect(_endpoint);
-                client2.Connect(_endpoint);
+                await client1.ConnectAsync(_endpoint.Address, _endpoint.Port);
+                await client2.ConnectAsync(_endpoint.Address, _endpoint.Port);
                 client2.GetStream().Write(new byte[] { 1, 4, 6 }, 0, 3);
                 client1.GetStream().Write(new byte[] { 1, 4, 6 }, 0, 3);
             }
@@ -126,7 +126,7 @@ namespace LightningQueues.Tests.Net.Tcp
             using (_receiver.StartReceiving().Subscribe(x => { receivingCompletionSource.SetResult(x); }))
             using (var client = new TcpClient())
             {
-                client.Connect(_endpoint);
+                await client.ConnectAsync(_endpoint.Address, _endpoint.Port);
                 var outgoing = new OutgoingMessageBatch(expected.Destination, messages, client);
                 var completionSource = new TaskCompletionSource<bool>();
 

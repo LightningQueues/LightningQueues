@@ -2,10 +2,10 @@
   "version": "0.2.0-dnx-*",
   "dependencies": {
     "xunit": "2.1.0-*",
-    "xunit.runner.dnx": "2.1.0-beta5-*",
+    "xunit.runner.dnx": "2.1.0-rc1-*",
     "Rx-Main": "2.2.5",
     "LightningQueues": "0.2.0-dnx-*",
-    "LightningDB": "0.9.2.40",
+    "LightningDB": "0.9.3-rc1-*",
     "LightningQueues.Storage.LMDB": "0.2.0-dnx-*"
   },
   "commands": {

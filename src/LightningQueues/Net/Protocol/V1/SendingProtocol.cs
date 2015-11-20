@@ -51,7 +51,8 @@ namespace LightningQueues.Net.Protocol.V1
                 }
                 if (bytes.SequenceEqual(Constants.SerializationFailureBuffer))
                 {
-                    throw new IOException("Failed to send messages, received serialization failed message.");
+                    //TODO put this back to IOException later, seems that there are two assemblies that have IOException in them and causes a conflict
+                    throw new Exception("Failed to send messages, received serialization failed message.");
                 }
                 return false;
             }).Where(x => x).Select(x => Unit.Default);

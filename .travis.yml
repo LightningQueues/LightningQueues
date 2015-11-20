@@ -1,6 +1,7 @@
 language: csharp
+dist: trusty
 mono:
-- beta
+- 4.0.5
 addons:
   apt:
     packages:
@@ -9,7 +10,11 @@ addons:
       - libunwind8
       - libssl-dev
       - unzip
-sudo: false
+      - gettext
+      - libcurl4-openssl-dev
+      - libicu-dev
+      - zlib1g
+sudo: required
 install:
   - curl -sSL https://raw.githubusercontent.com/aspnet/Home/dev/dnvminstall.sh | sh && source ~/.dnx/dnvm/dnvm.sh && dnvm upgrade
 script:
