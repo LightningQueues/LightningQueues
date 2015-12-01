@@ -1,4 +1,5 @@
 ﻿using System;
+using FubuCore;
 using LightningQueues.Logging;
 using LightningQueues.Storage;
 
@@ -31,12 +32,13 @@ namespace LightningQueues.Internal
                 {
                     actions.ReverseAllFrom(Id);
                     actions.DeleteMessageToSend(Id);
+                    actions.DeleteTransaction(Id);
                 });
                 _logger.Debug("Rolledback transaction with id: {0}", Id);
             }
             catch (Exception e)
 			{
-				_logger.Info("Failed to rollback transaction {0}", e, Id);
+				_logger.Error("Failed to rollback transaction {0}".ToFormat(Id), e);
 			    throw;
 			}
             finally

@@ -78,6 +78,15 @@ namespace LightningQueues.Storage
             });
         }
 
+        public void DeleteTransaction(Guid txId)
+        {
+            var enumerator = txs.GetEnumerator(new GuidIndex(txId, "by_tx_id"));
+            while (enumerator.MoveNext())
+            {
+                txs.Delete();
+            }
+        }
+
         public void RemoveReversalsMoveCompletedMessagesAndFinishSubQueueMove(Guid transactionId)
         {
             var enumerator = txs.GetEnumerator(new GuidIndex(transactionId, "by_tx_id"));
