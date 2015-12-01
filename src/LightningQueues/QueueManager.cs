@@ -658,6 +658,13 @@ namespace LightningQueues
                 }
                 catch (Exception ex)
                 {
+                    try
+                    {
+                        scope.Rollback();
+                    }
+                    catch (Exception)
+                    {
+                    }
                     concurrentErrorCount++;
                     if (concurrentErrorCount >= 5)
                     {
