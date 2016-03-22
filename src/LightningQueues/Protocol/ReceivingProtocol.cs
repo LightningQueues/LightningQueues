@@ -25,6 +25,10 @@ namespace LightningQueues.Protocol
             {
                 // Swallowing this so we don't have unobserved task exceptions in the finalizer when we timeout.
             }
+            catch (Exception ex)
+            {
+                Logger.Error("Error during receive from " + endpoint, ex);
+            }
         }
 
         private async Task readMessageAsync(string endpoint, Stream stream, 
