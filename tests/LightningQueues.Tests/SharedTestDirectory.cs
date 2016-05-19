@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Threading;
-using Microsoft.Extensions.PlatformAbstractions;
 using Xunit;
 
 namespace LightningQueues.Tests
@@ -12,10 +11,7 @@ namespace LightningQueues.Tests
 
         public SharedTestDirectory()
         {
-            var locator = CallContextServiceLocator.Locator;
-            var services = locator.ServiceProvider;
-            var libraryManager = (ILibraryManager)services.GetService(typeof(ILibraryManager));
-            var testProjectDir = Path.GetDirectoryName(libraryManager.GetLibrary("LightningQueues.Tests").Path);
+            var testProjectDir = Directory.GetCurrentDirectory();
             _testTempDir = Path.Combine(Directory.GetParent(testProjectDir).Parent.FullName, "TestData");
         }
 

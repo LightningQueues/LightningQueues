@@ -40,7 +40,7 @@ namespace LightningQueues.Net.Tcp
 
                 _logger.DebugFormat("TcpListener started listening on port: {0}", Endpoint.Port);
                 _stream = Observable.While(IsNotDisposed, ContinueAcceptingNewClients())
-                    .Using(x => _protocol.ReceiveStream(Observable.Return(x.GetStream())))
+                    .Using(x => _protocol.ReceiveStream(Observable.Return(new NetworkStream(x))))
                     .Publish()
                     .RefCount();
             }
@@ -52,10 +52,10 @@ namespace LightningQueues.Net.Tcp
             return !_disposed;
         }
 
-        private IObservable<TcpClient> ContinueAcceptingNewClients()
+        private IObservable<Socket> ContinueAcceptingNewClients()
         {
-            return Observable.FromAsync(() => _listener.AcceptTcpClientAsync())
-                .Do(x => _logger.DebugFormat("Client at {0} connection established.", x.Client.RemoteEndPoint))
+            return Observable.FromAsync(() => _listener.AcceptSocketAsync())
+                .Do(x => _logger.DebugFormat("Client at {0} connection established.", x.RemoteEndPoint))
                 .Repeat();
         }
 

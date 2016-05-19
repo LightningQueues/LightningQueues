@@ -1,19 +1,30 @@
 {
-  "version": "0.2.0-dnx-*",
+  "testRunner": "xunit",
   "dependencies": {
-    "xunit": "2.1.0-*",
-    "xunit.runner.dnx": "2.1.0-rc1-*",
+    "xunit": "2.1.0",
+    "dotnet-test-xunit": "1.0.0-rc3-build10019",
     "Rx-Main": "2.2.5",
-    "LightningQueues": "0.2.0-dnx-*",
-    "LightningDB": "0.9.3-rc1-*",
-    "LightningQueues.Storage.LMDB": "0.2.0-dnx-*"
-  },
-  "commands": {
-    "test": "xunit.runner.dnx -notrait prof=explicit",
-    "proftest": "xunit.runner.dnx -trait prof=explicit"
+	"LightningDB": "0.9.3-rc1-*",
+    "LightningQueues": { "target": "project" },
+    "LightningQueues.Storage.LMDB": { "target": "project" }
   },
   "frameworks": {
-    "dnx451": {},
-    "dnxcore50": {}
+    "netcoreapp1.0": {
+      "dependencies": {
+        "Microsoft.NETCore.App": {
+          "type": "platform",
+          "version": "1.0.0-rc2-3002702"
+        }
+      },
+      "imports": [
+        "dnxcore50",
+        "portable-net45+win8"
+      ]
+    },
+    "net451": {
+      "dependencies": {
+        "Microsoft.NETCore.Platforms": "1.0.1-rc2-24027"
+      }
+    } 
   }
 }

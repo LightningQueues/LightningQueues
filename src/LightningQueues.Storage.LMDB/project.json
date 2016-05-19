@@ -1,21 +1,27 @@
 {
-  "version": "0.2.0-dnx-*",
-  "authors": ["Corey Kaylor", "Ryan Hauert"],
-  "owners": ["Corey Kaylor"],
+  "version": "0.2.0-rc2-*",
+  "authors": [ "Corey Kaylor", "Ryan Hauert" ],
   "title": "LightningQueues.Storage.LMDB",
-  "projectUrl": "https://github.com/LightningQueues/LightningQueues",
-  "requireLicenseAcceptance": false,
+  "packOptions": {
+    "owners": [ "Corey Kaylor" ],
+    "tags": [ "queue", "persistence", "messaging", "msmq", "lmdb", "lightningdb" ],
+    "projectUrl": "https://github.com/LightningQueues/LightningQueues",
+    "requireLicenseAcceptance": false
+  },
   "description": "LMDB storage for LightningQueues",
-  "tags": ["queue", "persistence", "messaging", "msmq", "lmdb", "lightningdb"],
   "dependencies": {
-    "LightningQueues": "0.2.0-dnx-*",
+    "LightningQueues": { "target": "project" },
     "LightningDB": "0.9.3-rc1-*"
   },
   "frameworks": {
-    "dnx451": { },
-    "dnxcore50": {
+    "net451": { },
+    "netstandard1.3": {
+      "imports": [
+        "dnxcore50",
+        "portable-net45+win8"
+      ],
       "dependencies": {
-        "System.Text.Encoding": "4.0.11-beta-*"
+        "System.Text.Encoding": "4.0.11-rc2-*"
       }
     }
   }
