@@ -40,7 +40,7 @@ namespace LightningQueues.Net.Tcp
 
                 _logger.DebugFormat("TcpListener started listening on port: {0}", Endpoint.Port);
                 _stream = Observable.While(IsNotDisposed, ContinueAcceptingNewClients())
-                    .Using(x => _protocol.ReceiveStream(Observable.Return(new NetworkStream(x))))
+                    .Using(x => _protocol.ReceiveStream(Observable.Return(new NetworkStream(x, true))))
                     .Publish()
                     .RefCount();
             }
