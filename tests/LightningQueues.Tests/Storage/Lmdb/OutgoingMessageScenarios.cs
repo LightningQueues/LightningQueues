@@ -2,6 +2,7 @@
 using System.Text;
 using System.Threading.Tasks;
 using LightningQueues.Storage.LMDB;
+using Shouldly;
 using Xunit;
 
 namespace LightningQueues.Tests.Storage.Lmdb
@@ -36,13 +37,13 @@ namespace LightningQueues.Tests.Storage.Lmdb
             _store.SuccessfullySent(message);
 
             var result = await _store.PersistedOutgoingMessages().FirstAsyncWithTimeout();
-            result.Id.ShouldEqual(message2.Id);
-            result.Queue.ShouldEqual(message2.Queue);
-            result.Data.ShouldEqual(message2.Data);
-            result.SentAt.ShouldEqual(message2.SentAt);
-            result.DeliverBy.ShouldEqual(message2.DeliverBy);
-            result.MaxAttempts.ShouldEqual(message2.MaxAttempts);
-            result.Headers["header"].ShouldEqual("headervalue");
+            result.Id.ShouldBe(message2.Id);
+            result.Queue.ShouldBe(message2.Queue);
+            result.Data.ShouldBe(message2.Data);
+            result.SentAt.ShouldBe(message2.SentAt);
+            result.DeliverBy.ShouldBe(message2.DeliverBy);
+            result.MaxAttempts.ShouldBe(message2.MaxAttempts);
+            result.Headers["header"].ShouldBe("headervalue");
         }
 
         [Fact]
@@ -56,9 +57,9 @@ namespace LightningQueues.Tests.Storage.Lmdb
             tx.Commit();
 
             var count = _store.FailedToSend(message);
-            1.ShouldEqual(count);
+            1.ShouldBe(count);
             count = _store.FailedToSend(message);
-            2.ShouldEqual(count);
+            2.ShouldBe(count);
         }
 
         [Fact]

@@ -8,6 +8,7 @@ using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Tcp;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
+using Shouldly;
 using Xunit;
 
 namespace LightningQueues.Tests.Net.Tcp
@@ -142,9 +143,9 @@ namespace LightningQueues.Tests.Net.Tcp
             receivingCompletionSource.Task.IsCompleted.ShouldBeTrue();
             var actual = receivingCompletionSource.Task.Result;
             actual.ShouldNotBeNull();
-            actual.Id.ShouldEqual(expected.Id);
-            actual.Queue.ShouldEqual(expected.Queue);
-            Encoding.UTF8.GetString(actual.Data).ShouldEqual("hello");
+            actual.Id.ShouldBe(expected.Id);
+            actual.Queue.ShouldBe(expected.Queue);
+            Encoding.UTF8.GetString(actual.Data).ShouldBe("hello");
         }
 
         public void Dispose()

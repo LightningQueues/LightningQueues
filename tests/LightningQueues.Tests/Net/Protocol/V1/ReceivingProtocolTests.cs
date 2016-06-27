@@ -8,6 +8,8 @@ using LightningQueues.Storage;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Protocol;
 using LightningQueues.Storage.LMDB;
+using Microsoft.Reactive.Testing;
+using Shouldly;
 
 namespace LightningQueues.Tests.Net.Protocol.V1
 {
@@ -54,7 +56,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
                 using (_protocol.LengthChunk(ms)
                       .Subscribe(x => actual = x))
                 {
-                    actual.ShouldEqual(length);
+                    actual.ShouldBe(length);
                 }
             }
         }
@@ -110,7 +112,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
                     errorBytes = await ms.ReadBytesAsync(Constants.QueueDoesNotExistBuffer.Length);
                 }
             }
-            Constants.QueueDoesNotExistBuffer.ShouldEqual(errorBytes);
+            Constants.QueueDoesNotExistBuffer.ShouldBe(errorBytes);
         }
 
         [Fact]
@@ -129,7 +131,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
                 ms.Write(BitConverter.GetBytes(bytes.Length), 0, 4);
                 ms.Write(bytes, 0, bytes.Length);
                 ms.Position = 0;
-                using (_protocol.ReceiveStream(Observable.Return(ms))
+                using (_protocol.ReceiveStream(Observable.Return(ms)).Catch((Exception ex) => Observable.Empty<Message>())
                     .Subscribe(x => subscribeCalled = true))
                 {
                     subscribeCalled.ShouldBeFalse();
@@ -162,7 +164,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
                 TimeSpan.FromSeconds(1).Ticks, TimeSpan.FromSeconds(2).Ticks, TimeSpan.FromSeconds(10).Ticks);
 
             recording.Messages.First()
-                .Value.Exception.ShouldBeType<TimeoutException>();
+                .Value.Exception.ShouldBeOfType<TimeoutException>();
         }
 
         public void Dispose()

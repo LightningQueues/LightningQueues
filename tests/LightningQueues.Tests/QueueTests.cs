@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Microsoft.Reactive.Testing;
+using Shouldly;
 using Xunit;
 
 namespace LightningQueues.Tests
@@ -56,7 +58,7 @@ namespace LightningQueues.Tests
             {
                 _queue.Enqueue(expected);
             }
-            expected.ShouldBeSame(result);
+            expected.ShouldBeSameAs(result);
         }
 
         [Fact]
@@ -72,7 +74,7 @@ namespace LightningQueues.Tests
                 _queue.Enqueue(expected);
                 _queue.MoveToQueue("another", first);
             }
-            afterMove.Queue.ShouldEqual("another");
+            afterMove.Queue.ShouldBe("another");
         }
 
         [Fact]
@@ -85,8 +87,8 @@ namespace LightningQueues.Tests
                 queue.Send(message);
                 var received = await queue.Receive("test").FirstAsyncWithTimeout();
                 received.ShouldNotBeNull();
-                received.Message.Queue.ShouldEqual(message.Queue);
-                received.Message.Data.ShouldEqual(message.Data);
+                received.Message.Queue.ShouldBe(message.Queue);
+                received.Message.Data.ShouldBe(message.Data);
             }
         }
 

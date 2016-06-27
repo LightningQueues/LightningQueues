@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
+using Shouldly;
 using Xunit;
 using static LightningQueues.Tests.ObjectMother;
 
@@ -34,8 +35,8 @@ namespace LightningQueues.Tests.Storage.Lmdb
                 {
                     var data = tx.Get(db, Encoding.UTF8.GetBytes($"{message.Id}"));
                     var headers = tx.Get(db, Encoding.UTF8.GetBytes($"{message.Id}/headers")).ToDictionary();
-                    Encoding.UTF8.GetString(data).ShouldEqual("hello");
-                    headers.First().Value.ShouldEqual("myvalue");
+                    Encoding.UTF8.GetString(data).ShouldBe("hello");
+                    headers.First().Value.ShouldBe("myvalue");
                 }
             }
         }

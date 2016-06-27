@@ -1,6 +1,7 @@
 ﻿using System.Linq;
 using System.Text;
 using LightningQueues.Net.Protocol.V1;
+using Shouldly;
 using Xunit;
 
 namespace LightningQueues.Tests.Net.Protocol
@@ -19,9 +20,9 @@ namespace LightningQueues.Tests.Net.Protocol
             var messagesBytes = new[] {expected}.Serialize();
             var actual = messagesBytes.ToMessages().First();
 
-            actual.Queue.ShouldEqual(expected.Queue);
-            actual.Data.ShouldEqual(expected.Data);
-            actual.Id.ShouldEqual(expected.Id);
+            actual.Queue.ShouldBe(expected.Queue);
+            actual.Data.ShouldBe(expected.Data);
+            actual.Id.ShouldBe(expected.Id);
         }
     }
 }

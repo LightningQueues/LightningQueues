@@ -2,6 +2,7 @@
 using System.Reactive.Subjects;
 using LightningQueues.Net;
 using LightningQueues.Storage;
+using Shouldly;
 using Xunit;
 
 namespace LightningQueues.Tests.Net

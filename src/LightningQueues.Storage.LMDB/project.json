@@ -11,17 +11,13 @@
   "description": "LMDB storage for LightningQueues",
   "dependencies": {
     "LightningQueues": { "target": "project" },
-    "LightningDB": "0.9.3-rc1-*"
+    "LightningDB": "0.9.3"
   },
   "frameworks": {
     "net451": { },
     "netstandard1.3": {
-      "imports": [
-        "dnxcore50",
-        "portable-net45+win8"
-      ],
       "dependencies": {
-        "System.Text.Encoding": "4.0.11-rc2-*"
+        "System.Text.Encoding": "4.0.11"
       }
     }
   }

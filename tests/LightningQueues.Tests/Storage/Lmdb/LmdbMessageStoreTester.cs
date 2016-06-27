@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Reactive.Linq;
 using LightningQueues.Storage.LMDB;
+using Shouldly;
 using Xunit;
 
 namespace LightningQueues.Tests.Storage.Lmdb
@@ -44,11 +45,11 @@ namespace LightningQueues.Tests.Storage.Lmdb
             _store.StoreOutgoing(tx, outgoingMessage);
             _store.StoreIncomingMessages(tx, message);
             tx.Commit();
-            _store.PersistedMessages("test").ToEnumerable().Count().ShouldEqual(1);
-            _store.PersistedOutgoingMessages().ToEnumerable().Count().ShouldEqual(1);
+            _store.PersistedMessages("test").ToEnumerable().Count().ShouldBe(1);
+            _store.PersistedOutgoingMessages().ToEnumerable().Count().ShouldBe(1);
             _store.ClearAllStorage();
-            _store.PersistedMessages("test").ToEnumerable().Count().ShouldEqual(0);
-            _store.PersistedOutgoingMessages().ToEnumerable().Count().ShouldEqual(0);
+            _store.PersistedMessages("test").ToEnumerable().Count().ShouldBe(0);
+            _store.PersistedOutgoingMessages().ToEnumerable().Count().ShouldBe(0);
         }
     }
 }

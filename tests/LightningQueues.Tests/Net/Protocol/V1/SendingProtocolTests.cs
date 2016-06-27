@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
+using Shouldly;
 using Xunit;
 
 namespace LightningQueues.Tests.Net.Protocol.V1
@@ -30,7 +31,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
             {
                 await _sender.WriteLength(ms, 5).FirstAsyncWithTimeout();
                 var actual = BitConverter.ToInt32(ms.ToArray(), 0);
-                actual.ShouldEqual(expected);
+                actual.ShouldBe(expected);
             }
         }
 
@@ -54,7 +55,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
                 ms.Write(Constants.ReceivedBuffer, 0, Constants.ReceivedBuffer.Length);
                 ms.Position = 0;
                 var result = await _sender.ReadReceived(ms).FirstAsyncWithTimeout();
-                result.ShouldEqual(Unit.Default);
+                result.ShouldBe(Unit.Default);
             }
         }
 
