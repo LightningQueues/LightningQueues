@@ -8,7 +8,7 @@ using Xunit;
 namespace LightningQueues.Tests.Storage.Lmdb
 {
     [Collection("SharedTestDirectory")]
-    public class LmdbMessageStoreTester
+    public class LmdbMessageStoreTester : IDisposable
     {
         private readonly LmdbMessageStore _store;
 
@@ -50,6 +50,11 @@ namespace LightningQueues.Tests.Storage.Lmdb
             _store.ClearAllStorage();
             _store.PersistedMessages("test").ToEnumerable().Count().ShouldBe(0);
             _store.PersistedOutgoingMessages().ToEnumerable().Count().ShouldBe(0);
+        }
+
+        public void Dispose()
+        {
+            _store.Dispose();
         }
     }
 }

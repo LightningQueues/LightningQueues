@@ -7,12 +7,6 @@ Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "LightningQueues", "Lightnin
 EndProject
 Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "LightningQueues.Tests", "LightningQueues.Tests\LightningQueues.Tests.xproj", "{B60006C1-2F55-4722-8A7C-FBDBBDD816A1}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{3992FBBE-4BD8-4E28-9ED7-32421AFBF08B}"
-	ProjectSection(SolutionItems) = preProject
-		..\global.json = ..\global.json
-		..\NuGet.config = ..\NuGet.config
-	EndProjectSection
-EndProject
 Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "LightningQueues.Storage.LMDB", "LightningQueues.Storage.LMDB\LightningQueues.Storage.LMDB.xproj", "{5F03D8BC-7BF6-4E00-A2EC-214C317D84D0}"
 EndProject
 Global
