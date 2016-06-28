@@ -18,3 +18,4 @@ CommonAssemblyInfo.cs
 *.user
 Gemfile.lock
 .DS_Store
+.idea/
