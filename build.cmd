@@ -9,6 +9,6 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 
 echo Packing LightningQueues Nuget Version %LQ_NUGET_VERSION%
 call dotnet pack src\LightningQueues --configuration Release --output artifacts
-call dnu pack src\LightningQueues.Storage.LMDB --configuration Release --output artifacts
+call dotnet pack src\LightningQueues.Storage.LMDB --configuration Release --output artifacts
 
 popd
