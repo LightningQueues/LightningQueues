@@ -5,10 +5,10 @@
     "dotnet-test-xunit": "2.2.0-preview2-build1029",
     "System.Reactive": "3.0.0",
     "Microsoft.Reactive.Testing": "3.0.0", 
-    "LightningDB": "0.9.3-rc2-51",
+    "LightningDB": "0.9.3",
     "Shouldly": "2.8.0", 
-    "LightningQueues": { "target": "project" },
-    "LightningQueues.Storage.LMDB": { "target": "project" }
+    "LightningQueues": "0.2.0-rc2-*",
+    "LightningQueues.Storage.LMDB": "0.2.0-rc2-*"
   },
   "frameworks": {
     "netcoreapp1.0": {

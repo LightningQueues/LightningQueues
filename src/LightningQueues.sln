@@ -1,11 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "LightningQueues", "LightningQueues\LightningQueues.xproj", "{B97410F4-C2E0-4A74-9509-A9DEEFED66AE}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "LightningQueues.Tests", "..\tests\LightningQueues.Tests\LightningQueues.Tests.xproj", "{B60006C1-2F55-4722-8A7C-FBDBBDD816A1}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "LightningQueues.Tests", "LightningQueues.Tests\LightningQueues.Tests.xproj", "{B60006C1-2F55-4722-8A7C-FBDBBDD816A1}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{3992FBBE-4BD8-4E28-9ED7-32421AFBF08B}"
 	ProjectSection(SolutionItems) = preProject

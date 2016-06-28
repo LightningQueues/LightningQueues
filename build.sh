@@ -6,7 +6,7 @@ if ! type dotnet > /dev/null 2>&1; then
 fi
 dotnet restore
 if [ "$(uname)" == "Darwin" ]; then
-    dotnet test ./tests/LightningQueues.Tests -f netcoreapp1.0
+    dotnet test ./src/LightningQueues.Tests -f netcoreapp1.0
 elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
     git clone https://github.com/LMDB/lmdb.git
     type make >/dev/null 2>&1 || { echo >&2 "Can't find dependency 'make' for lmdb native lib compile.  Aborting."; exit 1; }
@@ -14,7 +14,7 @@ elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
     cd lmdb/libraries/liblmdb/
     make
     cd ../../../
-    LD_LIBRARY_PATH=./lmdb/libraries/liblmdb/:$LD_LIBRARY_PATH dotnet test ./tests/LightningQueues.Tests -f netcoreapp1.0
+    LD_LIBRARY_PATH=./lmdb/libraries/liblmdb/:$LD_LIBRARY_PATH dotnet test ./src/LightningQueues.Tests -f netcoreapp1.0
 fi
 
 rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi

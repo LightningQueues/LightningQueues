@@ -10,7 +10,7 @@
   },
   "description": "LMDB storage for LightningQueues",
   "dependencies": {
-    "LightningQueues": { "target": "project" },
+    "LightningQueues": "0.2.0-rc2-*",
     "LightningDB": "0.9.3"
   },
   "frameworks": {

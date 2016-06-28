@@ -4,7 +4,7 @@ pushd %~dp0
 
 call dotnet restore
 if %errorlevel% neq 0 exit /b %errorlevel%
-call dotnet test .\tests\LightningQueues.Tests
+call dotnet test .\src\LightningQueues.Tests
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 echo Packing LightningQueues Nuget Version %LQ_NUGET_VERSION%
