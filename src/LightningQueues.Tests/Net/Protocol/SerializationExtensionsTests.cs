@@ -1,6 +1,6 @@
 ﻿using System.Linq;
 using System.Text;
-using LightningQueues.Net.Protocol.V1;
+using LightningQueues.Serialization;
 using Shouldly;
 using Xunit;
 

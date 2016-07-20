@@ -5,6 +5,7 @@ using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using LightningQueues.Logging;
+using LightningQueues.Serialization;
 using LightningQueues.Storage;
 
 namespace LightningQueues.Net.Protocol.V1
@@ -36,7 +37,7 @@ namespace LightningQueues.Net.Protocol.V1
         {
             return from stream in streams.Do(x => _logger.Debug("Starting to read stream."))
                    from length in LengthChunk(stream)
-                   from messages in MessagesChunk(stream, length).Do(x => StoreMessages(stream, x))
+                   from messages in MessagesChunk(stream, length).DoAsync(x => StoreMessages(stream, x))
                    from _r in SendReceived(stream)
                    from _a in ReceiveAcknowledgement(stream, messages)
                    from message in messages

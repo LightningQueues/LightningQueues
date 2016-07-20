@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
+using LightningQueues.Serialization;
 using LightningQueues.Storage;
 
 namespace LightningQueues.Net.Protocol.V1
@@ -51,8 +52,7 @@ namespace LightningQueues.Net.Protocol.V1
                 }
                 if (bytes.SequenceEqual(Constants.SerializationFailureBuffer))
                 {
-                    //TODO put this back to IOException later, seems that there are two assemblies that have IOException in them and causes a conflict
-                    throw new Exception("Failed to send messages, received serialization failed message.");
+                    throw new IOException("Failed to send messages, received serialization failed message.");
                 }
                 return false;
             }).Where(x => x).Select(x => Unit.Default);

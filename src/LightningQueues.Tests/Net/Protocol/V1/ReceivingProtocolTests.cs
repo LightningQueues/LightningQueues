@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using LightningQueues.Storage;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Protocol;
+using LightningQueues.Serialization;
 using LightningQueues.Storage.LMDB;
 using Microsoft.Reactive.Testing;
 using Shouldly;

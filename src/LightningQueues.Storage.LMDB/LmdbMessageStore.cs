@@ -6,14 +6,14 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Text;
 using LightningDB;
+using LightningQueues.Serialization;
 
 namespace LightningQueues.Storage.LMDB
 {
     public class LmdbMessageStore : IMessageStore
     {
         private readonly LightningEnvironment _environment;
-        private readonly string[] _outgoingKeys = { "{0}", "{0}/attempts", "{0}/h", "{0}/q", "{0}/sent", "{0}/uri", "{0}/expire", "{0}/max" };
-        private readonly string[] _queueKeys = { "{0}", "{0}/headers", "{0}/sent" };
+
         private const string OutgoingQueue = "outgoing";
 
         public LmdbMessageStore(string path)
@@ -21,7 +21,7 @@ namespace LightningQueues.Storage.LMDB
             _environment = new LightningEnvironment(path)
             {
                 MaxDatabases = 5,
-                MapSize = 1024*1024*100
+                MapSize = 1024 * 1024 * 100,
             };
             _environment.Open();
             CreateQueue(OutgoingQueue);
@@ -48,15 +48,12 @@ namespace LightningQueues.Storage.LMDB
         {
             try
             {
-
                 foreach (var messagesByQueue in messages.GroupBy(x => x.Queue))
                 {
                     var db = OpenDatabase(tx, messagesByQueue.Key);
                     foreach (var message in messagesByQueue)
                     {
-                        tx.Put(db, message.Id.ToString(), message.Data);
-                        tx.Put(db, $"{message.Id}/headers", message.Headers.ToBytes());
-                        tx.Put(db, $"{message.Id}/sent", BitConverter.GetBytes(message.SentAt.ToBinary()));
+                        tx.Put(db, message.Id.MessageIdentifier.ToByteArray(), message.Serialize());
                     }
                 }
             }
@@ -74,7 +71,7 @@ namespace LightningQueues.Storage.LMDB
             {
                 foreach (var grouping in messages.GroupBy(x => x.Queue))
                 {
-                    RemoveMessageFromStorage(tx, grouping.Key, _queueKeys, grouping.ToArray());
+                    RemoveMessageFromStorage(tx, grouping.Key, grouping.ToArray());
                 }
                 tx.Commit();
             }
@@ -126,7 +123,7 @@ namespace LightningQueues.Storage.LMDB
         private IEnumerable<string> GetAllQueuesImpl()
         {
             using (var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly))
-            using(var db = tx.OpenDatabase())
+            using (var db = tx.OpenDatabase())
             using (var cursor = tx.CreateCursor(db))
             {
                 foreach (var item in cursor)
@@ -138,7 +135,7 @@ namespace LightningQueues.Storage.LMDB
 
         private void SuccessfullySent(LightningTransaction tx, params OutgoingMessage[] messages)
         {
-            RemoveMessageFromStorage(tx, "outgoing", _outgoingKeys, messages);
+            RemoveMessageFromStorage(tx, OutgoingQueue, messages);
         }
 
         public IObservable<Message> PersistedMessages(string queueName)
@@ -154,16 +151,7 @@ namespace LightningQueues.Storage.LMDB
                             while (cursor.MoveNext())
                             {
                                 var current = cursor.Current;
-                                var message = new Message();
-                                message.Id = MessageId.Parse(Encoding.UTF8.GetString(current.Key));
-                                message.Data = current.Value;
-                                cursor.MoveNext();
-                                current = cursor.Current;
-                                message.Headers = current.Value.ToDictionary();
-                                cursor.MoveNext();
-                                current = cursor.Current;
-                                message.SentAt = DateTime.FromBinary(BitConverter.ToInt64(current.Value, 0));
-                                message.Queue = queueName;
+                                var message = current.Value.ToMessage();
                                 x.OnNext(message);
                             }
                     }
@@ -185,39 +173,13 @@ namespace LightningQueues.Storage.LMDB
                 {
                     using (var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly))
                     {
-                        var db = OpenDatabase(tx, "outgoing");
+                        var db = OpenDatabase(tx, OutgoingQueue);
                         using (var cursor = tx.CreateCursor(db))
                             while (cursor.MoveNext())
                             {
                                 var current = cursor.Current;
-                                var message = new OutgoingMessage();
-                                var key = Encoding.UTF8.GetString(current.Key);
-                                message.Id = MessageId.Parse(key);
-                                message.Data = current.Value;
-                                cursor.MoveNext();
-                                cursor.MoveNext(); //move past attempts
-                                current = cursor.Current;
-                                var date = DateTime.FromBinary(BitConverter.ToInt64(current.Value, 0));
-                                if (date != DateTime.MinValue)
-                                    message.DeliverBy = date;
-                                cursor.MoveNext();
-                                current = cursor.Current;
-                                message.Headers = current.Value.ToDictionary();
-                                cursor.MoveNext();
-                                current = cursor.Current;
-                                var maxAttempts = BitConverter.ToInt32(current.Value, 0);
-                                if (maxAttempts != 0)
-                                    message.MaxAttempts = maxAttempts;
-                                cursor.MoveNext();
-                                current = cursor.Current;
-                                message.Queue = Encoding.UTF8.GetString(current.Value);
-                                cursor.MoveNext();
-                                current = cursor.Current;
-                                message.SentAt = DateTime.FromBinary(BitConverter.ToInt64(current.Value, 0));
-                                cursor.MoveNext();
-                                current = cursor.Current;
-                                message.Destination = new Uri(Encoding.UTF8.GetString(current.Value));
-                                x.OnNext(message);
+                                var msg = current.Value.ToOutgoingMessage();
+                                x.OnNext(msg);
                             }
                     }
                     x.OnCompleted();
@@ -244,20 +206,15 @@ namespace LightningQueues.Storage.LMDB
 
         private void SuccessfullyReceived(LightningTransaction tx, Message message)
         {
-            RemoveMessageFromStorage(tx, message.Queue, _queueKeys, message);
+            RemoveMessageFromStorage(tx, message.Queue, message);
         }
 
-        private void RemoveMessageFromStorage<T>(LightningTransaction tx, string queueName, string[] keys,
-            params T[] messages) where T : Message
+        private void RemoveMessageFromStorage(LightningTransaction tx, string queueName, params Message[] messages)
         {
             var db = OpenDatabase(tx, queueName);
             foreach (var message in messages)
             {
-                foreach (var keyFormat in keys)
-                {
-                    var key = string.Format(keyFormat, message.Id);
-                    tx.Delete(db, Encoding.UTF8.GetBytes(key));
-                }
+                tx.Delete(db, message.Id.MessageIdentifier.ToByteArray());
             }
         }
 
@@ -267,46 +224,47 @@ namespace LightningQueues.Storage.LMDB
             StoreOutgoing(tx, message);
         }
 
+        public void StoreOutgoing(ITransaction transaction, OutgoingMessage[] messages)
+        {
+            var tx = ((LmdbTransaction) transaction).Transaction;
+            foreach (var message in messages)
+            {
+                StoreOutgoing(tx, message);
+            }
+        }
+
         private void StoreOutgoing(LightningTransaction tx, OutgoingMessage message)
         {
-            var db = OpenDatabase(tx, "outgoing");
-            tx.Put(db, $"{message.Id}", message.Data);
-            tx.Put(db, $"{message.Id}/attempts", BitConverter.GetBytes(0));
-            tx.Put(db, $"{message.Id}/h", message.Headers.ToBytes());
-            tx.Put(db, $"{message.Id}/q", Encoding.UTF8.GetBytes(message.Queue));
-            tx.Put(db, $"{message.Id}/sent", BitConverter.GetBytes(message.SentAt.ToBinary()));
-            tx.Put(db, $"{message.Id}/uri", Encoding.UTF8.GetBytes(message.Destination.ToString()));
-            //Possibly not insert here when null, but easier to deal with upstream for now
-            var expire = message.DeliverBy ?? DateTime.MinValue;
-            tx.Put(db, $"{message.Id}/expire", BitConverter.GetBytes(expire.ToBinary()));
-            var maxAttempts = message.MaxAttempts ?? 0;
-            tx.Put(db, $"{message.Id}/max", BitConverter.GetBytes(maxAttempts));
+            var db = OpenDatabase(tx, OutgoingQueue);
+            tx.Put(db, message.Id.MessageIdentifier.ToByteArray(), message.Serialize());
         }
 
         private int FailedToSend(LightningTransaction tx, OutgoingMessage message)
         {
-            var key = $"{message.Id}/attempts";
-            var db = OpenDatabase(tx, "outgoing");
-            var attemptBytes = tx.Get(db, key);
-            var attempts = BitConverter.ToInt32(attemptBytes, 0);
+            var db = OpenDatabase(tx, OutgoingQueue);
+            var msg = tx.Get(db, message.Id.MessageIdentifier.ToByteArray()).ToOutgoingMessage();
+            int attempts = 0;
+            if (msg.Headers.ContainsKey("SENT_ATTEMPTS"))
+            {
+                attempts = int.Parse(msg.Headers["SENT_ATTEMPTS"]);
+            }
             attempts += 1;
             if (attempts >= message.MaxAttempts)
             {
-                RemoveMessageFromStorage(tx, "outgoing", _outgoingKeys, message);
+                RemoveMessageFromStorage(tx, OutgoingQueue, msg);
+            }
+            else if (msg.DeliverBy.HasValue)
+            {
+                var expire = msg.DeliverBy.Value;
+                if (expire != DateTime.MinValue && DateTime.Now >= expire)
+                {
+                    RemoveMessageFromStorage(tx, OutgoingQueue, msg);
+                }
             }
             else
             {
-                var expireBytes = tx.Get(db, $"{message.Id}/expire");
-                var expire = DateTime.FromBinary(BitConverter.ToInt64(expireBytes, 0));
-                if (expire != DateTime.MinValue && DateTime.Now >= expire)
-                {
-                    RemoveMessageFromStorage(tx, "outgoing", _outgoingKeys, message);
-                }
-                else
-                {
-                    attemptBytes = BitConverter.GetBytes(attempts);
-                }
-                tx.Put(db, key, attemptBytes);
+                message.Headers["SENT_ATTEMPTS"] = attempts.ToString();
+                tx.Put(db, message.Id.MessageIdentifier.ToByteArray(), message.Serialize());
             }
             return attempts;
         }
@@ -315,14 +273,11 @@ namespace LightningQueues.Storage.LMDB
         {
             try
             {
+                var idBytes = message.Id.MessageIdentifier.ToByteArray();
                 var original = OpenDatabase(tx, message.Queue);
-                tx.Delete(original, message.Id.ToString());
-                tx.Delete(original, $"{message.Id}/headers");
-                tx.Delete(original, $"{message.Id}/sent");
                 var newDb = OpenDatabase(tx, queueName);
-                tx.Put(newDb, message.Id.ToString(), message.Data);
-                tx.Put(newDb, $"{message.Id}/headers", message.Headers.ToBytes());
-                tx.Put(newDb, $"{message.Id}/sent", BitConverter.GetBytes(message.SentAt.ToBinary()));
+                tx.Delete(original, idBytes);
+                tx.Put(newDb, idBytes, message.Serialize());
             }
             catch (LightningException ex)
             {

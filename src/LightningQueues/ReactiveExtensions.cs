@@ -6,7 +6,7 @@ namespace LightningQueues
 {
     public static class ReactiveExtensions
     {
-        public static IObservable<T> Do<T>(this IObservable<T> stream, Func<T, Task> onNext)
+        public static IObservable<T> DoAsync<T>(this IObservable<T> stream, Func<T, Task> onNext)
         {
             return from s in stream
                    from _ in Observable.FromAsync(() => onNext(s))

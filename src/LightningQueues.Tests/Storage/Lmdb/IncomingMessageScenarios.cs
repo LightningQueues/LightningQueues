@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Linq;
-using System.Text;
+using LightningQueues.Serialization;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
@@ -33,10 +33,9 @@ namespace LightningQueues.Tests.Storage.Lmdb
             {
                 using (var db = tx.OpenDatabase(message.Queue))
                 {
-                    var data = tx.Get(db, Encoding.UTF8.GetBytes($"{message.Id}"));
-                    var headers = tx.Get(db, Encoding.UTF8.GetBytes($"{message.Id}/headers")).ToDictionary();
-                    Encoding.UTF8.GetString(data).ShouldBe("hello");
-                    headers.First().Value.ShouldBe("myvalue");
+                    var msg = tx.Get(db, message.Id.MessageIdentifier.ToByteArray()).ToMessage();
+                    System.Text.Encoding.UTF8.GetString(msg.Data).ShouldBe("hello");
+                    msg.Headers.First().Value.ShouldBe("myvalue");
                 }
             }
         }
@@ -66,7 +65,7 @@ namespace LightningQueues.Tests.Storage.Lmdb
             {
                 using (var db = tx.OpenDatabase(message.Queue))
                 {
-                    var result = tx.Get(db, Encoding.UTF8.GetBytes($"id/{message.Id}"));
+                    var result = tx.Get(db, message.Id.MessageIdentifier.ToByteArray());
                     result.ShouldBeNull();
                 }
             }
@@ -84,7 +83,7 @@ namespace LightningQueues.Tests.Storage.Lmdb
             {
                 using (var db = tx.OpenDatabase(message.Queue))
                 {
-                    var result = tx.Get(db, Encoding.UTF8.GetBytes($"id/{message.Id}"));
+                    var result = tx.Get(db, message.Id.MessageIdentifier.ToByteArray());
                     result.ShouldBeNull();
                 }
             }

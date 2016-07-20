@@ -88,12 +88,18 @@ namespace LightningQueues
             });
         }
 
-        public void Send(OutgoingMessage message)
+        public void Send(params OutgoingMessage[] messages)
         {
             var tx = _messageStore.BeginTransaction();
-            _messageStore.StoreOutgoing(tx, message);
+            foreach (var message in messages)
+            {
+                _messageStore.StoreOutgoing(tx, message);
+            }
             tx.Commit();
-            _sendSubject.OnNext(message);
+            foreach (var message in messages)
+            {
+                _sendSubject.OnNext(message);
+            }
         }
 
         public void ReceiveLater(Message message, DateTimeOffset time)
