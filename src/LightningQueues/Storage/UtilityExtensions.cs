@@ -35,6 +35,11 @@ namespace LightningQueues.Storage
                 }
             }
             return dictionary;
-        } 
+        }
+
+        public static QueueConfiguration UseNoStorage(this QueueConfiguration config)
+        {
+            return config.StoreMessagesWith(new NoStorage());
+        }
     }
 }

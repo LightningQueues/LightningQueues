@@ -17,7 +17,7 @@ namespace LightningQueues.Tests
         {
             _testDirectory = testDirectory;
             _scheduler = new TestScheduler();
-            _queue = ObjectMother.NewLmdbQueue(testDirectory.CreateNewDirectoryForTest(), scheduler: _scheduler);
+            _queue = ObjectMother.NewQueue(testDirectory.CreateNewDirectoryForTest(), scheduler: _scheduler);
         }
 
         [Fact]
@@ -80,7 +80,7 @@ namespace LightningQueues.Tests
         [Fact]
         public async Task send_message_to_self()
         {
-            using (var queue = ObjectMother.NewLmdbQueue(_testDirectory.CreateNewDirectoryForTest()))
+            using (var queue = ObjectMother.NewQueue(_testDirectory.CreateNewDirectoryForTest()))
             {
                 var message = ObjectMother.NewMessage<OutgoingMessage>("test");
                 message.Destination = new Uri($"lq.tcp://localhost:{queue.Endpoint.Port}");
