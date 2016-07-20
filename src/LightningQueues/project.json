@@ -7,7 +7,7 @@
     "owners": [ "Corey Kaylor" ],
     "requireLicenseAcceptance": false,
     "tags": [ "queue", "persistence", "messaging", "msmq" ],
-    "projectUrl": "https://github.com/LightningQueues/LightningQueues",
+    "projectUrl": "https://github.com/LightningQueues/LightningQueues"
   },
   "dependencies": {
     "System.Reactive": "3.0.0"
@@ -16,14 +16,7 @@
     "net451": { },
     "netstandard1.3": {
       "dependencies": {
-        "System.Net.Primitives": "4.0.11",
-        "System.Runtime": "4.1.0",
-        "System.Net.Sockets": "4.1.0",
-        "System.Threading": "4.0.11",
-        "System.Collections": "4.0.11",
-        "System.Runtime.Extensions": "4.1.0",
-        "System.Linq": "4.1.0",
-        "System.ComponentModel": "4.0.1"
+        "NETStandard.Library": "1.6.0"
       }
     }
   }

@@ -17,7 +17,7 @@
     "net451": { },
     "netstandard1.3": {
       "dependencies": {
-        "System.Text.Encoding": "4.0.11"
+        "NETStandard.Library": "1.6.0"
       }
     }
   }
