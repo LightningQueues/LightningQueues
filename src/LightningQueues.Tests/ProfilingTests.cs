@@ -1,5 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Reactive.Concurrency;
 using System.Threading.Tasks;
+using System.Reactive.Linq;
 using LightningQueues.Logging;
 using Xunit;
 
@@ -20,7 +24,10 @@ namespace LightningQueues.Tests
         [Fact, Trait("prof", "explicit")]
         public async Task messages_totaling()
         {
-            await messages_totaling_helper(10000);
+            var stopwatch = Stopwatch.StartNew();
+            await messages_totaling_helper(1000);
+            stopwatch.Stop();
+            Console.WriteLine($"Total time is {stopwatch.Elapsed.TotalMilliseconds}");
             //Console.WriteLine("Get new snapshot for comparison and press enter when done.");
             //Console.ReadLine();
         }
@@ -28,7 +35,11 @@ namespace LightningQueues.Tests
         private async Task messages_totaling_helper(int numberOfMessages)
         {
             var taskCompletionSource = new TaskCompletionSource<bool>();
-            var subscription = _receiver.Receive("test").RunningCount().Subscribe(x =>
+            var subscription = _receiver.Receive("test").ObserveOn(TaskPoolScheduler.Default).Do(x =>
+            {
+                x.QueueContext.SuccessfullyReceived();
+                x.QueueContext.CommitChanges();
+            }).RunningCount().Subscribe(x =>
             {
                 if (x == numberOfMessages)
                     taskCompletionSource.SetResult(true);
@@ -36,13 +47,15 @@ namespace LightningQueues.Tests
 
             //Console.WriteLine("Get a baseline snapshot for comparison and press enter when done.");
             //Console.ReadLine();
+            var messages = new List<OutgoingMessage>();
             var destination = new Uri($"lq.tcp://localhost:{_receiver.Endpoint.Port}");
             for (var i = 0; i < numberOfMessages; ++i)
             {
                 var message = ObjectMother.NewMessage<OutgoingMessage>("test");
                 message.Destination = destination;
-                _sender.Send(message);
+                messages.Add(message);
             }
+            _sender.Send(messages.ToArray());
             await taskCompletionSource.Task;
             subscription.Dispose();
         }
