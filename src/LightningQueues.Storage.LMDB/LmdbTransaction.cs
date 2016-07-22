@@ -7,15 +7,10 @@ namespace LightningQueues.Storage.LMDB
     {
         private readonly LightningTransaction _transaction;
 
-        private LmdbTransaction(LightningTransaction transaction)
-        {
-            _transaction = transaction;
-            TransactionId = Guid.NewGuid();
-        }
-
         public LmdbTransaction(LightningEnvironment env)
         {
             _transaction = env.BeginTransaction();
+            TransactionId = Guid.NewGuid();
         }
 
         public LightningTransaction Transaction => _transaction;

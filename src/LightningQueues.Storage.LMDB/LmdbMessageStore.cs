@@ -23,7 +23,7 @@ namespace LightningQueues.Storage.LMDB
                 MaxDatabases = 5,
                 MapSize = 1024 * 1024 * 100,
             };
-            _environment.Open();
+            _environment.Open(EnvironmentOpenFlags.NoSync);
             CreateQueue(OutgoingQueue);
         }
 
@@ -310,11 +310,31 @@ namespace LightningQueues.Storage.LMDB
 
         public void Dispose()
         {
-            foreach (var database in _databaseCache)
+            Dispose(true);
+        }
+
+        ~LmdbMessageStore()
+        {
+            Dispose(false);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (disposing)
             {
-                database.Value.Dispose();
+                foreach (var database in _databaseCache)
+                {
+                    database.Value.Dispose();
+                }
             }
-            _environment.Dispose();
+            try
+            {
+                _environment.Flush(true);
+            }
+            finally
+            {
+                _environment.Dispose();
+            }
         }
     }
 }
