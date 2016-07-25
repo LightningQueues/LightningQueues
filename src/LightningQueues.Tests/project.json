@@ -19,7 +19,7 @@
         }
       }
     },
-    "net451": {
+    "net46": {
       "dependencies": {
         "Microsoft.NETCore.Platforms": "1.0.1"
       }
