@@ -326,6 +326,7 @@ namespace LightningQueues.Storage.LMDB
                 {
                     database.Value.Dispose();
                 }
+                GC.SuppressFinalize(this);
             }
             try
             {
