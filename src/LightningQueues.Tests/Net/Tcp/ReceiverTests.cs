@@ -32,7 +32,7 @@ namespace LightningQueues.Tests.Net.Tcp
             _store.CreateQueue("test");
             _sendingStore = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
             _sendingStore.CreateQueue("test");
-            _sender = new SendingProtocol(_sendingStore);
+            _sender = new SendingProtocol(_sendingStore, _logger);
             var protocol = new ReceivingProtocol(_store, _logger);
             _receiver = new Receiver(_endpoint, protocol, _logger);
         }

@@ -77,13 +77,14 @@ namespace LightningQueues.Net.Tcp
 
         private IObservable<T> HandleException<T>(Exception ex, OutgoingMessageBatch batch)
         {
-            _logger.Error("Got an error sending message.", ex);
+            _logger.Error(string.Format("Got an error sending message to {0}", batch.Destination), ex);
             _failedToSend.OnNext(new OutgoingMessageFailure {Batch = batch, Exception = ex});
             return Observable.Empty<T>();
         }
 
         public void Dispose()
         {
+            _logger.Debug("Disposing Sender");
             if (_sendingSubscription != null)
             {
                 _sendingSubscription.Dispose();

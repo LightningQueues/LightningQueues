@@ -132,7 +132,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
                 ms.Write(BitConverter.GetBytes(bytes.Length), 0, 4);
                 ms.Write(bytes, 0, bytes.Length);
                 ms.Position = 0;
-                using (_protocol.ReceiveStream(Observable.Return(ms)).Catch((Exception ex) => Observable.Empty<Message>())
+                using (_protocol.ReceiveStream(Observable.Return(ms), "me").Catch((Exception ex) => Observable.Empty<Message>())
                     .Subscribe(x => subscribeCalled = true))
                 {
                     subscribeCalled.ShouldBeFalse();
@@ -149,7 +149,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
                 ms.Write(BitConverter.GetBytes(16), 0, 4);
                 ms.Write(Guid.NewGuid().ToByteArray(), 0, 16);
                 ms.Position = 0;
-                using (_protocol.ReceiveStream(Observable.Return(ms))
+                using (_protocol.ReceiveStream(Observable.Return(ms), "me")
                     .Subscribe(x => subscribeCalled = true))
                 {
                     _logger.ErrorMessages.Any(x => x.StartsWith("Error deserializing messages")).ShouldBeTrue();
@@ -161,7 +161,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
         [Fact]
         public void dealing_with_slow_clients()
         {
-            var recording = _scheduler.Start(() => _protocol.ReceiveStream(Observable.Never<Stream>()),
+            var recording = _scheduler.Start(() => _protocol.ReceiveStream(Observable.Never<Stream>(), "me"),
                 TimeSpan.FromSeconds(1).Ticks, TimeSpan.FromSeconds(2).Ticks, TimeSpan.FromSeconds(10).Ticks);
 
             recording.Messages.First()

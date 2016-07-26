@@ -6,11 +6,8 @@ namespace LightningQueues.Logging
     {
         void Debug(string message);
         void DebugFormat(string message, params object[] args);
-        void Debug<TMessage>(TMessage message);
-        void Info(string message);
-        void InfoFormat(string message, params object[] args);
-        void Info<TMessage>(TMessage message);
+        void DebugFormat(string message, object arg1, object arg2);
+        void DebugFormat(string message, object arg1);
         void Error(string message, Exception exception);
-        void ErrorFormat(string message, Exception ex, params object[] args);
     }
 }

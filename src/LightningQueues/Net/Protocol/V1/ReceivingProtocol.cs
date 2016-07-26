@@ -28,18 +28,18 @@ namespace LightningQueues.Net.Protocol.V1
         }
         
 
-        public IObservable<Message> ReceiveStream(IObservable<Stream> streams)
+        public IObservable<Message> ReceiveStream(IObservable<Stream> streams, string remoteEndpoint)
         {
-            return receiveStream(streams).Timeout(TimeSpan.FromSeconds(5), _scheduler);
+            return receiveStream(streams, remoteEndpoint).Timeout(TimeSpan.FromSeconds(5), _scheduler);
         }
 
-        private IObservable<Message> receiveStream(IObservable<Stream> streams)
+        private IObservable<Message> receiveStream(IObservable<Stream> streams, string remoteEndpoint)
         {
-            return from stream in streams.Do(x => _logger.Debug("Starting to read stream."))
-                   from length in LengthChunk(stream)
-                   from messages in MessagesChunk(stream, length).DoAsync(x => StoreMessages(stream, x))
-                   from _r in SendReceived(stream)
-                   from _a in ReceiveAcknowledgement(stream, messages)
+            return from stream in streams.Do(x => _logger.DebugFormat("Starting to read stream from {0}", remoteEndpoint))
+                   from length in LengthChunk(stream).Do(x => _logger.DebugFormat("Reading in {0} messages from {1}", x, remoteEndpoint))
+                   from messages in MessagesChunk(stream, length).DoAsync(x => StoreMessages(stream, x)).Do(x => _logger.DebugFormat("Stored messages from {0}", remoteEndpoint))
+                   from _r in SendReceived(stream).Do(x => _logger.DebugFormat("Sending received bytes to {0}", remoteEndpoint))
+                   from _a in ReceiveAcknowledgement(stream, messages).Do(x => _logger.DebugFormat("Received acknowledgement from {0}", remoteEndpoint))
                    from message in messages
                    select message; 
         }
@@ -80,9 +80,9 @@ namespace LightningQueues.Net.Protocol.V1
                 _store.StoreIncomingMessages(messages);
                 _logger.Debug("Finished storing messages");
             }
-            catch(QueueDoesNotExistException)
+            catch(QueueDoesNotExistException ex)
             {
-                _logger.Info("Received a message for a queue that doesn't exist");
+                _logger.Error("Received a message for a queue that doesn't exist", ex);
                 await SendBuffer(stream, Constants.QueueDoesNotExistBuffer);
                 throw;
             }

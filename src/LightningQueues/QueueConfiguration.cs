@@ -71,13 +71,13 @@ namespace LightningQueues
 
             var receiver = new Receiver(_endpoint, _receivingProtocol, _logger);
             var sender = new Sender(_logger, _sendingProtocol);
-            var queue = new Queue(receiver, sender, _store, _scheduler);
+            var queue = new Queue(receiver, sender, _store, _scheduler, _logger);
             return queue;
         }
 
         private void InitializeDefaults()
         {
-            _sendingProtocol = _sendingProtocol ?? new SendingProtocol(_store);
+            _sendingProtocol = _sendingProtocol ?? new SendingProtocol(_store, _logger);
             _receivingProtocol = _receivingProtocol ?? new ReceivingProtocol(_store, _logger);
             _scheduler = _scheduler ?? TaskPoolScheduler.Default;
         }

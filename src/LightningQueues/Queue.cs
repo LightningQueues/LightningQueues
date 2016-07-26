@@ -4,6 +4,7 @@ using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using LightningQueues.Logging;
 using LightningQueues.Net;
 using LightningQueues.Net.Tcp;
 using LightningQueues.Storage;
@@ -18,12 +19,13 @@ namespace LightningQueues
         private readonly Subject<Message> _receiveSubject;
         private readonly Subject<OutgoingMessage> _sendSubject;
         private readonly IScheduler _scheduler;
+        private readonly ILogger _logger;
 
-        public Queue(Receiver receiver, Sender sender, IMessageStore messageStore) : this(receiver, sender, messageStore, TaskPoolScheduler.Default)
+        public Queue(Receiver receiver, Sender sender, IMessageStore messageStore, ILogger logger) : this(receiver, sender, messageStore, TaskPoolScheduler.Default, logger)
         {
         }
 
-        public Queue(Receiver receiver, Sender sender, IMessageStore messageStore, IScheduler scheduler)
+        public Queue(Receiver receiver, Sender sender, IMessageStore messageStore, IScheduler scheduler, ILogger logger)
         {
             _receiver = receiver;
             _sender = sender;
@@ -31,6 +33,7 @@ namespace LightningQueues
             _receiveSubject = new Subject<Message>();
             _sendSubject = new Subject<OutgoingMessage>();
             _scheduler = scheduler;
+            _logger = logger;
         }
 
         public IPEndPoint Endpoint => _receiver.Endpoint;
@@ -48,6 +51,7 @@ namespace LightningQueues
 
         public void Start()
         {
+            _logger.Debug("Starting LightningQueues");
             var errorPolicy = new SendingErrorPolicy(_messageStore, _sender.FailedToSend());
             _sender.StartSending(_messageStore.PersistedOutgoingMessages()
                 .Merge(_sendSubject)
@@ -57,6 +61,7 @@ namespace LightningQueues
 
         public IObservable<MessageContext> Receive(string queueName)
         {
+            _logger.DebugFormat("Starting to receive for queue {0}", queueName);
             return _messageStore.PersistedMessages(queueName)
                 .Concat(_receiver.StartReceiving())
                 .Merge(_receiveSubject)
@@ -66,6 +71,7 @@ namespace LightningQueues
 
         public void MoveToQueue(string queueName, Message message)
         {
+            _logger.DebugFormat("Moving message {0} to {1}", message.Id.MessageIdentifier, queueName);
             var tx = _messageStore.BeginTransaction();
             _messageStore.MoveToQueue(tx, queueName, message);
             tx.Commit();
@@ -75,12 +81,14 @@ namespace LightningQueues
 
         public void Enqueue(Message message)
         {
+            _logger.DebugFormat("Enqueueing message {0} to queue {1}", message.Id.MessageIdentifier, message.Queue);
             _messageStore.StoreIncomingMessages(message);
             _receiveSubject.OnNext(message);
         }
 
         public void ReceiveLater(Message message, TimeSpan timeSpan)
         {
+            _logger.DebugFormat("Delaying message {0} until {1}", message.Id.MessageIdentifier, timeSpan);
             _scheduler.Schedule(message, timeSpan, (sch, msg) =>
             {
                 _receiveSubject.OnNext(msg);
@@ -90,6 +98,7 @@ namespace LightningQueues
 
         public void Send(params OutgoingMessage[] messages)
         {
+            _logger.DebugFormat("Sending {0} messages", messages.Length);
             var tx = _messageStore.BeginTransaction();
             foreach (var message in messages)
             {
@@ -104,6 +113,7 @@ namespace LightningQueues
 
         public void ReceiveLater(Message message, DateTimeOffset time)
         {
+            _logger.DebugFormat("Delaying message {0} until {1}", message.Id.MessageIdentifier, time);
             _scheduler.Schedule(message, time, (sch, msg) =>
             {
                 _receiveSubject.OnNext(msg);
@@ -113,6 +123,7 @@ namespace LightningQueues
 
         public void Dispose()
         {
+            _logger.Debug("Disposing queue");
             _sender.Dispose();
             _receiver.Dispose();
             _receiveSubject.Dispose();

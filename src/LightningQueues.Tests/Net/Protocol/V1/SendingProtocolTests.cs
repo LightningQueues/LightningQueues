@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive;
 using System.Threading.Tasks;
+using LightningQueues.Logging;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
@@ -20,7 +21,7 @@ namespace LightningQueues.Tests.Net.Protocol.V1
         public SendingProtocolTests(SharedTestDirectory testDirectory)
         {
             _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
-            _sender = new SendingProtocol(_store);
+            _sender = new SendingProtocol(_store, new NulloLogger());
         }
 
         [Fact]

@@ -12,39 +12,15 @@ namespace LightningQueues.Logging
         {
         }
 
-        public void Debug(Func<string> message)
+        public void DebugFormat(string message, object arg1, object arg2)
         {
         }
 
-        public void Info(string message, params object[] args)
-        {
-        }
-
-        public void Info(string message, Exception exception, params object[] args)
+        public void DebugFormat(string message, object arg1)
         {
         }
 
         public void Error(string message, Exception exception)
-        {
-        }
-
-        public void ErrorFormat(string message, Exception ex, params object[] args)
-        {
-        }
-
-        public void Debug<TMessage>(TMessage message)
-        {
-        }
-
-        public void Info(string message)
-        {
-        }
-
-        public void InfoFormat(string message, params object[] args)
-        {
-        }
-
-        public void Info<TMessage>(TMessage message)
         {
         }
     }

@@ -24,7 +24,7 @@ namespace LightningQueues.Tests
         public void receive_at_a_later_time()
         {
             var received = false;
-            _queue.ReceiveLater(new Message {Queue = "test"}, TimeSpan.FromSeconds(3));
+            _queue.ReceiveLater(new Message {Queue = "test", Id = MessageId.GenerateRandom()}, TimeSpan.FromSeconds(3));
             using (_queue.Receive("test").Subscribe(x => received = true))
             {
                 _scheduler.AdvanceBy(TimeSpan.FromSeconds(2).Ticks);
@@ -39,7 +39,7 @@ namespace LightningQueues.Tests
         {
             var received = false;
             var time = DateTimeOffset.Now.AddSeconds(5);
-            _queue.ReceiveLater(new Message {Queue = "test"}, time);
+            _queue.ReceiveLater(new Message {Queue = "test", Id = MessageId.GenerateRandom()}, time);
             using (_queue.Receive("test").Subscribe(x => received = true))
             {
                 _scheduler.AdvanceBy(time.AddSeconds(-3).Ticks);
