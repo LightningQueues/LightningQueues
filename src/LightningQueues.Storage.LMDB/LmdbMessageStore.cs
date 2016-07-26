@@ -328,14 +328,7 @@ namespace LightningQueues.Storage.LMDB
                 }
                 GC.SuppressFinalize(this);
             }
-            try
-            {
-                _environment.Flush(true);
-            }
-            finally
-            {
-                _environment.Dispose();
-            }
+            _environment.Dispose();
         }
     }
 }
