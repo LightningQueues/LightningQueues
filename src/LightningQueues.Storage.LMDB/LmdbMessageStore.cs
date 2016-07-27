@@ -16,15 +16,15 @@ namespace LightningQueues.Storage.LMDB
 
         private const string OutgoingQueue = "outgoing";
 
-        public LmdbMessageStore(string path)
+        public LmdbMessageStore(string path, EnvironmentConfiguration config)
         {
-            _environment = new LightningEnvironment(path)
-            {
-                MaxDatabases = 5,
-                MapSize = 1024 * 1024 * 100,
-            };
+            _environment = new LightningEnvironment(path, config);
             _environment.Open(EnvironmentOpenFlags.NoSync);
             CreateQueue(OutgoingQueue);
+        }
+
+        public LmdbMessageStore(string path) : this(path, new EnvironmentConfiguration {MapSize = 1024 * 1024 * 100, MaxDatabases = 5})
+        {
         }
 
         public LightningEnvironment Environment => _environment;
