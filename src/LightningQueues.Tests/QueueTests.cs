@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using LightningQueues.Storage.LMDB;
 using Microsoft.Reactive.Testing;
 using Shouldly;
 using Xunit;
@@ -89,6 +90,33 @@ namespace LightningQueues.Tests
                 received.ShouldNotBeNull();
                 received.Message.Queue.ShouldBe(message.Queue);
                 received.Message.Data.ShouldBe(message.Data);
+            }
+        }
+
+        [Fact]
+        public void can_start_two_instances_for_IIS_stop_and_start()
+        {
+            //This shows that the port doesn't have an exclusive lock, and that lmdb itself can have multiple instances
+            var path = _testDirectory.CreateNewDirectoryForTest();
+            var store = new LmdbMessageStore(path);
+            var queueConfiguration = new QueueConfiguration();
+            queueConfiguration.LogWith(new RecordingLogger());
+            queueConfiguration.AutomaticEndpoint();
+            queueConfiguration.StoreMessagesWith(store);
+            var queue = queueConfiguration.BuildQueue();
+            var queue2 = queueConfiguration.BuildQueue();
+            using(queue)
+            using (queue2)
+            {
+                queue.CreateQueue("test");
+                queue.Start();
+                queue2.CreateQueue("test");
+                queue2.Start();
+                using(queue.Receive("test").Subscribe(x => { }))
+                using (queue2.Receive("test").Subscribe(x => { }))
+                {
+                    
+                }
             }
         }
 

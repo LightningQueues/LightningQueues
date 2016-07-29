@@ -22,6 +22,7 @@ namespace LightningQueues.Net.Tcp
             _protocol = protocol;
             _logger = logger;
             _listener = new TcpListener(Endpoint);
+            _listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
             _lockObject = new object();
         }
 
