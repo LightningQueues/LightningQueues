@@ -57,7 +57,7 @@
           }
         }
       },
-      "LightningDB/0.9.3": {
+      "LightningDB/0.9.4": {
         "type": "package",
         "dependencies": {
           "System.Collections.Concurrent": "4.0.12",
@@ -2732,13 +2732,13 @@
           }
         }
       },
-      "LightningDB/0.9.3": {
+      "LightningDB/0.9.4": {
         "type": "package",
         "compile": {
-          "lib/net451/LightningDB.dll": {}
+          "lib/net45/LightningDB.dll": {}
         },
         "runtime": {
-          "lib/net451/LightningDB.dll": {}
+          "lib/net45/LightningDB.dll": {}
         },
         "runtimeTargets": {
           "runtimes/osx/native/lmdb.dylib": {
@@ -3846,14 +3846,14 @@
         "runtimes/win7-x86/native/libuv.dll"
       ]
     },
-    "LightningDB/0.9.3": {
-      "sha512": "9e5aqZUroY5hndZk46PbmiEUzL0v83SBJFQ41HD9gbufYoBSyaSuAuhYp0LOCFjtduvvDD4qSUGCNnArPX4vkg==",
+    "LightningDB/0.9.4": {
+      "sha512": "CCM8DWVZ493LdgOpwk29Ber1+8sn0BL43bOXwFhD1GTwtxdmjxhZkAmkQwM9YjkS8JHdcZgLJNbvAtEXVaOSWA==",
       "type": "package",
-      "path": "LightningDB/0.9.3",
+      "path": "LightningDB/0.9.4",
       "files": [
-        "LightningDB.0.9.3.nupkg.sha512",
+        "LightningDB.0.9.4.nupkg.sha512",
         "LightningDB.nuspec",
-        "lib/net451/LightningDB.dll",
+        "lib/net45/LightningDB.dll",
         "lib/netstandard1.3/LightningDB.dll",
         "runtimes/osx/native/lmdb.dylib",
         "runtimes/win7-x64/native/lmdb.dll",
@@ -9010,9 +9010,8 @@
   },
   "projectFileDependencyGroups": {
     "": [
-      "LightningDB >= 0.9.3",
-      "LightningQueues >= 0.2.0-rc2-*",
-      "LightningQueues.Storage.LMDB >= 0.2.0-rc2-*",
+      "LightningQueues",
+      "LightningQueues.Storage.LMDB",
       "Microsoft.Reactive.Testing >= 3.0.0",
       "Shouldly >= 2.8.0",
       "System.Reactive >= 3.0.0",
