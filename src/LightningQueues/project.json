@@ -1,5 +1,5 @@
 {
-  "version": "0.2.1",
+  "version": "0.2.2",
   "authors": [ "Corey Kaylor", "Ryan Hauert" ],
   "title": "LightningQueues",
   "description": "Fast persistent queues for .NET",
@@ -13,6 +13,8 @@
     "System.Reactive": "3.0.0"
   },
   "frameworks": {
+    "net46": {
+    },
     "netstandard1.3": {
       "dependencies": {
         "NETStandard.Library": "1.6.0"

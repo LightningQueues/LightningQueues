@@ -11,10 +11,12 @@ namespace LightningQueues.Tests.Storage.Lmdb
     public class LmdbMessageStoreTester : IDisposable
     {
         private readonly LmdbMessageStore _store;
+        private readonly string _path;
 
         public LmdbMessageStoreTester(SharedTestDirectory testDirectory)
         {
-            _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
+            _path = testDirectory.CreateNewDirectoryForTest();
+            _store = new LmdbMessageStore(_path);
         }
 
         [Fact]
@@ -50,6 +52,26 @@ namespace LightningQueues.Tests.Storage.Lmdb
             _store.ClearAllStorage();
             _store.PersistedMessages("test").ToEnumerable().Count().ShouldBe(0);
             _store.PersistedOutgoingMessages().ToEnumerable().Count().ShouldBe(0);
+        }
+
+        [Fact]
+        public void store_can_read_previously_stored_items()
+        {
+            _store.CreateQueue("test");
+            var message = ObjectMother.NewMessage<Message>("test");
+            var outgoingMessage = ObjectMother.NewMessage<OutgoingMessage>();
+            outgoingMessage.Destination = new Uri("lq.tcp://localhost:3030");
+            outgoingMessage.SentAt = DateTime.Now;
+            var tx = _store.BeginTransaction();
+            _store.StoreOutgoing(tx, outgoingMessage);
+            _store.StoreIncomingMessages(tx, message);
+            tx.Commit();
+            _store.Dispose();
+            using (var store2 = new LmdbMessageStore(_path))
+            {
+                store2.PersistedMessages("test").ToEnumerable().Count().ShouldBe(1);
+                store2.PersistedOutgoingMessages().ToEnumerable().Count().ShouldBe(1);
+            }
         }
 
         public void Dispose()

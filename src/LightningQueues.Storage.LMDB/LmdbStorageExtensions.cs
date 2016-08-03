@@ -14,5 +14,10 @@ namespace LightningQueues.Storage.LMDB
         {
             return configuration.StoreMessagesWith(new LmdbMessageStore(path, config));
         }
+
+        public static QueueConfiguration StoreWithLmdb(this QueueConfiguration configuration, LightningEnvironment environment)
+        {
+            return configuration.StoreMessagesWith(new LmdbMessageStore(environment));
+        }
     }
 }
