@@ -94,6 +94,7 @@ namespace LightningQueues
 
             public void Success()
             {
+                _context._queue.SendLoop.OnNext(_message);
             }
         }
 

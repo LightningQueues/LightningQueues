@@ -98,7 +98,7 @@
           "lib/net45/System.Reactive.Windows.Threading.dll": {}
         }
       },
-      "LightningQueues/0.2.2": {
+      "LightningQueues/0.2.3": {
         "type": "project",
         "framework": ".NETFramework,Version=v4.6",
         "dependencies": {
@@ -1050,7 +1050,7 @@
           "lib/netstandard1.3/System.Xml.XDocument.dll": {}
         }
       },
-      "LightningQueues/0.2.2": {
+      "LightningQueues/0.2.3": {
         "type": "project",
         "framework": ".NETStandard,Version=v1.3",
         "dependencies": {
@@ -3973,7 +3973,7 @@
         "ref/xamarinwatchos10/_._"
       ]
     },
-    "LightningQueues/0.2.2": {
+    "LightningQueues/0.2.3": {
       "type": "project",
       "path": "../LightningQueues/project.json",
       "msbuildProject": "../LightningQueues/LightningQueues.xproj"
@@ -3982,7 +3982,7 @@
   "projectFileDependencyGroups": {
     "": [
       "LightningDB >= 0.9.4",
-      "LightningQueues >= 0.2.2"
+      "LightningQueues >= 0.2.3"
     ],
     ".NETFramework,Version=v4.6": [],
     ".NETStandard,Version=v1.3": [

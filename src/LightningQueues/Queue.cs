@@ -43,6 +43,7 @@ namespace LightningQueues
         public IMessageStore Store => _messageStore;
 
         internal ISubject<Message> ReceiveLoop => _receiveSubject;
+        internal ISubject<OutgoingMessage> SendLoop => _sendSubject;
 
         public void CreateQueue(string queueName)
         {
@@ -109,6 +110,11 @@ namespace LightningQueues
             {
                 _sendSubject.OnNext(message);
             }
+        }
+
+        internal void SendImmediate(OutgoingMessage message)
+        {
+            _sendSubject.OnNext(message);
         }
 
         public void ReceiveLater(Message message, DateTimeOffset time)
