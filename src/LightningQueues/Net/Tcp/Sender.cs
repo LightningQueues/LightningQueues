@@ -77,7 +77,7 @@ namespace LightningQueues.Net.Tcp
 
         private IObservable<T> HandleException<T>(Exception ex, OutgoingMessageBatch batch)
         {
-            _logger.Error(string.Format("Got an error sending message to {0}", batch.Destination), ex);
+            _logger.DebugFormat("Got an error sending message to {0} {1}", batch.Destination, ex);
             _failedToSend.OnNext(new OutgoingMessageFailure {Batch = batch, Exception = ex});
             return Observable.Empty<T>();
         }
