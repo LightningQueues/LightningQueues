@@ -107,6 +107,15 @@ namespace LightningQueues.Storage.LMDB
             }
         }
 
+        public Message GetMessage(string queueName, MessageId messageId)
+        {
+            using (var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly))
+            {
+                var db = OpenDatabase(tx, queueName);
+                return tx.Get(db, messageId.MessageIdentifier.ToByteArray()).ToMessage();
+            }
+        }
+
         public string[] GetAllQueues()
         {
             return GetAllQueuesImpl().Where(x => OutgoingQueue != x).ToArray();

@@ -91,6 +91,11 @@ namespace LightningQueues.Storage
         {
         }
 
+        public Message GetMessage(string queueName, MessageId messageId)
+        {
+            return null;
+        }
+
         public string[] GetAllQueues()
         {
             return _queues.ToArray();

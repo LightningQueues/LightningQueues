@@ -74,6 +74,24 @@ namespace LightningQueues.Tests.Storage.Lmdb
             }
         }
 
+        [Fact]
+        public void retrieve_message_by_id()
+        {
+            _store.CreateQueue("test");
+            var message = ObjectMother.NewMessage<Message>("test");
+            var outgoingMessage = ObjectMother.NewMessage<OutgoingMessage>();
+            outgoingMessage.Destination = new Uri("lq.tcp://localhost:3030");
+            outgoingMessage.SentAt = DateTime.Now;
+            var tx = _store.BeginTransaction();
+            _store.StoreOutgoing(tx, outgoingMessage);
+            _store.StoreIncomingMessages(tx, message);
+            tx.Commit();
+            var message2 = _store.GetMessage(message.Queue, message.Id);
+            var outgoing2 = _store.GetMessage("outgoing", outgoingMessage.Id);
+            message2.ShouldNotBeNull();
+            outgoing2.ShouldNotBeNull();
+        }
+
         public void Dispose()
         {
             _store.Dispose();

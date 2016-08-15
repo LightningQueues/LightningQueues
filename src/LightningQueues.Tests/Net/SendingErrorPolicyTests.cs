@@ -123,6 +123,11 @@ namespace LightningQueues.Tests.Net
                 throw new NotImplementedException();
             }
 
+            public Message GetMessage(string queueName, MessageId messageId)
+            {
+                throw new NotImplementedException();
+            }
+
             public string[] GetAllQueues()
             {
                 throw new NotImplementedException();
