@@ -2670,7 +2670,7 @@
           "lib/netstandard1.1/xunit.runner.utility.dotnet.dll": {}
         }
       },
-      "LightningQueues/0.2.4": {
+      "LightningQueues/0.2.5": {
         "type": "project",
         "framework": ".NETStandard,Version=v1.3",
         "dependencies": {
@@ -2684,12 +2684,12 @@
           "netstandard1.3/LightningQueues.dll": {}
         }
       },
-      "LightningQueues.Storage.LMDB/0.2.4": {
+      "LightningQueues.Storage.LMDB/0.2.5": {
         "type": "project",
         "framework": ".NETStandard,Version=v1.3",
         "dependencies": {
           "LightningDB": "0.9.4",
-          "LightningQueues": "0.2.4",
+          "LightningQueues": "0.2.5",
           "NETStandard.Library": "1.6.0"
         },
         "compile": {
@@ -3200,7 +3200,7 @@
           "lib/net45/xunit.runner.utility.desktop.dll": {}
         }
       },
-      "LightningQueues/0.2.4": {
+      "LightningQueues/0.2.5": {
         "type": "project",
         "framework": ".NETFramework,Version=v4.6",
         "dependencies": {
@@ -3213,12 +3213,12 @@
           "net46/LightningQueues.dll": {}
         }
       },
-      "LightningQueues.Storage.LMDB/0.2.4": {
+      "LightningQueues.Storage.LMDB/0.2.5": {
         "type": "project",
         "framework": ".NETFramework,Version=v4.6",
         "dependencies": {
           "LightningDB": "0.9.4",
-          "LightningQueues": "0.2.4"
+          "LightningQueues": "0.2.5"
         },
         "compile": {
           "net46/LightningQueues.Storage.LMDB.dll": {}
@@ -8414,12 +8414,12 @@
         "xunit.runner.utility.nuspec"
       ]
     },
-    "LightningQueues/0.2.4": {
+    "LightningQueues/0.2.5": {
       "type": "project",
       "path": "../LightningQueues/project.json",
       "msbuildProject": "../LightningQueues/LightningQueues.xproj"
     },
-    "LightningQueues.Storage.LMDB/0.2.4": {
+    "LightningQueues.Storage.LMDB/0.2.5": {
       "type": "project",
       "path": "../LightningQueues.Storage.LMDB/project.json",
       "msbuildProject": "../LightningQueues.Storage.LMDB/LightningQueues.Storage.LMDB.xproj"
