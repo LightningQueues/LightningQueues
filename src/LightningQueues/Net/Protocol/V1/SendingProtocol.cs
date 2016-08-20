@@ -57,6 +57,10 @@ namespace LightningQueues.Net.Protocol.V1
                 {
                     throw new IOException("Failed to send messages, received serialization failed message.");
                 }
+                if (bytes.SequenceEqual(Constants.QueueDoesNotExistBuffer))
+                {
+                    throw new QueueDoesNotExistException();
+                }
                 return false;
             }).Where(x => x).Select(x => Unit.Default);
         }

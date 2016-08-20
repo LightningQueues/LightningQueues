@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 
@@ -9,7 +10,7 @@ namespace LightningQueues
         public static IObservable<T> DoAsync<T>(this IObservable<T> stream, Func<T, Task> onNext)
         {
             return from s in stream
-                   from _ in Observable.FromAsync(() => onNext(s))
+                   from _ in Observable.FromAsync(() => onNext(s)).Catch((Exception ex) => Observable.Empty<Unit>())
                    select s;
         }
 

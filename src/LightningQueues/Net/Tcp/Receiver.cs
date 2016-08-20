@@ -41,9 +41,12 @@ namespace LightningQueues.Net.Tcp
 
                 _logger.DebugFormat("TcpListener started listening on port: {0}", Endpoint.Port);
                 _stream = Observable.While(IsNotDisposed, ContinueAcceptingNewClients())
-                    .Using(x => _protocol.ReceiveStream(Observable.Return(new NetworkStream(x, true)), x.RemoteEndPoint.ToString()))
+                    .Using(x => _protocol.ReceiveStream(Observable.Return(new NetworkStream(x, true)), x.RemoteEndPoint.ToString())
+                    .Catch((Exception ex) => Observable.Empty<Message>()))
+                    .Catch((Exception ex) => Observable.Empty<Message>())
                     .Publish()
-                    .RefCount();
+                    .RefCount()
+                    .Finally(() => _logger.Debug("TcpListener has stopped"));
             }
             return _stream;
         }
@@ -64,6 +67,7 @@ namespace LightningQueues.Net.Tcp
         {
             if (!_disposed)
             {
+                _logger.Debug("Disposing TcpListener");
                 _disposed = true;
                 _listener.Stop();
             }
