@@ -50,7 +50,7 @@ namespace LightningQueues.Net.Protocol.V1
                 .Select(x => BitConverter.ToInt32(x, 0))
                 .Catch((Exception ex) => sendSerializationError<int>(stream, ex))
                 .Do(x => _logger.DebugFormat("Read in length value of {0}", x))
-                .Where(x => x >= 0);
+                .Where(x => x > 0);
         }
 
         public IObservable<Message[]> MessagesChunk(Stream stream, int length)
