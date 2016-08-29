@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using System.Reactive;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using LightningQueues.Logging;
@@ -47,7 +48,8 @@ namespace LightningQueues.Net.Tcp
             return AllOutgoingMessagesBatchedByEndpoint()
                 .SelectMany(batch =>
                 {
-                    return Observable.FromAsync(batch.ConnectAsync)
+                    _logger.DebugFormat("Preparing to send {0} messages to {1}", batch.Messages.Count, batch.Destination);
+                    return Observable.FromAsync(batch.ConnectAsync, TaskPoolScheduler.Default)
                         .Timeout(TimeSpan.FromSeconds(5))
                         .Catch<Unit, Exception>(ex => HandleException<Unit>(ex, batch))
                         .Select(_ => batch);

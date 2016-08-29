@@ -57,7 +57,7 @@ namespace LightningQueues
             _sender.StartSending(_messageStore.PersistedOutgoingMessages()
                 .Merge(_sendSubject)
                 .Merge(errorPolicy.RetryStream)
-                .ObserveOn(_scheduler));
+                .ObserveOn(TaskPoolScheduler.Default));
         }
 
         public IObservable<MessageContext> Receive(string queueName)
