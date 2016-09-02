@@ -10,8 +10,8 @@
   },
   "description": "LMDB storage for LightningQueues",
   "dependencies": {
-    "LightningQueues": "0.2.8",
-    "LightningDB": "0.9.5"
+    "LightningQueues": "0.2.9",
+    "LightningDB": "0.9.6"
   },
   "frameworks": {
     "net46": {

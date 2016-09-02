@@ -3,7 +3,7 @@
   "version": 2,
   "targets": {
     ".NETFramework,Version=v4.6": {
-      "LightningDB/0.9.4": {
+      "LightningDB/0.9.6": {
         "type": "package",
         "compile": {
           "lib/net45/LightningDB.dll": {}
@@ -98,7 +98,7 @@
           "lib/net45/System.Reactive.Windows.Threading.dll": {}
         }
       },
-      "LightningQueues/0.2.7": {
+      "LightningQueues/0.2.9": {
         "type": "project",
         "framework": ".NETFramework,Version=v4.6",
         "dependencies": {
@@ -113,7 +113,7 @@
       }
     },
     ".NETStandard,Version=v1.3": {
-      "LightningDB/0.9.4": {
+      "LightningDB/0.9.6": {
         "type": "package",
         "dependencies": {
           "System.Collections.Concurrent": "4.0.12",
@@ -1050,7 +1050,7 @@
           "lib/netstandard1.3/System.Xml.XDocument.dll": {}
         }
       },
-      "LightningQueues/0.2.7": {
+      "LightningQueues/0.2.9": {
         "type": "project",
         "framework": ".NETStandard,Version=v1.3",
         "dependencies": {
@@ -1067,12 +1067,12 @@
     }
   },
   "libraries": {
-    "LightningDB/0.9.4": {
-      "sha512": "CCM8DWVZ493LdgOpwk29Ber1+8sn0BL43bOXwFhD1GTwtxdmjxhZkAmkQwM9YjkS8JHdcZgLJNbvAtEXVaOSWA==",
+    "LightningDB/0.9.6": {
+      "sha512": "d2/Ohj2ntyJMYeoD52KPWBFhgsazDU5mm0m6gIQxkRwQDnFZ9/vnvVT6i4iFubUeaaRSDdB22tfKsuB3GV9M0A==",
       "type": "package",
-      "path": "LightningDB/0.9.4",
+      "path": "LightningDB/0.9.6",
       "files": [
-        "LightningDB.0.9.4.nupkg.sha512",
+        "LightningDB.0.9.6.nupkg.sha512",
         "LightningDB.nuspec",
         "lib/net45/LightningDB.dll",
         "lib/netstandard1.3/LightningDB.dll",
@@ -3973,7 +3973,7 @@
         "ref/xamarinwatchos10/_._"
       ]
     },
-    "LightningQueues/0.2.7": {
+    "LightningQueues/0.2.9": {
       "type": "project",
       "path": "../LightningQueues/project.json",
       "msbuildProject": "../LightningQueues/LightningQueues.xproj"
@@ -3981,8 +3981,8 @@
   },
   "projectFileDependencyGroups": {
     "": [
-      "LightningDB >= 0.9.4",
-      "LightningQueues >= 0.2.7"
+      "LightningDB >= 0.9.6",
+      "LightningQueues >= 0.2.9"
     ],
     ".NETFramework,Version=v4.6": [],
     ".NETStandard,Version=v1.3": [
