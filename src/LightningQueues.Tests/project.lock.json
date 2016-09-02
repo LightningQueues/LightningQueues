@@ -2684,7 +2684,7 @@
           "netstandard1.3/LightningQueues.dll": {}
         }
       },
-      "LightningQueues.Storage.LMDB/0.2.8": {
+      "LightningQueues.Storage.LMDB/0.2.9": {
         "type": "project",
         "framework": ".NETStandard,Version=v1.3",
         "dependencies": {
@@ -3213,7 +3213,7 @@
           "net46/LightningQueues.dll": {}
         }
       },
-      "LightningQueues.Storage.LMDB/0.2.8": {
+      "LightningQueues.Storage.LMDB/0.2.9": {
         "type": "project",
         "framework": ".NETFramework,Version=v4.6",
         "dependencies": {
@@ -8419,7 +8419,7 @@
       "path": "../LightningQueues/project.json",
       "msbuildProject": "../LightningQueues/LightningQueues.xproj"
     },
-    "LightningQueues.Storage.LMDB/0.2.8": {
+    "LightningQueues.Storage.LMDB/0.2.9": {
       "type": "project",
       "path": "../LightningQueues.Storage.LMDB/project.json",
       "msbuildProject": "../LightningQueues.Storage.LMDB/LightningQueues.Storage.LMDB.xproj"
