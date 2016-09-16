@@ -1,20 +1,30 @@
 ﻿using System;
+using System.Linq;
+using System.Net.Sockets;
+using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using LightningQueues.Net;
-using LightningQueues.Storage;
+using LightningQueues.Storage.LMDB;
+using Microsoft.Reactive.Testing;
 using Shouldly;
 using Xunit;
 
 namespace LightningQueues.Tests.Net
 {
-    public class SendingErrorPolicyTests
+    [Collection("SharedTestDirectory")]
+    public class SendingErrorPolicyTests : IDisposable
     {
         private readonly SendingErrorPolicy _errorPolicy;
+        private readonly TestScheduler _scheduler;
+        private readonly LmdbMessageStore _store;
+        private readonly Subject<OutgoingMessageFailure> _subject;
 
-        public SendingErrorPolicyTests()
+        public SendingErrorPolicyTests(SharedTestDirectory testDirectory)
         {
-            var subject = new Subject<OutgoingMessageFailure>();
-            _errorPolicy = new SendingErrorPolicy(new EmptyStore(), subject);
+            _scheduler = new TestScheduler();
+            _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
+            _subject = new Subject<OutgoingMessageFailure>();
+            _errorPolicy = new SendingErrorPolicy(_store, _subject, _scheduler);
         }
 
         [Fact]
@@ -56,86 +66,77 @@ namespace LightningQueues.Tests.Net
             _errorPolicy.ShouldRetry(message, 5).ShouldBeTrue();
         }
 
-        private class EmptyStore : IMessageStore
+        [Fact]
+        public void message_is_observed_after_time()
         {
-            public void Dispose()
+            Message observed = null;
+            var message = ObjectMother.NewMessage<OutgoingMessage>();
+            message.Destination = new Uri("lq.tcp://localhost:5150/blah");
+            message.MaxAttempts = 2;
+            var tx = _store.BeginTransaction();
+            _store.StoreOutgoing(tx, message);
+            tx.Commit();
+            var failure = new OutgoingMessageFailure();
+            failure.Batch = new OutgoingMessageBatch(message.Destination, new []{message}, new TcpClient());
+            using (_errorPolicy.RetryStream.Subscribe(x => { observed = x; }))
             {
-                throw new NotImplementedException();
+                _subject.OnNext(failure);
+                _scheduler.AdvanceBy(TimeSpan.FromSeconds(1).Ticks);
+                observed.ShouldNotBeNull();
             }
+        }
 
-            public ITransaction BeginTransaction()
+        [Fact]
+        public void message_removed_from_storage_after_max()
+        {
+            Message observed = null;
+            var message = ObjectMother.NewMessage<OutgoingMessage>();
+            message.Destination = new Uri("lq.tcp://localhost:5150/blah");
+            message.MaxAttempts = 1;
+            var tx = _store.BeginTransaction();
+            _store.StoreOutgoing(tx, message);
+            tx.Commit();
+            var failure = new OutgoingMessageFailure();
+            failure.Batch = new OutgoingMessageBatch(message.Destination, new[] {message}, new TcpClient());
+            using (_errorPolicy.RetryStream.Subscribe(x => { observed = x; }))
             {
-                throw new NotImplementedException();
+                _subject.OnNext(failure);
+                _scheduler.AdvanceBy(TimeSpan.FromSeconds(1).Ticks);
+                observed.ShouldBeNull();
             }
+            _store.PersistedOutgoingMessages().ToEnumerable().Any().ShouldBeFalse();
+        }
 
-            public void CreateQueue(string queueName)
+        [Fact]
+        public void time_increases_with_each_failure()
+        {
+            Message observed = null;
+            var message = ObjectMother.NewMessage<OutgoingMessage>();
+            message.Destination = new Uri("lq.tcp://localhost:5150/blah");
+            message.MaxAttempts = 5;
+            var tx = _store.BeginTransaction();
+            _store.StoreOutgoing(tx, message);
+            tx.Commit();
+            var failure = new OutgoingMessageFailure();
+            failure.Batch = new OutgoingMessageBatch(message.Destination, new[] {message}, new TcpClient());
+            using (_errorPolicy.RetryStream.Subscribe(x => { observed = x; }))
             {
-                throw new NotImplementedException();
+                _subject.OnNext(failure);
+                _scheduler.AdvanceBy(TimeSpan.FromSeconds(1).Ticks);
+                observed.ShouldNotBeNull("first");
+                observed = null;
+                _subject.OnNext(failure);
+                observed.ShouldBeNull("second");
+                _scheduler.AdvanceBy(TimeSpan.FromSeconds(1).Ticks); //one second isn't enough yet
+                observed.ShouldBeNull("third");
+                _scheduler.AdvanceBy(TimeSpan.FromSeconds(3).Ticks); //four seconds total for second failure should match
+                observed.ShouldNotBeNull("fourth");
             }
+        }
 
-            public void StoreIncomingMessages(params Message[] messages)
-            {
-                throw new NotImplementedException();
-            }
-
-            public void StoreIncomingMessages(ITransaction transaction, params Message[] messages)
-            {
-                throw new NotImplementedException();
-            }
-
-            public void DeleteIncomingMessages(params Message[] messages)
-            {
-                throw new NotImplementedException();
-            }
-
-            public IObservable<Message> PersistedMessages(string queueName)
-            {
-                throw new NotImplementedException();
-            }
-
-            public IObservable<OutgoingMessage> PersistedOutgoingMessages()
-            {
-                throw new NotImplementedException();
-            }
-
-            public void MoveToQueue(ITransaction transaction, string queueName, Message message)
-            {
-                throw new NotImplementedException();
-            }
-
-            public void SuccessfullyReceived(ITransaction transaction, Message message)
-            {
-                throw new NotImplementedException();
-            }
-
-            public void StoreOutgoing(ITransaction tx, OutgoingMessage message)
-            {
-                throw new NotImplementedException();
-            }
-
-            public int FailedToSend(OutgoingMessage message)
-            {
-                throw new NotImplementedException();
-            }
-
-            public void SuccessfullySent(params OutgoingMessage[] messages)
-            {
-                throw new NotImplementedException();
-            }
-
-            public Message GetMessage(string queueName, MessageId messageId)
-            {
-                throw new NotImplementedException();
-            }
-
-            public string[] GetAllQueues()
-            {
-                throw new NotImplementedException();
-            }
-
-            public void ClearAllStorage()
-            {
-            }
+        public void Dispose()
+        {
+            _store.Dispose();
         }
     }
 }

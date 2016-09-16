@@ -21,7 +21,7 @@ namespace LightningQueues.Tests
             _receiver = ObjectMother.NewQueue(testDirectory.CreateNewDirectoryForTest(), logger: new NulloLogger());
         }
 
-        [Fact, Trait("prof", "explicit")]
+        [Fact(Skip = "only when needed"), Trait("prof", "explicit")]
         public async Task messages_totaling()
         {
             var stopwatch = Stopwatch.StartNew();

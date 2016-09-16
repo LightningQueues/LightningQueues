@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using LightningQueues.Storage.LMDB;
 using Microsoft.Reactive.Testing;
@@ -90,6 +92,21 @@ namespace LightningQueues.Tests
                 received.ShouldNotBeNull();
                 received.Message.Queue.ShouldBe(message.Queue);
                 received.Message.Data.ShouldBe(message.Data);
+            }
+        }
+
+        [Fact]
+        public async Task sending_to_bad_endpoint_no_retries_integration_test()
+        {
+            using (var queue = ObjectMother.NewQueue(_testDirectory.CreateNewDirectoryForTest()))
+            {
+                var message = ObjectMother.NewMessage<OutgoingMessage>("test");
+                message.MaxAttempts = 1;
+                message.Destination = new Uri($"lq.tcp://boom:{queue.Endpoint.Port + 1}");
+                queue.Send(message);
+                await Task.Delay(TimeSpan.FromSeconds(5));
+                var store = (LmdbMessageStore) queue.Store;
+                store.PersistedOutgoingMessages().ToEnumerable().Any().ShouldBeFalse();
             }
         }
 

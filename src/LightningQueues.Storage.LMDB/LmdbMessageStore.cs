@@ -257,7 +257,10 @@ namespace LightningQueues.Storage.LMDB
         private int FailedToSend(LightningTransaction tx, OutgoingMessage message)
         {
             var db = OpenDatabase(tx, OutgoingQueue);
-            var msg = tx.Get(db, message.Id.MessageIdentifier.ToByteArray()).ToOutgoingMessage();
+            var value = tx.Get(db, message.Id.MessageIdentifier.ToByteArray());
+            if (value == null)
+                return int.MaxValue;
+            var msg = value.ToOutgoingMessage();
             int attempts = 0;
             if (msg.Headers.ContainsKey("SENT_ATTEMPTS"))
             {
