@@ -39,7 +39,7 @@ namespace LightningQueues.Net.Tcp
         public IObservable<OutgoingMessage> SuccessfullySentMessages()
         {
             return ConnectedOutgoingMessageBatch()
-                .Using(x => _protocol.Send(x)
+                .Using(x => _protocol.Send(x).Timeout(TimeSpan.FromSeconds(5))
                 .Catch<OutgoingMessage, Exception>(ex => HandleException<OutgoingMessage>(ex, x)));
         }
 
