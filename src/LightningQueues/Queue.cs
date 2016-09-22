@@ -53,7 +53,7 @@ namespace LightningQueues
         public void Start()
         {
             _logger.Debug("Starting LightningQueues");
-            var errorPolicy = new SendingErrorPolicy(_messageStore, _sender.FailedToSend());
+            var errorPolicy = new SendingErrorPolicy(_logger, _messageStore, _sender.FailedToSend());
             _sender.StartSending(_messageStore.PersistedOutgoingMessages()
                 .Merge(_sendSubject)
                 .Merge(errorPolicy.RetryStream)

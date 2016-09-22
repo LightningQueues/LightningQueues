@@ -261,12 +261,7 @@ namespace LightningQueues.Storage.LMDB
             if (value == null)
                 return int.MaxValue;
             var msg = value.ToOutgoingMessage();
-            int attempts = 0;
-            if (msg.Headers.ContainsKey("SENT_ATTEMPTS"))
-            {
-                attempts = int.Parse(msg.Headers["SENT_ATTEMPTS"]);
-            }
-            attempts += 1;
+            int attempts = message.SentAttempts;
             if (attempts >= message.MaxAttempts)
             {
                 RemoveMessageFromStorage(tx, OutgoingQueue, msg);
@@ -281,7 +276,6 @@ namespace LightningQueues.Storage.LMDB
             }
             else
             {
-                message.Headers["SENT_ATTEMPTS"] = attempts.ToString();
                 tx.Put(db, message.Id.MessageIdentifier.ToByteArray(), message.Serialize());
             }
             return attempts;

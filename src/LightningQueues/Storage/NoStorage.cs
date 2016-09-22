@@ -6,7 +6,6 @@ namespace LightningQueues.Storage
 {
     public class NoStorage : IMessageStore
     {
-        private const string SentAttempts = "SENT_ATTEMPTS";
         private readonly List<string> _queues = new List<string>();
 
         private class NoStorageTransaction : ITransaction
@@ -77,14 +76,7 @@ namespace LightningQueues.Storage
 
         public int FailedToSend(OutgoingMessage message)
         {
-            var attempts = 0;
-            if (message.Headers.ContainsKey(SentAttempts))
-            {
-                var current = int.Parse(message.Headers[SentAttempts]);
-                attempts = current + 1;
-            }
-            message.Headers[SentAttempts] = attempts.ToString();
-            return attempts;
+            return message.SentAttempts;
         }
 
         public void SuccessfullySent(params OutgoingMessage[] messages)

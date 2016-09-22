@@ -104,7 +104,7 @@ namespace LightningQueues.Tests
                 message.MaxAttempts = 1;
                 message.Destination = new Uri($"lq.tcp://boom:{queue.Endpoint.Port + 1}");
                 queue.Send(message);
-                await Task.Delay(TimeSpan.FromSeconds(5));
+                await Task.Delay(TimeSpan.FromSeconds(10));
                 var store = (LmdbMessageStore) queue.Store;
                 store.PersistedOutgoingMessages().ToEnumerable().Any().ShouldBeFalse();
             }

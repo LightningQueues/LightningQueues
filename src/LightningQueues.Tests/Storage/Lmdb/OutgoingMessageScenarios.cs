@@ -46,27 +46,12 @@ namespace LightningQueues.Tests.Storage.Lmdb
         }
 
         [Fact]
-        public void failed_to_connect_no_max_attempts()
-        {
-            var destination = new Uri("lq.tcp://localhost:5050");
-            var message = ObjectMother.NewMessage<OutgoingMessage>("test");
-            message.Destination = destination;
-            var tx = _store.BeginTransaction();
-            _store.StoreOutgoing(tx, message);
-            tx.Commit();
-
-            var count = _store.FailedToSend(message);
-            1.ShouldBe(count);
-            count = _store.FailedToSend(message);
-            2.ShouldBe(count);
-        }
-
-        [Fact]
         public void failed_to_send_with_max_attempts()
         {
             var destination = new Uri("lq.tcp://localhost:5050");
             var message = ObjectMother.NewMessage<OutgoingMessage>("test");
             message.MaxAttempts = 1;
+            message.SentAttempts = 1;
             message.Destination = destination;
             var tx = _store.BeginTransaction();
             _store.StoreOutgoing(tx, message);

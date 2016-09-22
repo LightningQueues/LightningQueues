@@ -3,9 +3,13 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using LightningQueues.Logging;
 using LightningQueues.Net;
+using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using Microsoft.Reactive.Testing;
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Shouldly;
 using Xunit;
 
@@ -14,6 +18,7 @@ namespace LightningQueues.Tests.Net
     [Collection("SharedTestDirectory")]
     public class SendingErrorPolicyTests : IDisposable
     {
+        private readonly ILogger _logger;
         private readonly SendingErrorPolicy _errorPolicy;
         private readonly TestScheduler _scheduler;
         private readonly LmdbMessageStore _store;
@@ -21,10 +26,11 @@ namespace LightningQueues.Tests.Net
 
         public SendingErrorPolicyTests(SharedTestDirectory testDirectory)
         {
+            _logger = new RecordingLogger();
             _scheduler = new TestScheduler();
             _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
             _subject = new Subject<OutgoingMessageFailure>();
-            _errorPolicy = new SendingErrorPolicy(_store, _subject, _scheduler);
+            _errorPolicy = new SendingErrorPolicy(_logger, _store, _subject, _scheduler);
         }
 
         [Fact]
@@ -32,7 +38,8 @@ namespace LightningQueues.Tests.Net
         {
             var message = ObjectMother.NewMessage<OutgoingMessage>();
             message.MaxAttempts = 3;
-            _errorPolicy.ShouldRetry(message, 3).ShouldBeFalse();
+            message.SentAttempts = 3;
+            _errorPolicy.ShouldRetry(message).ShouldBeFalse();
         }
 
         [Fact]
@@ -40,7 +47,8 @@ namespace LightningQueues.Tests.Net
         {
             var message = ObjectMother.NewMessage<OutgoingMessage>();
             message.MaxAttempts = 20;
-            _errorPolicy.ShouldRetry(message, 5).ShouldBeTrue();
+            message.SentAttempts = 5;
+            _errorPolicy.ShouldRetry(message).ShouldBeTrue();
         }
 
         [Fact]
@@ -48,7 +56,8 @@ namespace LightningQueues.Tests.Net
         {
             var message = ObjectMother.NewMessage<OutgoingMessage>();
             message.DeliverBy = DateTime.Now.Subtract(TimeSpan.FromSeconds(1));
-            _errorPolicy.ShouldRetry(message, 5).ShouldBeFalse();
+            message.SentAttempts = 5;
+            _errorPolicy.ShouldRetry(message).ShouldBeFalse();
         }
 
         [Fact]
@@ -56,14 +65,16 @@ namespace LightningQueues.Tests.Net
         {
             var message = ObjectMother.NewMessage<OutgoingMessage>();
             message.DeliverBy = DateTime.Now.Add(TimeSpan.FromSeconds(1));
-            _errorPolicy.ShouldRetry(message, 5).ShouldBeTrue();
+            message.SentAttempts = 5;
+            _errorPolicy.ShouldRetry(message).ShouldBeTrue();
         }
 
         [Fact]
         public void has_neither_deliverby_nor_max_attempts()
         {
             var message = ObjectMother.NewMessage<OutgoingMessage>();
-            _errorPolicy.ShouldRetry(message, 5).ShouldBeTrue();
+            message.SentAttempts = 5;
+            _errorPolicy.ShouldRetry(message).ShouldBeTrue();
         }
 
         [Fact]
@@ -131,6 +142,24 @@ namespace LightningQueues.Tests.Net
                 observed.ShouldBeNull("third");
                 _scheduler.AdvanceBy(TimeSpan.FromSeconds(3).Ticks); //four seconds total for second failure should match
                 observed.ShouldNotBeNull("fourth");
+            }
+        }
+
+        [Fact]
+        public void errors_in_storage_dont_end_stream()
+        {
+            var message = ObjectMother.NewMessage<OutgoingMessage>();
+            var store = Substitute.For<IMessageStore>();
+            store.FailedToSend(Arg.Is(message)).Throws(new Exception("bam!"));
+            var errorPolicy = new SendingErrorPolicy(new RecordingLogger(), store, _subject, _scheduler);
+            bool ended = false;
+            var failure = new OutgoingMessageFailure();
+            failure.Batch = new OutgoingMessageBatch(message.Destination, new[] {message}, new TcpClient());
+            using (errorPolicy.RetryStream.Finally(() => ended = true).Subscribe(x => { }))
+            {
+                _subject.OnNext(failure);
+                _scheduler.AdvanceBy(TimeSpan.FromSeconds(1).Ticks);
+                ended.ShouldBeFalse();
             }
         }
 
