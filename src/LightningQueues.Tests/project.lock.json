@@ -91,7 +91,7 @@
           }
         }
       },
-      "LightningDB/0.9.6": {
+      "LightningDB/0.9.7": {
         "type": "package",
         "dependencies": {
           "System.Collections.Concurrent": "4.0.12",
@@ -2850,7 +2850,7 @@
           "lib/netstandard1.1/xunit.runner.utility.dotnet.dll": {}
         }
       },
-      "LightningQueues/0.2.9": {
+      "LightningQueues/0.2.10": {
         "type": "project",
         "framework": ".NETStandard,Version=v1.3",
         "dependencies": {
@@ -2864,12 +2864,12 @@
           "netstandard1.3/LightningQueues.dll": {}
         }
       },
-      "LightningQueues.Storage.LMDB/0.2.9": {
+      "LightningQueues.Storage.LMDB/0.2.10": {
         "type": "project",
         "framework": ".NETStandard,Version=v1.3",
         "dependencies": {
-          "LightningDB": "0.9.6",
-          "LightningQueues": "0.2.9",
+          "LightningDB": "0.9.7",
+          "LightningQueues": "0.2.10",
           "NETStandard.Library": "1.6.0"
         },
         "compile": {
@@ -2912,7 +2912,7 @@
           }
         }
       },
-      "LightningDB/0.9.6": {
+      "LightningDB/0.9.7": {
         "type": "package",
         "compile": {
           "lib/net45/LightningDB.dll": {}
@@ -3389,7 +3389,7 @@
           "lib/net45/xunit.runner.utility.desktop.dll": {}
         }
       },
-      "LightningQueues/0.2.9": {
+      "LightningQueues/0.2.10": {
         "type": "project",
         "framework": ".NETFramework,Version=v4.6",
         "dependencies": {
@@ -3402,12 +3402,12 @@
           "net46/LightningQueues.dll": {}
         }
       },
-      "LightningQueues.Storage.LMDB/0.2.9": {
+      "LightningQueues.Storage.LMDB/0.2.10": {
         "type": "project",
         "framework": ".NETFramework,Version=v4.6",
         "dependencies": {
-          "LightningDB": "0.9.6",
-          "LightningQueues": "0.2.9"
+          "LightningDB": "0.9.7",
+          "LightningQueues": "0.2.10"
         },
         "compile": {
           "net46/LightningQueues.Storage.LMDB.dll": {}
@@ -3474,12 +3474,12 @@
         "runtimes/win7-x86/native/libuv.dll"
       ]
     },
-    "LightningDB/0.9.6": {
-      "sha512": "vAwvyXhMCvnm8pemoZp8tWCGPR4ZVzMXWGz5TLRMksQmc9ul8VpB9Q2xLxhD0JgDSWjiXBoivpgzK2s5CBxC2A==",
+    "LightningDB/0.9.7": {
+      "sha512": "C+d5+4ukLuRf3uysaH/MFA48IxjGWxu5tNRYA6thBgcERi0oC5H6umLe57Z2kU9nLxeZTrMSFZpqH6u8aGdIbQ==",
       "type": "package",
-      "path": "LightningDB/0.9.6",
+      "path": "LightningDB/0.9.7",
       "files": [
-        "LightningDB.0.9.6.nupkg.sha512",
+        "LightningDB.0.9.7.nupkg.sha512",
         "LightningDB.nuspec",
         "lib/net45/LightningDB.dll",
         "lib/netstandard1.3/LightningDB.dll",
@@ -8917,12 +8917,12 @@
         "xunit.runner.utility.nuspec"
       ]
     },
-    "LightningQueues/0.2.9": {
+    "LightningQueues/0.2.10": {
       "type": "project",
       "path": "../LightningQueues/project.json",
       "msbuildProject": "../LightningQueues/LightningQueues.xproj"
     },
-    "LightningQueues.Storage.LMDB/0.2.9": {
+    "LightningQueues.Storage.LMDB/0.2.10": {
       "type": "project",
       "path": "../LightningQueues.Storage.LMDB/project.json",
       "msbuildProject": "../LightningQueues.Storage.LMDB/LightningQueues.Storage.LMDB.xproj"

@@ -1,5 +1,5 @@
 {
-  "version": "0.2.9",
+  "version": "0.2.10",
   "authors": [ "Corey Kaylor", "Ryan Hauert" ],
   "title": "LightningQueues.Storage.LMDB",
   "packOptions": {
@@ -10,8 +10,8 @@
   },
   "description": "LMDB storage for LightningQueues",
   "dependencies": {
-    "LightningQueues": "0.2.9",
-    "LightningDB": "0.9.6"
+    "LightningQueues": "0.2.10",
+    "LightningDB": "0.9.7"
   },
   "frameworks": {
     "net46": {
