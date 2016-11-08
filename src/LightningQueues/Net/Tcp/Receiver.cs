@@ -2,6 +2,7 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Reactive.Linq;
+using System.Security.Cryptography.X509Certificates;
 using LightningQueues.Logging;
 
 namespace LightningQueues.Net.Tcp
@@ -42,13 +43,20 @@ namespace LightningQueues.Net.Tcp
                 _logger.DebugFormat("TcpListener started listening on port: {0}", Endpoint.Port);
                 _stream = Observable.While(IsNotDisposed, ContinueAcceptingNewClients())
                     .Using(x => _protocol.ReceiveStream(Observable.Return(new NetworkStream(x, true)), x.RemoteEndPoint.ToString())
-                    .Catch((Exception ex) => Observable.Empty<Message>()))
-                    .Catch((Exception ex) => Observable.Empty<Message>())
+                    .Catch((Exception ex) => catchAll(ex)))
+                    .Catch((Exception ex) => catchAll(ex))
                     .Publish()
                     .RefCount()
-                    .Finally(() => _logger.Debug("TcpListener has stopped"));
+                    .Finally(() => _logger.InfoFormat("TcpListener at {0} has stopped", Endpoint.Port))
+                    .Catch((Exception ex) => catchAll(ex));
             }
             return _stream;
+        }
+
+        private IObservable<Message> catchAll(Exception ex)
+        {
+            _logger.Error("Error in message receiving", ex);
+            return Observable.Empty<Message>();
         }
 
         private bool IsNotDisposed()
@@ -67,7 +75,7 @@ namespace LightningQueues.Net.Tcp
         {
             if (!_disposed)
             {
-                _logger.Debug("Disposing TcpListener");
+                _logger.InfoFormat("Disposing TcpListener at {0}", Endpoint.Port);
                 _disposed = true;
                 _listener.Stop();
             }

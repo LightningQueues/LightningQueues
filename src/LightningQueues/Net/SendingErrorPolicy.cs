@@ -8,7 +8,6 @@ namespace LightningQueues.Net
 {
     public class SendingErrorPolicy
     {
-        private readonly IObservable<OutgoingMessage> _retryStream;
         private readonly ILogger _logger;
         private readonly IMessageStore _store;
         private readonly IScheduler _scheduler;
@@ -18,7 +17,7 @@ namespace LightningQueues.Net
             _logger = logger;
             _store = store;
             _scheduler = scheduler;
-            _retryStream = failedToConnect.SelectMany(x => x.Batch.Messages)
+            RetryStream = failedToConnect.SelectMany(x => x.Batch.Messages)
                 .Do(IncrementAttempt)
                 .Where(ShouldRetry)
                 .SelectMany(x => Observable.Return(x)
@@ -31,7 +30,7 @@ namespace LightningQueues.Net
 
         }
 
-        public IObservable<OutgoingMessage> RetryStream => _retryStream;
+        public IObservable<OutgoingMessage> RetryStream { get; }
 
         public bool ShouldRetry(OutgoingMessage message)
         {
