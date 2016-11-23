@@ -1,5 +1,5 @@
 {
-  "version": "0.2.10",
+  "version": "0.2.12",
   "authors": [ "Corey Kaylor", "Ryan Hauert" ],
   "title": "LightningQueues",
   "description": "Fast persistent queues for .NET",

@@ -129,12 +129,20 @@ namespace LightningQueues
 
         public void Dispose()
         {
-            _logger.Debug("Disposing queue");
-            _sender.Dispose();
-            _receiver.Dispose();
-            _receiveSubject.Dispose();
-            _sendSubject.Dispose();
+            _logger.Info("Disposing queue");
             _messageStore.Dispose();
+            try
+            {
+                _sender.Dispose();
+                _receiver.Dispose();
+                _receiveSubject.Dispose();
+                _sendSubject.Dispose();
+            }
+            catch (Exception e)
+            {
+                _logger.Error("Failed when shutting down queue", e);
+            }
+            
         }
     }
 }
