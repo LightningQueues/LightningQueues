@@ -1,9 +1,5 @@
 #!/bin/bash
 rm -rf artifacts
-if ! type dotnet > /dev/null 2>&1; then
-    curl -sSL https://raw.githubusercontent.com/dotnet/cli/rel/1.0.0-preview2/scripts/obtain/dotnet-install.sh | bash /dev/stdin --version 1.0.0-preview2-003121 --install-dir ~/dotnet
-    sudo ln -s ~/dotnet/dotnet /usr/local/bin
-fi
 dotnet restore
 if [ "$(uname)" == "Darwin" ]; then
     dotnet test ./src/LightningQueues.Tests -f netcoreapp1.0

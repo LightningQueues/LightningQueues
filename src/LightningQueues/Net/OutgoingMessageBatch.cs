@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
@@ -24,6 +25,11 @@ namespace LightningQueues.Net
 
         public Task ConnectAsync()
         {
+            if(Dns.GetHostName() == Destination.Host)
+            {
+                return Client.ConnectAsync(IPAddress.Loopback, Destination.Port);
+            }
+
             return Client.ConnectAsync(Destination.Host, Destination.Port);
         }
 

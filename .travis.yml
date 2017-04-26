@@ -1,5 +1,6 @@
 language: csharp
 dist: trusty
+dotnet: 1.0.0-preview2-003131
 mono:
 - 4.0.5
 addons:
@@ -15,7 +16,5 @@ addons:
       - libicu-dev
       - zlib1g
 sudo: required
-install:
-  - curl -sSL https://raw.githubusercontent.com/aspnet/Home/dev/dnvminstall.sh | sh && source ~/.dnx/dnvm/dnvm.sh && dnvm upgrade
 script:
 - ". ./build.sh"
