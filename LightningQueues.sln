@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "LightningQueues", "LightningQueues\LightningQueues.xproj", "{B97410F4-C2E0-4A74-9509-A9DEEFED66AE}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "LightningQueues", "src\LightningQueues\LightningQueues.csproj", "{B97410F4-C2E0-4A74-9509-A9DEEFED66AE}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "LightningQueues.Tests", "LightningQueues.Tests\LightningQueues.Tests.xproj", "{B60006C1-2F55-4722-8A7C-FBDBBDD816A1}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "LightningQueues.Tests", "src\LightningQueues.Tests\LightningQueues.Tests.csproj", "{B60006C1-2F55-4722-8A7C-FBDBBDD816A1}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "LightningQueues.Storage.LMDB", "LightningQueues.Storage.LMDB\LightningQueues.Storage.LMDB.xproj", "{5F03D8BC-7BF6-4E00-A2EC-214C317D84D0}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "LightningQueues.Storage.LMDB", "src\LightningQueues.Storage.LMDB\LightningQueues.Storage.LMDB.csproj", "{5F03D8BC-7BF6-4E00-A2EC-214C317D84D0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

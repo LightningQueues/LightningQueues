@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netcoreapp3.0</TargetFrameworks>
+    <AssemblyName>LightningQueues.Tests</AssemblyName>
+    <PackageId>LightningQueues.Tests</PackageId>
+    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LightningQueues\LightningQueues.csproj" />
+    <ProjectReference Include="..\LightningQueues.Storage.LMDB\LightningQueues.Storage.LMDB.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.9.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.1" />
+    <PackageReference Include="xunit" Version="2.4.1" />
+    <PackageReference Include="Shouldly" Version="4.0.0-beta0002" />
+    <PackageReference Include="Microsoft.Reactive.Testing" Version="4.2.0" />
+    <PackageReference Include="NSubstitute" Version="4.2.1" />
+  </ItemGroup>
+
+  <!-- <Import Project="..\LightningDB\LightningDB.targets" /> -->
+
+</Project>
