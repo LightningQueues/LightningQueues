@@ -33,32 +33,54 @@ namespace LightningQueues.Tests.Net.Protocol.V1
         [Fact]
         public void client_sending_negative_length_wont_produce_next_length_item()
         {
-            using (var ms = new MemoryStream())
+            using var ms = new MemoryStream();
+            var subscribeCalled = false;
+            ms.Write(BitConverter.GetBytes(-2), 0, 4);
+            ms.Position = 0;
+            using (_protocol.LengthChunk(ms).Subscribe(x => subscribeCalled = true))
             {
-                var subscribeCalled = false;
-                ms.Write(BitConverter.GetBytes(-2), 0, 4);
-                ms.Position = 0;
-                using (_protocol.LengthChunk(ms).Subscribe(x => subscribeCalled = true))
-                {
-                    subscribeCalled.ShouldBeFalse();
-                }
+                subscribeCalled.ShouldBeFalse();
             }
         }
+
+        [Fact]
+        public void handling_disconnects_mid_protocol_gracefully()
+        {
+            using var ms = new MemoryStream();
+            var messagesCalled = false;
+            var streamFinalCalled = false;
+            var errorCaught = false;
+            ms.Write(BitConverter.GetBytes(5));
+            ms.Write(System.Text.Encoding.UTF8.GetBytes("Fake this shouldn't pass!!!!!"));
+            //even though we're not 'disconnecting', by making writable false it achieves the same outcome
+            using var mockStream = new MemoryStream(ms.ToArray(), false); 
+
+            using (_protocol.ReceiveStream(Observable.Return(mockStream), "testendpoint").Catch((Exception ex) =>
+                {
+                    errorCaught = true;
+                    return Observable.Empty<Message>();
+                })
+                .Finally(() => streamFinalCalled = true)
+                .Subscribe(x => messagesCalled = true))
+            {
+                messagesCalled.ShouldBeFalse();
+            }
+            streamFinalCalled.ShouldBeTrue();
+            errorCaught.ShouldBeFalse();
+    }
 
         [Fact]
         public void handling_valid_length()
         {
             var length = 5;
             var actual = -1;
-            using (var ms = new MemoryStream())
+            using var ms = new MemoryStream();
+            ms.Write(BitConverter.GetBytes(length), 0, 4);
+            ms.Position = 0;
+            using (_protocol.LengthChunk(ms)
+                .Subscribe(x => actual = x))
             {
-                ms.Write(BitConverter.GetBytes(length), 0, 4);
-                ms.Position = 0;
-                using (_protocol.LengthChunk(ms)
-                      .Subscribe(x => actual = x))
-                {
-                    actual.ShouldBe(length);
-                }
+                actual.ShouldBe(length);
             }
         }
 
@@ -84,16 +106,14 @@ namespace LightningQueues.Tests.Net.Protocol.V1
             };
             var bytes = new[] { message }.Serialize();
             var subscribeCalled = false;
-            using (var ms = new MemoryStream())
+            using var ms = new MemoryStream();
+            ms.Write(BitConverter.GetBytes(bytes.Length + differenceFromActualLength), 0, 4);
+            ms.Write(bytes, 0, bytes.Length);
+            ms.Position = 0;
+            using (_protocol.MessagesChunk(ms, bytes.Length)
+                .Subscribe(x => subscribeCalled = true))
             {
-                ms.Write(BitConverter.GetBytes(bytes.Length + differenceFromActualLength), 0, 4);
-                ms.Write(bytes, 0, bytes.Length);
-                ms.Position = 0;
-                using (_protocol.MessagesChunk(ms, bytes.Length)
-                      .Subscribe(x => subscribeCalled = true))
-                {
-                    subscribeCalled.ShouldBeFalse();
-                }
+                subscribeCalled.ShouldBeFalse();
             }
         }
 
@@ -101,18 +121,17 @@ namespace LightningQueues.Tests.Net.Protocol.V1
         public async Task storing_to_a_queue_that_doesnt_exist()
         {
             byte[] errorBytes = null;
-            using (var ms = new MemoryStream())
+            using var ms = new MemoryStream();
+            try
             {
-                try
-                {
-                    await _protocol.StoreMessages(ms, ObjectMother.NewMessage<Message>("test"));
-                }
-                catch (QueueDoesNotExistException)
-                {
-                    ms.Position = 0;
-                    errorBytes = await ms.ReadBytesAsync(Constants.QueueDoesNotExistBuffer.Length);
-                }
+                await _protocol.StoreMessages(ms, ObjectMother.NewMessage<Message>("test"));
             }
+            catch (QueueDoesNotExistException)
+            {
+                ms.Position = 0;
+                errorBytes = await ms.ReadBytesAsync(Constants.QueueDoesNotExistBuffer.Length);
+            }
+
             Constants.QueueDoesNotExistBuffer.ShouldBe(errorBytes);
         }
 
@@ -127,34 +146,30 @@ namespace LightningQueues.Tests.Net.Protocol.V1
             };
             var bytes = new[] { message }.Serialize();
             var subscribeCalled = false;
-            using (var ms = new MemoryStream())
+            using var ms = new MemoryStream();
+            ms.Write(BitConverter.GetBytes(bytes.Length), 0, 4);
+            ms.Write(bytes, 0, bytes.Length);
+            ms.Position = 0;
+            using (_protocol.ReceiveStream(Observable.Return(ms), "me").Catch((Exception ex) => Observable.Empty<Message>())
+                .Subscribe(x => subscribeCalled = true))
             {
-                ms.Write(BitConverter.GetBytes(bytes.Length), 0, 4);
-                ms.Write(bytes, 0, bytes.Length);
-                ms.Position = 0;
-                using (_protocol.ReceiveStream(Observable.Return(ms), "me").Catch((Exception ex) => Observable.Empty<Message>())
-                    .Subscribe(x => subscribeCalled = true))
-                {
-                    subscribeCalled.ShouldBeFalse();
-                }
+                subscribeCalled.ShouldBeFalse();
             }
         }
 
         [Fact]
         public void sending_data_that_is_cannot_be_deserialized()
         {
-            using (var ms = new MemoryStream())
+            using var ms = new MemoryStream();
+            var subscribeCalled = false;
+            ms.Write(BitConverter.GetBytes(16), 0, 4);
+            ms.Write(Guid.NewGuid().ToByteArray(), 0, 16);
+            ms.Position = 0;
+            using (_protocol.ReceiveStream(Observable.Return(ms), "me")
+                .Subscribe(x => subscribeCalled = true))
             {
-                var subscribeCalled = false;
-                ms.Write(BitConverter.GetBytes(16), 0, 4);
-                ms.Write(Guid.NewGuid().ToByteArray(), 0, 16);
-                ms.Position = 0;
-                using (_protocol.ReceiveStream(Observable.Return(ms), "me")
-                    .Subscribe(x => subscribeCalled = true))
-                {
-                    _logger.ErrorMessages.Any(x => x.StartsWith("Error deserializing messages")).ShouldBeTrue();
-                    subscribeCalled.ShouldBeFalse();
-                }
+                _logger.ErrorMessages.Any(x => x.StartsWith("Error deserializing messages")).ShouldBeTrue();
+                subscribeCalled.ShouldBeFalse();
             }
         }
 

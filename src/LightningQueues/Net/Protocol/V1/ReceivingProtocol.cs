@@ -68,9 +68,21 @@ namespace LightningQueues.Net.Protocol.V1
                    select empty;
         }
 
-        private async Task SendBuffer(Stream stream, byte[] buffer)
+        private async Task SendBufferUnsafe(Stream stream, byte[] buffer)
         {
             await stream.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
+        }
+
+        private async Task SendBuffer(Stream stream, byte[] buffer)
+        {
+            try
+            {
+                SendBufferUnsafe(stream, buffer);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Failed to send buffer", ex);
+            }
         }
 
         public async Task StoreMessages(Stream stream, params Message[] messages)
@@ -96,7 +108,7 @@ namespace LightningQueues.Net.Protocol.V1
 
         public IObservable<Unit> SendReceived(Stream stream)
         {
-            return Observable.FromAsync(() => SendBuffer(stream, Constants.ReceivedBuffer));
+            return Observable.FromAsync(() => SendBufferUnsafe(stream, Constants.ReceivedBuffer));
         }
 
         public IObservable<Unit> ReceiveAcknowledgement(Stream stream, Message[] messages)
