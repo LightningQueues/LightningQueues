@@ -21,5 +21,4 @@
     <PackageReference Include="Microsoft.Reactive.Testing" Version="4.2.0" />
     <PackageReference Include="NSubstitute" Version="4.2.1" />
   </ItemGroup>
-
 </Project>

@@ -1,9 +1,14 @@
 ﻿using System;
+using System.IO;
 using System.Net;
+using System.Net.Security;
 using System.Reactive.Concurrency;
+using System.Security.Cryptography.X509Certificates;
+using System.Threading.Tasks;
 using LightningQueues.Logging;
 using LightningQueues.Net;
 using LightningQueues.Net.Protocol.V1;
+using LightningQueues.Net.Security;
 using LightningQueues.Net.Tcp;
 using LightningQueues.Storage;
 
@@ -11,6 +16,8 @@ namespace LightningQueues
 {
     public class QueueConfiguration
     {
+        private IStreamSecurity _sendingSecurity;
+        private IStreamSecurity _receivingSecurity;
         private IScheduler _scheduler;
         private IMessageStore _store;
         private IPEndPoint _endpoint;
@@ -21,6 +28,8 @@ namespace LightningQueues
         public QueueConfiguration()
         {
             _logger = new NulloLogger();
+            _sendingSecurity = new NoSecurity();
+            _receivingSecurity = new NoSecurity();
         }
 
         public QueueConfiguration StoreMessagesWith(IMessageStore store)
@@ -59,6 +68,13 @@ namespace LightningQueues
             return this;
         }
 
+        public QueueConfiguration SecureTransportWith(Func<Uri, Stream, Task<Stream>> receivingSecurity, Func<Uri, Stream, Task<Stream>> sendingSecurity)
+        {
+            _receivingSecurity = new TlsStreamSecurity(sendingSecurity);
+            _sendingSecurity = new TlsStreamSecurity(receivingSecurity);
+            return this;
+        }
+
         public Queue BuildQueue()
         {
             if(_store == null)
@@ -69,8 +85,8 @@ namespace LightningQueues
 
             InitializeDefaults();
 
-            var receiver = new Receiver(_endpoint, _receivingProtocol, _logger);
-            var sender = new Sender(_logger, _sendingProtocol);
+            var receiver = new Receiver(_endpoint, _receivingProtocol, _receivingSecurity, _logger);
+            var sender = new Sender(_logger, _sendingProtocol, _sendingSecurity);
             var queue = new Queue(receiver, sender, _store, _scheduler, _logger);
             return queue;
         }

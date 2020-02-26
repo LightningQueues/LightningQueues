@@ -7,6 +7,7 @@ using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using LightningQueues.Logging;
+using LightningQueues.Net.Security;
 
 namespace LightningQueues.Net.Tcp
 {
@@ -14,15 +15,17 @@ namespace LightningQueues.Net.Tcp
     {
         private readonly ILogger _logger;
         private readonly ISendingProtocol _protocol;
+        private readonly IStreamSecurity _security;
         private readonly ISubject<OutgoingMessageFailure> _failedToSend;
         private IObservable<OutgoingMessage> _outgoingStream; 
         private IObservable<OutgoingMessage> _successfullySent;
         private IDisposable _sendingSubscription;
 
-        public Sender(ILogger logger, ISendingProtocol protocol)
+        public Sender(ILogger logger, ISendingProtocol protocol, IStreamSecurity security)
         {
             _logger = logger;
             _protocol = protocol;
+            _security = security;
             _failedToSend = new Subject<OutgoingMessageFailure>();
         }
 
@@ -62,7 +65,7 @@ namespace LightningQueues.Net.Tcp
                 .SelectMany(x =>
                 {
                     return x.GroupBy(grouped => grouped.Destination)
-                        .Select(grouped => new OutgoingMessageBatch(grouped.Key, grouped, new TcpClient()));
+                        .Select(grouped => new OutgoingMessageBatch(grouped.Key, grouped, new TcpClient(), _security));
                 });
         }
 

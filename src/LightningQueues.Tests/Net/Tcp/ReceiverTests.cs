@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using LightningQueues.Net;
 using LightningQueues.Net.Protocol.V1;
+using LightningQueues.Net.Security;
 using LightningQueues.Net.Tcp;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
@@ -34,7 +35,7 @@ namespace LightningQueues.Tests.Net.Tcp
             _sendingStore.CreateQueue("test");
             _sender = new SendingProtocol(_sendingStore, _logger);
             var protocol = new ReceivingProtocol(_store, _logger);
-            _receiver = new Receiver(_endpoint, protocol, _logger);
+            _receiver = new Receiver(_endpoint, protocol, new NoSecurity(), _logger);
         }
 
         [Fact]
@@ -128,7 +129,7 @@ namespace LightningQueues.Tests.Net.Tcp
             using (var client = new TcpClient())
             {
                 await client.ConnectAsync(_endpoint.Address, _endpoint.Port);
-                var outgoing = new OutgoingMessageBatch(expected.Destination, messages, client);
+                var outgoing = new OutgoingMessageBatch(expected.Destination, messages, client, new NoSecurity());
                 var completionSource = new TaskCompletionSource<bool>();
 
                 using (_sender.Send(outgoing).Subscribe(x =>

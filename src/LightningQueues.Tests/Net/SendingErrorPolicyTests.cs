@@ -5,6 +5,7 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using LightningQueues.Logging;
 using LightningQueues.Net;
+using LightningQueues.Net.Security;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using Microsoft.Reactive.Testing;
@@ -88,7 +89,7 @@ namespace LightningQueues.Tests.Net
             _store.StoreOutgoing(tx, message);
             tx.Commit();
             var failure = new OutgoingMessageFailure();
-            failure.Batch = new OutgoingMessageBatch(message.Destination, new []{message}, new TcpClient());
+            failure.Batch = new OutgoingMessageBatch(message.Destination, new []{message}, new TcpClient(), new NoSecurity());
             using (_errorPolicy.RetryStream.Subscribe(x => { observed = x; }))
             {
                 _subject.OnNext(failure);
@@ -108,7 +109,7 @@ namespace LightningQueues.Tests.Net
             _store.StoreOutgoing(tx, message);
             tx.Commit();
             var failure = new OutgoingMessageFailure();
-            failure.Batch = new OutgoingMessageBatch(message.Destination, new[] {message}, new TcpClient());
+            failure.Batch = new OutgoingMessageBatch(message.Destination, new[] {message}, new TcpClient(), new NoSecurity());
             using (_errorPolicy.RetryStream.Subscribe(x => { observed = x; }))
             {
                 _subject.OnNext(failure);
@@ -129,7 +130,7 @@ namespace LightningQueues.Tests.Net
             _store.StoreOutgoing(tx, message);
             tx.Commit();
             var failure = new OutgoingMessageFailure();
-            failure.Batch = new OutgoingMessageBatch(message.Destination, new[] {message}, new TcpClient());
+            failure.Batch = new OutgoingMessageBatch(message.Destination, new[] {message}, new TcpClient(), new NoSecurity());
             using (_errorPolicy.RetryStream.Subscribe(x => { observed = x; }))
             {
                 _subject.OnNext(failure);
@@ -154,7 +155,7 @@ namespace LightningQueues.Tests.Net
             var errorPolicy = new SendingErrorPolicy(new RecordingLogger(), store, _subject, _scheduler);
             bool ended = false;
             var failure = new OutgoingMessageFailure();
-            failure.Batch = new OutgoingMessageBatch(message.Destination, new[] {message}, new TcpClient());
+            failure.Batch = new OutgoingMessageBatch(message.Destination, new[] {message}, new TcpClient(), new NoSecurity());
             using (errorPolicy.RetryStream.Finally(() => ended = true).Subscribe(x => { }))
             {
                 _subject.OnNext(failure);

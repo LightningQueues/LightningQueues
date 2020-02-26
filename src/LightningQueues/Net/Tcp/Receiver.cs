@@ -2,25 +2,29 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Reactive.Linq;
-using System.Security.Cryptography.X509Certificates;
 using LightningQueues.Logging;
+using LightningQueues.Net.Security;
 
 namespace LightningQueues.Net.Tcp
 {
     public class Receiver : IDisposable
     {
-        readonly TcpListener _listener;
-        readonly IReceivingProtocol _protocol;
+        private readonly TcpListener _listener;
+        private readonly IReceivingProtocol _protocol;
+        private readonly IStreamSecurity _security;
         private readonly ILogger _logger;
-        bool _disposed;
-        IObservable<Message> _stream;
+        private bool _disposed;
+        private readonly Uri _localUri;
+        private IObservable<Message> _stream;
         private readonly object _lockObject;
         
-        public Receiver(IPEndPoint endpoint, IReceivingProtocol protocol, ILogger logger)
+        public Receiver(IPEndPoint endpoint, IReceivingProtocol protocol, IStreamSecurity security, ILogger logger)
         {
             Endpoint = endpoint;
+            _localUri = new Uri($"lq://localhost:{Endpoint.Port}");
             Timeout = TimeSpan.FromSeconds(5);
             _protocol = protocol;
+            _security = security;
             _logger = logger;
             _listener = new TcpListener(Endpoint);
             _listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
@@ -42,7 +46,9 @@ namespace LightningQueues.Net.Tcp
 
                 _logger.DebugFormat("TcpListener started listening on port: {0}", Endpoint.Port);
                 _stream = Observable.While(IsNotDisposed, ContinueAcceptingNewClients())
-                    .Using(x => _protocol.ReceiveStream(Observable.Return(new NetworkStream(x, true)), x.RemoteEndPoint.ToString())
+                    .Using(x => _protocol.ReceiveStream(
+                            _security.Apply(_localUri,  Observable.Return(new NetworkStream(x, false))), 
+                            x.RemoteEndPoint.ToString())
                     .Catch((Exception ex) => catchAll(ex)))
                     .Catch((Exception ex) => catchAll(ex))
                     .Publish()

@@ -3,14 +3,19 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
+using LightningQueues.Net.Security;
 
 namespace LightningQueues.Net
 {
     public class OutgoingMessageBatch : IDisposable
     {
-        public OutgoingMessageBatch(Uri destination, IEnumerable<OutgoingMessage> messages, TcpClient client)
+        private readonly IStreamSecurity _security;
+        
+        public OutgoingMessageBatch(Uri destination, IEnumerable<OutgoingMessage> messages, TcpClient client, IStreamSecurity security)
         {
+            _security = security;
             Destination = destination;
             var messagesList = new List<OutgoingMessage>();
             messagesList.AddRange(messages);
@@ -19,7 +24,7 @@ namespace LightningQueues.Net
         }
 
         public Uri Destination { get; set; }
-        public Stream Stream => Client.GetStream();
+        public IObservable<Stream> Stream => _security.Apply(Destination, Observable.Return(Client.GetStream()));
         public TcpClient Client { get; set; }
         public IList<OutgoingMessage> Messages { get; }
 
