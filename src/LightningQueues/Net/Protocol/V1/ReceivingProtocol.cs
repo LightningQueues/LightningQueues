@@ -77,7 +77,7 @@ namespace LightningQueues.Net.Protocol.V1
         {
             try
             {
-                SendBufferUnsafe(stream, buffer);
+                await SendBufferUnsafe(stream, buffer);
             }
             catch (Exception ex)
             {

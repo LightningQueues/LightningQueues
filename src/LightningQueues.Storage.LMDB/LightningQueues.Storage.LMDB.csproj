@@ -2,9 +2,9 @@
 
   <PropertyGroup>
     <Description>LightningQueues.Storage.LMDB</Description>
-    <VersionPrefix>0.11.0</VersionPrefix>
+    <VersionPrefix>0.3.0</VersionPrefix>
     <Authors>Ilya Lukyanov;Corey Kaylor</Authors>
-    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <AssemblyName>LightningQueues.Storage.LMDB</AssemblyName>
     <PackageId>LightningQueues.Storage.LMDB</PackageId>
     <PackageTags>lmdb;lightning;storage;persistance;key-value;nosql</PackageTags>
