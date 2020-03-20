@@ -48,20 +48,29 @@ namespace LightningQueues.Net.Protocol.V1
         {
             return Observable.FromAsync(async () =>
             {
-                var bytes = await stream.ReadBytesAsync(Constants.ReceivedBuffer.Length).ConfigureAwait(false);
-                if (bytes.SequenceEqual(Constants.ReceivedBuffer))
+                try
                 {
-                    return true;
+                    var bytes = await stream.ReadBytesAsync(Constants.ReceivedBuffer.Length).ConfigureAwait(false);
+                    if (bytes.SequenceEqual(Constants.ReceivedBuffer))
+                    {
+                        return true;
+                    }
+                    if (bytes.SequenceEqual(Constants.SerializationFailureBuffer))
+                    {
+                        _logger.Error("Serialization is confused and did not return received buffer", new IOException("Failed to send messages, received serialization failed message."));
+                    }
+                    if (bytes.SequenceEqual(Constants.QueueDoesNotExistBuffer))
+                    {
+                        _logger.Error("Destination queue does not exist", new QueueDoesNotExistException());
+                    }
+                    return false;
                 }
-                if (bytes.SequenceEqual(Constants.SerializationFailureBuffer))
+                catch (Exception ex)
                 {
-                    throw new IOException("Failed to send messages, received serialization failed message.");
+                    _logger.Info("Error while trying to read received buffer " + ex);
+                    return false;
                 }
-                if (bytes.SequenceEqual(Constants.QueueDoesNotExistBuffer))
-                {
-                    throw new QueueDoesNotExistException();
-                }
-                return false;
+                
             }).Where(x => x).Select(x => Unit.Default);
         }
 
