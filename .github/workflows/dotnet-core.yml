@@ -8,18 +8,36 @@ on:
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: ['ubuntu-latest', 'windows-latest', 'macos-latest']
+    runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout LightningQueues
+      uses: actions/checkout@v2
+      with:
+        path: LightningQueues
+    - name: Checkout lmdb
+      uses: actions/checkout@v2
+      with:
+        repository: LMDB/lmdb
+        path: lmdb
+      if: matrix.os == 'ubuntu-latest'
+    - name: Build lmdb native lib
+      run: make && export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${{ runner.workspace }}/lmdb/libraries/liblmdb/
+      working-directory: ${{ runner.workspace }}/lmdb/libraries/liblmdb
+      if: matrix.os == 'ubuntu-latest'
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 3.1.101
     - name: Install dependencies
       run: dotnet restore
+      working-directory: ${{ runner.workspace }}/LightningQueues
     - name: Build
       run: dotnet build --configuration Release --no-restore
+      working-directory: ${{ runner.workspace }}/LightningQueues
     - name: Test
       run: dotnet test --no-restore --verbosity normal
+      working-directory: ${{ runner.workspace }}/LightningQueues
