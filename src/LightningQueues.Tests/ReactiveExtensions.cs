@@ -19,7 +19,7 @@ namespace LightningQueues.Tests
 
         public static Task<T> FirstAsyncWithTimeout<T>(this IObservable<T> stream)
         {
-            return stream.FirstAsyncWithTimeout(TimeSpan.FromSeconds(1));
+            return stream.FirstAsyncWithTimeout(TimeSpan.FromSeconds(5));
         }
 
         public static IObservable<int> RunningCount<T>(this IObservable<T> stream)
