@@ -26,9 +26,8 @@ jobs:
         path: lmdb
       if: matrix.os == 'ubuntu-latest'
     - name: Build lmdb native lib
+      working-directory: ${{ runner.workspace}}/LightningQueues/lmdb/libraries/liblmdb/
       run: |
-        ls
-        cd ${{ runner.workspace}}/lmdb/libraries/liblmdb/
         make
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${{ runner.workspace }}/lmdb/libraries/liblmdb/
       if: matrix.os == 'ubuntu-latest'
@@ -38,14 +37,10 @@ jobs:
         dotnet-version: 3.1.101
     - name: Install dependencies
       working-directory: ${{ runner.workspace }}/LightningQueues
-      run: |
-        cd ${{ runner.workspace }}/LightningQueues
-        dotnet restore
+      run: dotnet restore
     - name: Build
-      run: |
-        cd ${{ runner.workspace }}/LightningQueues
-        dotnet build --configuration Release --no-restore
+      working-directory: ${{ runner.workspace }}/LightningQueues
+      run: dotnet build --configuration Release --no-restore
     - name: Test
-      run: |
-        cd ${{ runner.workspace }}/LightningQueues
-        dotnet test -f netcoreapp3.1 --no-restore --verbosity normal
+      working-directory: ${{ runner.workspace }}/LightningQueues
+      run: dotnet test -f netcoreapp3.1 --no-restore --verbosity normal
