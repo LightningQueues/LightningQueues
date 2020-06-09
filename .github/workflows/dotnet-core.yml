@@ -27,7 +27,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
     - name: Build lmdb native lib
       run: |
-        cd ${{ runer.workspace}}/lmdb/libraries/liblmdb/
+        cd ${{ runner.workspace}}/lmdb/libraries/liblmdb/
         make
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${{ runner.workspace }}/lmdb/libraries/liblmdb/
       if: matrix.os == 'ubuntu-latest'
