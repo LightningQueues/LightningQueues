@@ -27,7 +27,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
     - name: Build lmdb native lib
       working-directory: ${{ runner.workspace }}/lmdb/libraries/liblmdb
-      run: make && export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${{ runner.workspace }}/lmdb/libraries/liblmdb/
+      run: pwd && make && export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${{ runner.workspace }}/lmdb/libraries/liblmdb/
       if: matrix.os == 'ubuntu-latest'
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
