@@ -1,5 +1,6 @@
 LightningQueues - Fast persistent queues for .NET
 =====================================================
+![.NET Core (Win, Mac, Linux)](https://github.com/LightningQueues/LightningQueues/workflows/.NET%20Core/badge.svg)
 
 A fast store and forward message queue for .NET. (aka not a broker or server)
 
