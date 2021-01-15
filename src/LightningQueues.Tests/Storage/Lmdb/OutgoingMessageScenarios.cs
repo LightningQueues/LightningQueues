@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using LightningDB;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
 using Xunit;
@@ -63,7 +64,7 @@ namespace LightningQueues.Tests.Storage.Lmdb
             using(var db = ltx.OpenDatabase("outgoing"))
             {
                 var result = ltx.Get(db, message.Id.MessageIdentifier.ToByteArray());
-                result.ShouldBeNull();
+                result.resultCode.ShouldBe(MDBResultCode.NotFound);
             }
         }
 
@@ -84,7 +85,7 @@ namespace LightningQueues.Tests.Storage.Lmdb
             using(var db = ltx.OpenDatabase("outgoing"))
             {
                 var result = ltx.Get(db, message.Id.MessageIdentifier.ToByteArray());
-                result.ShouldBeNull();
+                result.resultCode.ShouldBe(MDBResultCode.NotFound);
             }
         }
 

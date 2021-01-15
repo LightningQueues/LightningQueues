@@ -59,13 +59,13 @@ namespace LightningQueues.Storage.LMDB
                     var db = OpenDatabase(tx, messagesByQueue.Key);
                     foreach (var message in messagesByQueue)
                     {
-                        tx.Put(db, message.Id.MessageIdentifier.ToByteArray(), message.Serialize());
+                        tx.Put(db, message.Id.MessageIdentifier.ToByteArray(), message.Serialize()).ThrowOnError();
                     }
                 }
             }
             catch (LightningException ex)
             {
-                if (ex.StatusCode == LightningDB.Native.Lmdb.MDB_NOTFOUND)
+                if (ex.StatusCode == (int)MDBResultCode.NotFound)
                     throw new QueueDoesNotExistException("Queue doesn't exist", ex);
                 throw;
             }
@@ -112,7 +112,8 @@ namespace LightningQueues.Storage.LMDB
             using (var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly))
             {
                 var db = OpenDatabase(tx, queueName);
-                return tx.Get(db, messageId.MessageIdentifier.ToByteArray()).ToMessage();
+                var result = tx.Get(db, messageId.MessageIdentifier.ToByteArray());
+                return result.value.CopyToNewArray().ToMessage();
             }
         }
 
@@ -141,9 +142,9 @@ namespace LightningQueues.Storage.LMDB
             using (var db = tx.OpenDatabase())
             using (var cursor = tx.CreateCursor(db))
             {
-                foreach (var item in cursor)
+                foreach ((MDBValue key, MDBValue value) in cursor.AsEnumerable())
                 {
-                    yield return Encoding.UTF8.GetString(item.Key);
+                    yield return Encoding.UTF8.GetString(key.CopyToNewArray());
                 }
             }
         }
@@ -163,12 +164,12 @@ namespace LightningQueues.Storage.LMDB
                     {
                         var db = OpenDatabase(tx, queueName);
                         using (var cursor = tx.CreateCursor(db))
-                            while (cursor.MoveNext())
+                        {
+                            foreach ((MDBValue key, MDBValue value) in cursor.AsEnumerable())
                             {
-                                var current = cursor.Current;
-                                var message = current.Value.ToMessage();
-                                x.OnNext(message);
+                                x.OnNext(value.CopyToNewArray().ToMessage());
                             }
+                        }
                     }
                     x.OnCompleted();
                 }
@@ -190,12 +191,12 @@ namespace LightningQueues.Storage.LMDB
                     {
                         var db = OpenDatabase(tx, OutgoingQueue);
                         using (var cursor = tx.CreateCursor(db))
-                            while (cursor.MoveNext())
+                        {
+                            foreach ((MDBValue key, MDBValue value) in cursor.AsEnumerable())
                             {
-                                var current = cursor.Current;
-                                var msg = current.Value.ToOutgoingMessage();
-                                x.OnNext(msg);
+                                x.OnNext(value.CopyToNewArray().ToOutgoingMessage());
                             }
+                        }
                     }
                     x.OnCompleted();
                 }
@@ -258,9 +259,9 @@ namespace LightningQueues.Storage.LMDB
         {
             var db = OpenDatabase(tx, OutgoingQueue);
             var value = tx.Get(db, message.Id.MessageIdentifier.ToByteArray());
-            if (value == null)
+            if (value.resultCode == MDBResultCode.NotFound)
                 return int.MaxValue;
-            var msg = value.ToOutgoingMessage();
+            var msg = value.value.CopyToNewArray().ToOutgoingMessage();
             int attempts = message.SentAttempts;
             if (attempts >= message.MaxAttempts)
             {
@@ -288,13 +289,13 @@ namespace LightningQueues.Storage.LMDB
                 var idBytes = message.Id.MessageIdentifier.ToByteArray();
                 var original = OpenDatabase(tx, message.Queue);
                 var newDb = OpenDatabase(tx, queueName);
-                tx.Delete(original, idBytes);
-                tx.Put(newDb, idBytes, message.Serialize());
+                tx.Delete(original, idBytes).ThrowOnError();
+                tx.Put(newDb, idBytes, message.Serialize()).ThrowOnError();
             }
             catch (LightningException ex)
             {
                 tx.Dispose();
-                if (ex.StatusCode == LightningDB.Native.Lmdb.MDB_NOTFOUND)
+                if (ex.StatusCode == (int)MDBResultCode.NotFound)
                     throw new QueueDoesNotExistException("Queue doesn't exist", ex);
                 throw;
             }

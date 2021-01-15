@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using LightningDB;
 using LightningQueues.Serialization;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
@@ -33,7 +34,7 @@ namespace LightningQueues.Tests.Storage.Lmdb
             {
                 using (var db = tx.OpenDatabase(message.Queue))
                 {
-                    var msg = tx.Get(db, message.Id.MessageIdentifier.ToByteArray()).ToMessage();
+                    var msg = tx.Get(db, message.Id.MessageIdentifier.ToByteArray()).value.CopyToNewArray().ToMessage();
                     System.Text.Encoding.UTF8.GetString(msg.Data).ShouldBe("hello");
                     msg.Headers.First().Value.ShouldBe("myvalue");
                 }
@@ -66,7 +67,7 @@ namespace LightningQueues.Tests.Storage.Lmdb
                 using (var db = tx.OpenDatabase(message.Queue))
                 {
                     var result = tx.Get(db, message.Id.MessageIdentifier.ToByteArray());
-                    result.ShouldBeNull();
+                    result.resultCode.ShouldBe(MDBResultCode.NotFound);
                 }
             }
         }
@@ -84,7 +85,7 @@ namespace LightningQueues.Tests.Storage.Lmdb
                 using (var db = tx.OpenDatabase(message.Queue))
                 {
                     var result = tx.Get(db, message.Id.MessageIdentifier.ToByteArray());
-                    result.ShouldBeNull();
+                    result.resultCode.ShouldBe(MDBResultCode.NotFound);
                 }
             }
         }
