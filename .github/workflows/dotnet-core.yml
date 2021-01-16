@@ -33,7 +33,7 @@ jobs:
         dotnet-version: 3.1.x
     - name: Install dependencies
       working-directory: ${{ runner.workspace }}/LightningQueues
-      run: dotnet restore
+      run: dotnet restore LightningQueues.sln
     - name: Build
       working-directory: ${{ runner.workspace }}/LightningQueues
       run: dotnet build --configuration Release --no-restore
