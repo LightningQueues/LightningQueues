@@ -31,9 +31,12 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 3.1.x
+    - name: Clean build
+      working-directory: ${{ runner.workspace }}/LightningQueues
+      run: dotnet clean
     - name: Install dependencies
       working-directory: ${{ runner.workspace }}/LightningQueues
-      run: dotnet restore LightningQueues.sln
+      run: dotnet restore
     - name: Build
       working-directory: ${{ runner.workspace }}/LightningQueues
       run: dotnet build --configuration Release --no-restore
