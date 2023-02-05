@@ -3,16 +3,16 @@
   <PropertyGroup>
     <Description>LightningQueues</Description>
     <VersionPrefix>0.4.0</VersionPrefix>
-    <Authors>Ilya Lukyanov;Corey Kaylor</Authors>
+    <Authors>Corey Kaylor</Authors>
     <TargetFramework>netstandard2.0</TargetFramework>
     <AssemblyName>LightningQueues</AssemblyName>
     <PackageId>LightningQueues</PackageId>
-    <PackageTags>lmdb;lightning;storage;persistance;key-value;nosql</PackageTags>
+    <PackageTags>queue;lightning;messaging;store-and-forward;</PackageTags>
     <PackageProjectUrl>https://github.com/LightningQueues/LightningQueues</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Reactive" Version="4.4.1" />
+    <PackageReference Include="System.Reactive" Version="5.0.0" />
   </ItemGroup>
 
 </Project>

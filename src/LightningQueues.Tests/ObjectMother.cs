@@ -55,7 +55,7 @@ namespace LightningQueues.Tests
                     }
                     catch (Exception ex)
                     {
-                        Assert.True(false, "Error occurred from receiving encryption {ex}");
+                        Assert.True(false, $"Error occurred from receiving encryption {ex}");
                     }
                     return sslStream;
                 }, async (uri, sending) =>
