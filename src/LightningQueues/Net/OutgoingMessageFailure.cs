@@ -1,10 +1,9 @@
 ﻿using System;
 
-namespace LightningQueues.Net
+namespace LightningQueues.Net;
+
+public class OutgoingMessageFailure
 {
-    public class OutgoingMessageFailure
-    {
-        public Exception Exception { get; set; }
-        public OutgoingMessageBatch Batch { get; set; }
-    }
+    public Exception Exception { get; set; }
+    public OutgoingMessageBatch Batch { get; init; }
 }

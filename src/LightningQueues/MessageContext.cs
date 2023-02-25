@@ -1,14 +1,13 @@
-﻿namespace LightningQueues
-{
-    public class MessageContext
-    {
-        internal MessageContext(Message message, Queue queue)
-        {
-            Message = message;
-            QueueContext = new QueueContext(queue, message);
-        }
+﻿namespace LightningQueues;
 
-        public Message Message { get; set; }
-        public IQueueContext QueueContext { get; }
+public class MessageContext
+{
+    internal MessageContext(Message message, Queue queue)
+    {
+        Message = message;
+        QueueContext = new QueueContext(queue, message);
     }
+
+    public Message Message { get; }
+    public IQueueContext QueueContext { get; }
 }

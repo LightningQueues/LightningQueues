@@ -1,9 +1,8 @@
 using System;
 
-namespace LightningQueues.Net
+namespace LightningQueues.Net;
+
+public interface ISendingProtocol
 {
-    public interface ISendingProtocol
-    {
-        IObservable<OutgoingMessage> Send(OutgoingMessageBatch batch);
-    }
+    IObservable<OutgoingMessage> Send(OutgoingMessageBatch batch);
 }

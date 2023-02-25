@@ -1,15 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace LightningQueues
+namespace LightningQueues;
+
+public class Message
 {
-    public class Message
+    public Message()
     {
-        public Message()
-        {
-            Headers = new Dictionary<string, string>();
-            SentAt = DateTime.UtcNow;
-        }
+        Headers = new Dictionary<string, string>();
+        SentAt = DateTime.UtcNow;
+    }
 
         public MessageId Id { get; set; }
         public string Queue { get; set; }

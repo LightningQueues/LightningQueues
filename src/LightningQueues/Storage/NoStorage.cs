@@ -2,50 +2,51 @@
 using System.Collections.Generic;
 using System.Reactive.Linq;
 
-namespace LightningQueues.Storage
+namespace LightningQueues.Storage;
+
+public class NoStorage : IMessageStore
 {
-    public class NoStorage : IMessageStore
+    private readonly List<string> _queues = new();
+
+    private class NoStorageTransaction : ITransaction
     {
-        private readonly List<string> _queues = new List<string>();
+        public Guid TransactionId => Guid.Empty;
 
-        private class NoStorageTransaction : ITransaction
-        {
-            public Guid TransactionId => Guid.Empty;
-
-            public void Commit()
-            {
-            }
-
-            public void Rollback()
-            {
-            }
-        }
-
-        public void Dispose()
+        public void Commit()
         {
         }
 
-        public ITransaction BeginTransaction()
+        public void Rollback()
         {
-            return new NoStorageTransaction();
         }
+    }
 
-        public void CreateQueue(string queueName)
-        {
-            _queues.Add(queueName);
-        }
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+    }
 
-        public void StoreIncomingMessages(params Message[] messages)
-        {
-        }
+    public ITransaction BeginTransaction()
+    {
+        return new NoStorageTransaction();
+    }
 
-        public void StoreIncomingMessages(ITransaction transaction, params Message[] messages)
-        {
-        }
+    public void CreateQueue(string queueName)
+    {
+        _queues.Add(queueName);
+    }
 
-        public void DeleteIncomingMessages(params Message[] messages)
-        {
-        }
+    public void StoreIncomingMessages(params Message[] messages)
+    {
+    }
+
+    public void StoreIncomingMessages(ITransaction transaction, params Message[] messages)
+    {
+    }
+
+    public void DeleteIncomingMessages(params Message[] messages)
+    {
+    }
 
         public IObservable<Message> PersistedMessages(string queueName)
         {
@@ -57,44 +58,43 @@ namespace LightningQueues.Storage
             return Observable.Empty<OutgoingMessage>();
         }
 
-        public void MoveToQueue(ITransaction transaction, string queueName, Message message)
-        {
-            message.Queue = queueName;
-        }
+    public void MoveToQueue(ITransaction transaction, string queueName, Message message)
+    {
+        message.Queue = queueName;
+    }
 
-        public void SuccessfullyReceived(ITransaction transaction, Message message)
-        {
-        }
+    public void SuccessfullyReceived(ITransaction transaction, Message message)
+    {
+    }
 
-        public void StoreOutgoing(ITransaction tx, OutgoingMessage message)
-        {
-        }
+    public void StoreOutgoing(ITransaction tx, OutgoingMessage message)
+    {
+    }
 
-        public void StoreOutgoing(ITransaction tx, OutgoingMessage[] message)
-        {
-        }
+    public void StoreOutgoing(ITransaction tx, OutgoingMessage[] message)
+    {
+    }
 
-        public int FailedToSend(OutgoingMessage message)
-        {
-            return message.SentAttempts;
-        }
+    public int FailedToSend(OutgoingMessage message)
+    {
+        return message.SentAttempts;
+    }
 
-        public void SuccessfullySent(params OutgoingMessage[] messages)
-        {
-        }
+    public void SuccessfullySent(params OutgoingMessage[] messages)
+    {
+    }
 
-        public Message GetMessage(string queueName, MessageId messageId)
-        {
-            return null;
-        }
+    public Message GetMessage(string queueName, MessageId messageId)
+    {
+        return null;
+    }
 
-        public string[] GetAllQueues()
-        {
-            return _queues.ToArray();
-        }
+    public string[] GetAllQueues()
+    {
+        return _queues.ToArray();
+    }
 
-        public void ClearAllStorage()
-        {
-        }
+    public void ClearAllStorage()
+    {
     }
 }

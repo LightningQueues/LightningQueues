@@ -1,31 +1,28 @@
 ﻿using System;
 using LightningDB;
 
-namespace LightningQueues.Storage.LMDB
+namespace LightningQueues.Storage.LMDB;
+
+public class LmdbTransaction : ITransaction
 {
-    public class LmdbTransaction : ITransaction
+    public LmdbTransaction(LightningEnvironment env)
     {
-        private readonly LightningTransaction _transaction;
+        Transaction = env.BeginTransaction();
+        TransactionId = Guid.NewGuid();
+    }
 
-        public LmdbTransaction(LightningEnvironment env)
-        {
-            _transaction = env.BeginTransaction();
-            TransactionId = Guid.NewGuid();
-        }
+    public LightningTransaction Transaction { get; }
 
-        public LightningTransaction Transaction => _transaction;
+    public Guid TransactionId { get; }
 
-        public Guid TransactionId { get; }
+    void ITransaction.Rollback()
+    {
+        Transaction.Dispose();
+    }
 
-        void ITransaction.Rollback()
-        {
-            _transaction.Dispose();
-        }
-
-        void ITransaction.Commit()
-        {
-            using(_transaction)
-                _transaction.Commit();
-        }
+    void ITransaction.Commit()
+    {
+        using(Transaction)
+            Transaction.Commit();
     }
 }

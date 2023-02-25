@@ -3,45 +3,45 @@ using System.IO;
 using System.Threading;
 using Xunit;
 
-namespace LightningQueues.Tests
+namespace LightningQueues.Tests;
+
+public class SharedTestDirectory : IDisposable
 {
-    public class SharedTestDirectory : IDisposable
+    private readonly string _testTempDir;
+
+    public SharedTestDirectory()
     {
-        private readonly string _testTempDir;
+        var testProjectDir = Directory.GetCurrentDirectory();
+        _testTempDir = Path.Combine(Directory.GetParent(testProjectDir).Parent.FullName, "TestData");
+    }
 
-        public SharedTestDirectory()
+    public void Dispose()
+    {
+        for (var i = 0; i < 3; ++i)
         {
-            var testProjectDir = Directory.GetCurrentDirectory();
-            _testTempDir = Path.Combine(Directory.GetParent(testProjectDir).Parent.FullName, "TestData");
-        }
-
-        public void Dispose()
-        {
-            for (var i = 0; i < 3; ++i)
+            try
             {
-                try
-                {
-                    Directory.Delete(_testTempDir, true);
-                    break;
-                }
-                catch (Exception)
-                {
-                    //timing issues with environment close releasing files and deleting directory
-                    Thread.Sleep(100);
-                }
+                Directory.Delete(_testTempDir, true);
+                break;
+            }
+            catch (Exception)
+            {
+                //timing issues with environment close releasing files and deleting directory
+                Thread.Sleep(100);
             }
         }
-
-        public string CreateNewDirectoryForTest()
-        {
-            var path = Path.Combine(_testTempDir, Guid.NewGuid().ToString());
-            Directory.CreateDirectory(path);
-            return path;
-        }
+        GC.SuppressFinalize(this);
     }
 
-    [CollectionDefinition("SharedTestDirectory")]
-    public class SharedTestDirectoryCollection : ICollectionFixture<SharedTestDirectory>
+    public string CreateNewDirectoryForTest()
     {
+        var path = Path.Combine(_testTempDir, Guid.NewGuid().ToString());
+        Directory.CreateDirectory(path);
+        return path;
     }
+}
+
+[CollectionDefinition("SharedTestDirectory")]
+public class SharedTestDirectoryCollection : ICollectionFixture<SharedTestDirectory>
+{
 }
