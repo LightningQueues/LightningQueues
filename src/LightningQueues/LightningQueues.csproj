@@ -4,7 +4,8 @@
     <Description>LightningQueues</Description>
     <VersionPrefix>0.4.0</VersionPrefix>
     <Authors>Corey Kaylor</Authors>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
+    <LangVersion>11</LangVersion>
     <AssemblyName>LightningQueues</AssemblyName>
     <PackageId>LightningQueues</PackageId>
     <PackageTags>queue;lightning;messaging;store-and-forward;</PackageTags>
@@ -12,6 +13,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="DotNext.IO" Version="4.10.0" />
+    <PackageReference Include="System.Interactive.Async" Version="6.0.1" />
+    <PackageReference Include="System.IO.Pipelines" Version="7.0.0" />
     <PackageReference Include="System.Reactive" Version="5.0.0" />
   </ItemGroup>
 
