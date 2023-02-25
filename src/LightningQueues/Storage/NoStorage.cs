@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reactive.Linq;
+using System.Linq;
 
 namespace LightningQueues.Storage;
 
@@ -48,15 +48,15 @@ public class NoStorage : IMessageStore
     {
     }
 
-        public IObservable<Message> PersistedMessages(string queueName)
-        {
-            return Observable.Empty<Message>();
-        }
+    public IEnumerable<Message> PersistedMessages(string queueName)
+    {
+        return Enumerable.Empty<Message>();
+    }
 
-        public IObservable<OutgoingMessage> PersistedOutgoingMessages()
-        {
-            return Observable.Empty<OutgoingMessage>();
-        }
+    public IEnumerable<OutgoingMessage> PersistedOutgoingMessages()
+    {
+        return Enumerable.Empty<OutgoingMessage>();
+    }
 
     public void MoveToQueue(ITransaction transaction, string queueName, Message message)
     {

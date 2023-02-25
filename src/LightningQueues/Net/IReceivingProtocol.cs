@@ -1,10 +1,12 @@
-﻿using System;
+﻿using System.Collections.Generic;
 using System.IO;
+using System.Net;
+using System.Threading;
 
-namespace LightningQueues.Net
+namespace LightningQueues.Net;
+
+public interface IReceivingProtocol
 {
-    public interface IReceivingProtocol
-    {
-        IObservable<Message> ReceiveStream(IObservable<Stream> streams, string from);
-    }
+    IAsyncEnumerable<Message> ReceiveMessagesAsync(EndPoint endpoint, Stream stream,
+        CancellationToken cancellationToken);
 }

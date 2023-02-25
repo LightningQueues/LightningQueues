@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 
 namespace LightningQueues;
@@ -11,11 +12,12 @@ public class Message
         SentAt = DateTime.UtcNow;
     }
 
-        public MessageId Id { get; set; }
-        public string Queue { get; set; }
-        public DateTime SentAt { get; set; }
-        public IDictionary<string, string> Headers { get; set; }
-        public byte[] Data { get; set; }
-        public string SubQueue { get; set; }
-    }
+    public MessageId Id { get; init; }
+    public string Queue { get; set; }
+    public DateTime SentAt { get; set; }
+    public IDictionary<string, string> Headers { get; set; }
+    public byte[] Data { get; set; }
+    public string SubQueue { get; set; }
+        
+    internal ReadOnlySequence<byte> Bytes { get; set; }
 }
