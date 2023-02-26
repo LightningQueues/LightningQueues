@@ -5,7 +5,6 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using DotNext.IO;
 using LightningQueues.Storage;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Security;
@@ -51,8 +50,6 @@ public class ReceivingProtocolTests : IDisposable
     public async ValueTask handling_disconnects_mid_protocol_gracefully()
     {
         using var ms = new MemoryStream();
-        var messagesCalled = false;
-        var errorCaught = false;
         ms.Write(BitConverter.GetBytes(5));
         ms.Write("Fake this shouldn't pass!!!!!"u8);
         //even though we're not 'disconnecting', by making writable false it achieves the same outcome
@@ -96,7 +93,6 @@ public class ReceivingProtocolTests : IDisposable
             Queue = "test"
         };
         var bytes = new[] { message }.Serialize();
-        var subscribeCalled = false;
         using var ms = new MemoryStream();
         ms.Write(BitConverter.GetBytes(bytes.Length + differenceFromActualLength), 0, 4);
         ms.Write(bytes, 0, bytes.Length);
@@ -118,7 +114,6 @@ public class ReceivingProtocolTests : IDisposable
             Queue = "test"
         };
         var bytes = new[] { message }.Serialize();
-        var subscribeCalled = false;
         using var ms = new MemoryStream();
         ms.Write(BitConverter.GetBytes(bytes.Length), 0, 4);
         ms.Write(bytes, 0, bytes.Length);
@@ -135,7 +130,6 @@ public class ReceivingProtocolTests : IDisposable
     public async ValueTask sending_data_that_is_cannot_be_deserialized()
     {
         using var ms = new MemoryStream();
-        var subscribeCalled = false;
         ms.Write(BitConverter.GetBytes(16), 0, 4);
         ms.Write(Guid.NewGuid().ToByteArray(), 0, 16);
         ms.Position = 0;

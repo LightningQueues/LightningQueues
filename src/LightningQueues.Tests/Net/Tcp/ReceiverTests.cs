@@ -59,25 +59,6 @@ public class ReceiverTests : IDisposable
         listener.Stop();
     }
 
-    [Fact]
-    public void multiple_subscriptions_are_allowed()
-    {
-        using (_receiver.StartReceiving().Subscribe(_ => { }))
-        using (_receiver.StartReceiving().Subscribe(_ => { }))
-        {
-        }
-    }
-
-    [Fact]
-    public void subscribe_unsubscribe_and_subscribe_again()
-    {
-        using (_receiver.StartReceiving().Subscribe(_ => { }))
-        {
-        }
-        using (_receiver.StartReceiving().Subscribe(_ => { }))
-        {
-        }
-    }
 
     [Fact]
     public async Task can_handle_connect_then_disconnect()

@@ -2,12 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using System.Reactive.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using LightningQueues.Logging;
-using LightningQueues.Net.Protocol.V1;
-using LightningQueues.Net.Security;
 
 namespace LightningQueues.Net.Tcp;
 
@@ -36,7 +33,7 @@ public class Receiver : IDisposable
     public async IAsyncEnumerable<Message> StartReceivingAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         StartListener();
-        while (!cancellationToken.IsCancellationRequested && IsNotDisposed())
+        while (!cancellationToken.IsCancellationRequested && !_disposed)
         {
             var socket = await _listener.AcceptSocketAsync(cancellationToken);
             await using var stream = new NetworkStream(socket, false);
@@ -46,7 +43,6 @@ public class Receiver : IDisposable
                 yield return msg;
             }
         }
-        Dispose();
     }
 
     private void StartListener()
@@ -55,49 +51,6 @@ public class Receiver : IDisposable
         {
             _listener.Start();
         }
-    }
-
-    public IObservable<Message> StartReceiving()
-    {
-        return Observable.Empty<Message>();
-        // lock (_lockObject)
-        // {
-        //     if (_stream != null)
-        //         return _stream;
-        //
-        //     _listener.Start();
-        //
-        //     _logger.DebugFormat("TcpListener started listening on port: {0}", Endpoint.Port);
-        //     _stream = Observable.While(IsNotDisposed, ContinueAcceptingNewClients())
-        //         .Using(x => _protocol.ReceiveStream(
-        //                 _security.Apply(_localUri,  Observable.Return(new NetworkStream(x, false))), 
-        //                 x.RemoteEndPoint.ToString())
-        //             .Catch((Exception ex) => CatchAll(ex)))
-        //         .Catch((Exception ex) => CatchAll(ex))
-        //         .Publish()
-        //         .RefCount()
-        //         .Finally(() => _logger.InfoFormat("TcpListener at {0} has stopped", Endpoint.Port))
-        //         .Catch((Exception ex) => CatchAll(ex));
-        // }
-        // return _stream;
-    }
-
-    private IObservable<Message> CatchAll(Exception ex)
-    {
-        _logger.Error("Error in message receiving", ex);
-        return Observable.Empty<Message>();
-    }
-
-    private bool IsNotDisposed()
-    {
-        return !_disposed;
-    }
-
-    private IObservable<Socket> ContinueAcceptingNewClients()
-    {
-        return Observable.FromAsync(() => _listener.AcceptSocketAsync())
-            .Do(x => _logger.DebugFormat("Client at {0} connection established.", x.RemoteEndPoint))
-            .Repeat();
     }
 
     public void Dispose()
