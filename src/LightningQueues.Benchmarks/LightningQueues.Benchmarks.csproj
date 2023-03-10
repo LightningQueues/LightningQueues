@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net7.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="BenchmarkDotNet" Version="0.13.5" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\LightningQueues.Storage.LMDB\LightningQueues.Storage.LMDB.csproj" />
+      <ProjectReference Include="..\LightningQueues.Tests\LightningQueues.Tests.csproj" />
+      <ProjectReference Include="..\LightningQueues\LightningQueues.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="BenchmarkDotNet.Artifacts\LightningQueues.Benchmarks.SendAndReceive-20230310-125530.log" />
+      <None Remove="BenchmarkDotNet.Artifacts\LightningQueues.Benchmarks.SendAndReceive-20230310-123508.log" />
+      <None Remove="BenchmarkDotNet.Artifacts\LightningQueues.Benchmarks.SendAndReceive-20230310-123001.log" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="BenchmarkDotNet.Artifacts" />
+    </ItemGroup>
+
+</Project>
