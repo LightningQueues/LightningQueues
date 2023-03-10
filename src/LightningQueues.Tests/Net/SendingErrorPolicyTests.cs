@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Linq;
 using System.Net.Sockets;
-using System.Reactive.Linq;
-using System.Reactive.Subjects;
+using System.Threading.Channels;
+using System.Threading.Tasks;
 using LightningQueues.Logging;
 using LightningQueues.Net;
 using LightningQueues.Net.Security;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
-using Microsoft.Reactive.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Shouldly;
@@ -20,17 +19,15 @@ namespace LightningQueues.Tests.Net;
 public class SendingErrorPolicyTests : IDisposable
 {
     private readonly SendingErrorPolicy _errorPolicy;
-    private readonly TestScheduler _scheduler;
     private readonly LmdbMessageStore _store;
-    private readonly Subject<OutgoingMessageFailure> _subject;
+    private readonly Channel<OutgoingMessageFailure> _failureChannel;
 
     public SendingErrorPolicyTests(SharedTestDirectory testDirectory)
     {
         ILogger logger = new RecordingLogger();
-        _scheduler = new TestScheduler();
         _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
-        _subject = new Subject<OutgoingMessageFailure>();
-        _errorPolicy = new SendingErrorPolicy(logger, _store, _subject, _scheduler);
+        _failureChannel = Channel.CreateUnbounded<OutgoingMessageFailure>();
+        _errorPolicy = new SendingErrorPolicy(logger, _store, _failureChannel);
     }
 
     [Fact]
@@ -78,9 +75,8 @@ public class SendingErrorPolicyTests : IDisposable
     }
 
     [Fact]
-    public void message_is_observed_after_time()
+    public async ValueTask message_is_observed_after_time()
     {
-        Message observed = null;
         var message = ObjectMother.NewMessage<OutgoingMessage>();
         message.Destination = new Uri("lq.tcp://localhost:5150/blah");
         message.MaxAttempts = 2;
@@ -89,20 +85,17 @@ public class SendingErrorPolicyTests : IDisposable
         tx.Commit();
         var failure = new OutgoingMessageFailure
         {
-            Batch = new OutgoingMessageBatch(message.Destination, new []{message}, new TcpClient(), new NoSecurity())
+            Batch = new OutgoingMessageBatch(message.Destination, new[] { message }, new TcpClient(), new NoSecurity())
         };
-        using (_errorPolicy.RetryStream.Subscribe(x => { observed = x; }))
-        {
-            _subject.OnNext(failure);
-            _scheduler.AdvanceBy(TimeSpan.FromSeconds(1).Ticks);
-            observed.ShouldNotBeNull();
-        }
+        var retryTask = _errorPolicy.Retries.ReadAllAsync().FirstAsync();
+        _failureChannel.Writer.TryWrite(failure);
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        retryTask.IsCompleted.ShouldBeTrue();
     }
 
     [Fact]
-    public void message_removed_from_storage_after_max()
+    public async ValueTask message_removed_from_storage_after_max()
     {
-        Message observed = null;
         var message = ObjectMother.NewMessage<OutgoingMessage>();
         message.Destination = new Uri("lq.tcp://localhost:5150/blah");
         message.MaxAttempts = 1;
@@ -111,19 +104,17 @@ public class SendingErrorPolicyTests : IDisposable
         tx.Commit();
         var failure = new OutgoingMessageFailure
         {
-            Batch = new OutgoingMessageBatch(message.Destination, new[] {message}, new TcpClient(), new NoSecurity())
+            Batch = new OutgoingMessageBatch(message.Destination, new[] { message }, new TcpClient(), new NoSecurity())
         };
-        using (_errorPolicy.RetryStream.Subscribe(x => { observed = x; }))
-        {
-            _subject.OnNext(failure);
-            _scheduler.AdvanceBy(TimeSpan.FromSeconds(1).Ticks);
-            observed.ShouldBeNull();
-        }
+        var retryTask = _errorPolicy.Retries.ReadAllAsync().FirstAsync();
+        _failureChannel.Writer.TryWrite(failure);
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        retryTask.IsCompleted.ShouldBeFalse();
         _store.PersistedOutgoingMessages().Any().ShouldBeFalse();
     }
 
     [Fact]
-    public void time_increases_with_each_failure()
+    public async ValueTask time_increases_with_each_failure()
     {
         Message observed = null;
         var message = ObjectMother.NewMessage<OutgoingMessage>();
@@ -134,41 +125,49 @@ public class SendingErrorPolicyTests : IDisposable
         tx.Commit();
         var failure = new OutgoingMessageFailure
         {
-            Batch = new OutgoingMessageBatch(message.Destination, new[] {message}, new TcpClient(), new NoSecurity())
+            Batch = new OutgoingMessageBatch(message.Destination, new[] { message }, new TcpClient(), new NoSecurity())
         };
-        using (_errorPolicy.RetryStream.Subscribe(x => { observed = x; }))
+        var retryTask = Task.Factory.StartNew(async () =>
         {
-            _subject.OnNext(failure);
-            _scheduler.AdvanceBy(TimeSpan.FromSeconds(1).Ticks);
-            observed.ShouldNotBeNull("first");
-            observed = null;
-            _subject.OnNext(failure);
-            observed.ShouldBeNull("second");
-            _scheduler.AdvanceBy(TimeSpan.FromSeconds(1).Ticks); //one second isn't enough yet
-            observed.ShouldBeNull("third");
-            _scheduler.AdvanceBy(TimeSpan.FromSeconds(3).Ticks); //four seconds total for second failure should match
-            observed.ShouldNotBeNull("fourth");
-        }
+            await foreach (var message in _errorPolicy.Retries.ReadAllAsync())
+            {
+                observed = message;
+            }
+        });
+        _failureChannel.Writer.TryWrite(failure);
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        observed.ShouldNotBeNull("first");
+        observed = null;
+        _failureChannel.Writer.TryWrite(failure);
+        observed.ShouldBeNull("second");
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        observed.ShouldBeNull("third");
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        observed.ShouldNotBeNull("fourth");
     }
 
     [Fact]
-    public void errors_in_storage_dont_end_stream()
+    public async ValueTask errors_in_storage_dont_end_stream()
     {
         var message = ObjectMother.NewMessage<OutgoingMessage>();
         var store = Substitute.For<IMessageStore>();
         store.FailedToSend(Arg.Is(message)).Throws(new Exception("bam!"));
-        var errorPolicy = new SendingErrorPolicy(new RecordingLogger(), store, _subject, _scheduler);
+        var errorPolicy = new SendingErrorPolicy(new RecordingLogger(), store, _failureChannel);
         var ended = false;
         var failure = new OutgoingMessageFailure
         {
-            Batch = new OutgoingMessageBatch(message.Destination, new[] {message}, new TcpClient(), new NoSecurity())
+            Batch = new OutgoingMessageBatch(message.Destination, new[] { message }, new TcpClient(), new NoSecurity())
         };
-        using (errorPolicy.RetryStream.Finally(() => ended = true).Subscribe(_ => { }))
+        var retryTask = Task.Factory.StartNew(async () =>
         {
-            _subject.OnNext(failure);
-            _scheduler.AdvanceBy(TimeSpan.FromSeconds(1).Ticks);
-            ended.ShouldBeFalse();
-        }
+            await foreach (var message in errorPolicy.Retries.ReadAllAsync())
+            {
+            }
+            ended = true;
+        });
+        _failureChannel.Writer.TryWrite(failure);
+        await Task.WhenAny(retryTask, Task.Delay(TimeSpan.FromSeconds(1)));
+        ended.ShouldBeFalse();
     }
 
     public void Dispose()

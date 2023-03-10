@@ -11,10 +11,11 @@ namespace LightningQueues.Serialization;
 
 public static class SerializationExtensions
 {
-    public static Message[] ToMessages(this byte[] buffer)
+    public static Message[] ToMessages(this byte[] buffer, bool wire = true)
     {
         using var ms = new MemoryStream(buffer);
         using var br = new BinaryReader(ms);
+        if (wire) _ = br.ReadInt32(); //ignore payload length
         var numberOfMessages = br.ReadInt32();
         var msgs = new Message[numberOfMessages];
         for (var i = 0; i < numberOfMessages; i++)
@@ -77,34 +78,37 @@ public static class SerializationExtensions
         return msg;
     }
 
-    public static ReadOnlySequence<byte> AsReadonlySequence(this IEnumerable<OutgoingMessage> messages)
+    public static void WriteMessages(this IBufferWriter<byte> writer, IList<OutgoingMessage> messages)
     {
-        using var writer = new PooledBufferWriter<byte>();
-        var messageList = messages.ToList();
-        writer.WriteInt32(messageList.Count, true);
+        writer.WriteInt32(messages.Count, true);
         Span<byte> id = stackalloc byte[16];
-        foreach (var message in messageList)
+        foreach (var message in messages)
         {
-            message.Id.SourceInstanceId.TryWriteBytes(id);
-            writer.Write(id);
-            message.Id.MessageIdentifier.TryWriteBytes(id);
-            writer.Write(id);
-            writer.WriteString(message.Queue.AsSpan(), Encoding.UTF8, LengthFormat.Compressed);
-            writer.WriteString((message.SubQueue ?? string.Empty).AsSpan(), Encoding.UTF8, LengthFormat.Compressed);
-            writer.Write(message.SentAt.ToBinary());
-
-            writer.Write(message.Headers.Count);
-            foreach (var pair in message.Headers)
+            if (message.Bytes.Length == 0)
             {
-                writer.WriteString(pair.Key.AsSpan(), Encoding.UTF8, LengthFormat.Compressed);
-                writer.WriteString(pair.Value.AsSpan(), Encoding.UTF8, LengthFormat.Compressed);
+                message.Id.SourceInstanceId.TryWriteBytes(id);
+                writer.Write(id);
+                message.Id.MessageIdentifier.TryWriteBytes(id);
+                writer.Write(id);
+                writer.WriteString(message.Queue.AsSpan(), Encoding.UTF8, LengthFormat.Compressed);
+                writer.WriteString((message.SubQueue ?? string.Empty).AsSpan(), Encoding.UTF8, LengthFormat.Compressed);
+                writer.Write(message.SentAt.ToBinary());
+
+                writer.Write(message.Headers.Count);
+                foreach (var pair in message.Headers)
+                {
+                    writer.WriteString(pair.Key.AsSpan(), Encoding.UTF8, LengthFormat.Compressed);
+                    writer.WriteString(pair.Value.AsSpan(), Encoding.UTF8, LengthFormat.Compressed);
+                }
+
+                writer.Write(message.Data.Length);
+                writer.Write(message.Data.AsSpan());
             }
-
-            writer.Write(message.Data.Length);
-            writer.Write(message.Data.AsSpan());
+            else
+            {
+                writer.Write(message.Bytes);
+            }
         }
-
-        return new ReadOnlySequence<byte>(writer.WrittenMemory);
     }
 
     public static IEnumerable<Message> ToMessages(this ReadOnlySequence<byte> bytes)

@@ -2,10 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reactive;
-using System.Reactive.Linq;
+using System.Net;
+using System.Runtime.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
+using DotNext.Buffers;
 using LightningQueues.Logging;
+using LightningQueues.Net.Security;
 using LightningQueues.Serialization;
 using LightningQueues.Storage;
 
@@ -14,76 +17,56 @@ namespace LightningQueues.Net.Protocol.V1;
 public class SendingProtocol : ISendingProtocol
 {
     private readonly IMessageStore _store;
+    private readonly IStreamSecurity _security;
     private readonly ILogger _logger;
 
-    public SendingProtocol(IMessageStore store, ILogger logger)
+    public SendingProtocol(IMessageStore store, IStreamSecurity security, ILogger logger)
     {
         _store = store;
+        _security = security;
         _logger = logger;
     }
 
-    public IObservable<OutgoingMessage> Send(OutgoingMessageBatch batch)
+    public async ValueTask SendAsync(Uri destination,Stream stream, 
+        IEnumerable<OutgoingMessage> batch, CancellationToken token)
     {
-        return from outgoing in Observable.Return(batch)
-            from stream in outgoing.Stream
-            let messageBytes = outgoing.Messages.Serialize()
-            from l in WriteLength(stream, messageBytes.Length).Do(_ => _logger.DebugFormat("Writing {0} message length to {1}", messageBytes.Length, outgoing.Destination))
-            from m in WriteMessages(stream, messageBytes).Do(_ => _logger.DebugFormat("Wrote messages to destination {0}", outgoing.Destination))
-            from r in ReadReceived(stream).Do(_ => _logger.DebugFormat("Read received bytes from {0}", outgoing.Destination))
-            from a in WriteAcknowledgement(stream).Do(_ => _store.SuccessfullySent(outgoing.Messages.ToArray())).Do(_ => _logger.DebugFormat("Wrote acknowledgement to {0}", outgoing.Destination))
-            from message in outgoing.Messages
-            select message;
+        stream = await _security.Apply(destination, stream);
+        using var writer = new PooledBufferWriter<byte>();
+        var messages = batch.ToList();
+        writer.WriteMessages(messages);
+        await stream.WriteAsync(BitConverter.GetBytes(writer.WrittenMemory.Length), token);
+        _logger.Debug("Writing message batch to destination");
+        await stream.WriteAsync(writer.WrittenMemory, token);
+        _logger.Debug("Successfully wrote message batch to destination");
+        await ReadReceived(stream, token);
+        _logger.Debug("Successfully read received message");
+        await WriteAcknowledgement(stream, token);
+        _logger.Debug("Successfully wrote acknowledgement");
+        _store.SuccessfullySent(messages);
+        _logger.Debug("Stored that messages were successful");
     }
 
-    public async ValueTask<IEnumerable<OutgoingMessage>> Send(Uri destination, IEnumerable<OutgoingMessage> batch)
+    private static async ValueTask ReadReceived(Stream stream, CancellationToken token)
     {
-        await Task.Delay(10);
-        return batch;
-    }
-
-    public IObservable<Unit> WriteLength(Stream stream, int length)
-    {
-        var lengthBytes = BitConverter.GetBytes(length);
-        return Observable.FromAsync(async () => await stream.WriteAsync(lengthBytes, 0, lengthBytes.Length).ConfigureAwait(false));
-    }
-
-    public IObservable<Unit> WriteMessages(Stream stream, byte[] messageBytes)
-    {
-        return Observable.FromAsync(async () => await stream.WriteAsync(messageBytes, 0, messageBytes.Length).ConfigureAwait(false));
-    }
-
-    public IObservable<Unit> ReadReceived(Stream stream)
-    {
-        return Observable.FromAsync(async () =>
+        var bytes = await stream.ReadBytesAsync(Constants.ReceivedBuffer.Length).ConfigureAwait(false);
+        if (bytes.SequenceEqual(Constants.ReceivedBuffer))
         {
-            try
-            {
-                var bytes = await stream.ReadBytesAsync(Constants.ReceivedBuffer.Length).ConfigureAwait(false);
-                if (bytes.SequenceEqual(Constants.ReceivedBuffer))
-                {
-                    return true;
-                }
-                if (bytes.SequenceEqual(Constants.SerializationFailureBuffer))
-                {
-                    _logger.Error("Serialization is confused and did not return received buffer", new IOException("Failed to send messages, received serialization failed message."));
-                }
-                if (bytes.SequenceEqual(Constants.QueueDoesNotExistBuffer))
-                {
-                    _logger.Error("Destination queue does not exist", new QueueDoesNotExistException());
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                _logger.Info("Error while trying to read received buffer " + ex);
-                return false;
-            }
-                
-        }).Where(x => x).Select(_ => Unit.Default);
+            return;
+        }
+        if (bytes.SequenceEqual(Constants.SerializationFailureBuffer))
+        {
+            throw new SerializationException("The destination returned serialization error");
+        }
+        if (bytes.SequenceEqual(Constants.QueueDoesNotExistBuffer))
+        {
+            throw new QueueDoesNotExistException("Destination queue does not exist.");
+        }
+
+        throw new ProtocolViolationException("Unexpected outcome from send operation");
     }
 
-    public IObservable<Unit> WriteAcknowledgement(Stream stream)
+    private static async ValueTask WriteAcknowledgement(Stream stream, CancellationToken token)
     {
-        return Observable.FromAsync(async () => await stream.WriteAsync(Constants.AcknowledgedBuffer, 0, Constants.AcknowledgedBuffer.Length).ConfigureAwait(false));
+        await stream.WriteAsync(Constants.AcknowledgedBuffer.AsMemory(), token).ConfigureAwait(false);
     }
 }

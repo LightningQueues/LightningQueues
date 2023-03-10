@@ -3,7 +3,6 @@ using LightningQueues.Storage.LMDB;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Security;
-using System.Reactive.Concurrency;
 using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -33,13 +32,12 @@ public static class ObjectMother
     }
 
     public static Queue NewQueue(string path = null, string queueName = "test", ILogger logger = null, 
-        IScheduler scheduler = null, IMessageStore store = null, bool secureTransport = false)
+        IMessageStore store = null, bool secureTransport = false)
     {
         store ??= new LmdbMessageStore(path);
         var queueConfiguration = new QueueConfiguration();
         queueConfiguration.LogWith(logger ?? new RecordingLogger());
         queueConfiguration.AutomaticEndpoint();
-        queueConfiguration.ScheduleQueueWith(scheduler ?? TaskPoolScheduler.Default);
         queueConfiguration.StoreMessagesWith(store);
         if (secureTransport)
         {

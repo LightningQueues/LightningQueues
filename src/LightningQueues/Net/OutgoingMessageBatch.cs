@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.Reactive.Linq;
 using System.Threading.Tasks;
 using LightningQueues.Net.Security;
 
@@ -24,7 +22,6 @@ public class OutgoingMessageBatch : IDisposable
     }
 
     public Uri Destination { get; }
-    public IObservable<Stream> Stream => _security.Apply(Destination, Observable.Return(Client.GetStream()));
     private TcpClient Client { get; set; }
     public IList<OutgoingMessage> Messages { get; }
 

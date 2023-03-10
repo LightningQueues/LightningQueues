@@ -80,7 +80,7 @@ public class NoStorage : IMessageStore
         return message.SentAttempts;
     }
 
-    public void SuccessfullySent(params OutgoingMessage[] messages)
+    public void SuccessfullySent(IList<OutgoingMessage> messages)
     {
     }
 

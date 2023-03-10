@@ -94,7 +94,7 @@ internal class QueueContext : IQueueContext
 
         public void Success()
         {
-            _context._queue.SendLoop.OnNext(_message);
+            _context._queue.SendingChannel.TryWrite(_message);
         }
     }
 
@@ -116,7 +116,7 @@ internal class QueueContext : IQueueContext
 
         public void Success()
         {
-            _context._queue.ReceiveLoop.OnNext(_message);
+            _context._queue.ReceivingChannel.TryWrite(_message);
         }
     }
 
@@ -140,7 +140,7 @@ internal class QueueContext : IQueueContext
         {
             var message = _context._message;
             message.Queue = _queueName;
-            _context._queue.ReceiveLoop.OnNext(message);
+            _context._queue.ReceivingChannel.TryWrite(message);
         }
     }
 

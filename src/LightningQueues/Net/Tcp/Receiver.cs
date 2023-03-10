@@ -4,6 +4,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Channels;
+using System.Threading.Tasks;
 using LightningQueues.Logging;
 
 namespace LightningQueues.Net.Tcp;
@@ -30,17 +32,29 @@ public class Receiver : IDisposable
 
     public IPEndPoint Endpoint { get; }
 
-    public async IAsyncEnumerable<Message> StartReceivingAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async ValueTask StartReceivingAsync(ChannelWriter<Message> receivedChannel, CancellationToken cancellationToken = default)
     {
         StartListener();
         while (!cancellationToken.IsCancellationRequested && !_disposed)
         {
             var socket = await _listener.AcceptSocketAsync(cancellationToken);
             await using var stream = new NetworkStream(socket, false);
-            await foreach (var msg in _protocol.ReceiveMessagesAsync(
-                               socket.RemoteEndPoint, stream, cancellationToken))
+            var messages = _protocol.ReceiveMessagesAsync(socket.RemoteEndPoint, stream, cancellationToken);
+            var messageEnumerator = messages.GetAsyncEnumerator(cancellationToken);
+            var hasResult = true;
+            while (hasResult)
             {
-                yield return msg;
+                try
+                {
+                    hasResult = await messageEnumerator.MoveNextAsync();
+                    var msg = hasResult ? messageEnumerator.Current : null;
+                    if (msg != null)
+                        await receivedChannel.WriteAsync(msg, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error("Error reading messages", ex);
+                }
             }
         }
     }

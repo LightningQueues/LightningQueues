@@ -1,6 +1,7 @@
 ﻿using System;
-using System.Reactive.Concurrency;
-using System.Reactive.Linq;
+using System.Threading;
+using System.Threading.Channels;
+using System.Threading.Tasks;
 using LightningQueues.Logging;
 using LightningQueues.Storage;
 
@@ -10,25 +11,33 @@ public class SendingErrorPolicy
 {
     private readonly ILogger _logger;
     private readonly IMessageStore _store;
+    private readonly Channel<OutgoingMessageFailure> _failedToConnect;
+    private readonly Channel<OutgoingMessage> _retries;
 
-    public SendingErrorPolicy(ILogger logger, IMessageStore store, IObservable<OutgoingMessageFailure> failedToConnect, IScheduler scheduler)
+    public SendingErrorPolicy(ILogger logger, IMessageStore store, Channel<OutgoingMessageFailure> failedToConnect)
     {
         _logger = logger;
         _store = store;
-        RetryStream = failedToConnect.SelectMany(x => x.Batch.Messages)
-            .Do(IncrementAttempt)
-            .Where(ShouldRetry)
-            .SelectMany(x => Observable.Return(x)
-                .Delay(TimeSpan.FromSeconds(x.SentAttempts * x.SentAttempts), scheduler)).Finally(() => _logger.Debug("SendingErrorPolicy stream ended"));
+        _failedToConnect = failedToConnect;
+        _retries = Channel.CreateUnbounded<OutgoingMessage>();
     }
 
-    public SendingErrorPolicy(ILogger logger, IMessageStore store, IObservable<OutgoingMessageFailure> failedToConnect)
-        : this(logger, store, failedToConnect, new EventLoopScheduler())
+    public ChannelReader<OutgoingMessage> Retries => _retries.Reader;
+
+    public async ValueTask StartRetries(CancellationToken cancellationToken)
     {
-
+        await foreach (var messageFailure in _failedToConnect.Reader.ReadAllAsync(cancellationToken))
+        {
+            foreach (var message in messageFailure.Batch.Messages)
+            {
+                IncrementAttempt(message);
+                if (!ShouldRetry(message)) 
+                    continue;
+                await Task.Delay(TimeSpan.FromSeconds(message.SentAttempts * message.SentAttempts), cancellationToken);
+                await _retries.Writer.WriteAsync(message, cancellationToken);
+            }
+        }
     }
-
-    public IObservable<OutgoingMessage> RetryStream { get; }
 
     public bool ShouldRetry(OutgoingMessage message)
     {

@@ -17,7 +17,7 @@ public class SerializationExtensionsTests
             Queue = "queue"
         };
         var messagesBytes = new[] {expected}.Serialize();
-        var actual = messagesBytes.ToMessages().First();
+        var actual = messagesBytes.ToMessages(wire: false).First();
 
         actual.Queue.ShouldBe(expected.Queue);
         actual.Data.ShouldBe(expected.Data);

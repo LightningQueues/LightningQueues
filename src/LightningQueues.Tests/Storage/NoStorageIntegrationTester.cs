@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using LightningQueues.Logging;
 using LightningQueues.Storage;
@@ -21,17 +22,13 @@ public class NoStorageIntegrationTester : IDisposable
     public async Task can_send_and_receive_without_storage()
     {
         var taskCompletionSource = new TaskCompletionSource<bool>();
-        var subscription = _receiver.Receive("test").Subscribe(_ =>
-        {
-            taskCompletionSource.SetResult(true);
-        });
+        var receiveTask = _receiver.Receive("test").FirstAsync();
 
         var destination = new Uri($"lq.tcp://localhost:{_receiver.Endpoint.Port}");
         var message = ObjectMother.NewMessage<OutgoingMessage>("test");
         message.Destination = destination;
         _sender.Send(message);
-        await taskCompletionSource.Task;
-        subscription.Dispose();
+        await receiveTask;
     }
 
     public void Dispose()

@@ -1,8 +1,13 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace LightningQueues.Net;
 
 public interface ISendingProtocol
 {
-    IObservable<OutgoingMessage> Send(OutgoingMessageBatch batch);
+    ValueTask SendAsync(Uri destination, Stream stream, 
+        IEnumerable<OutgoingMessage> batch, CancellationToken token);
 }

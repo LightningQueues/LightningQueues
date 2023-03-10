@@ -1,10 +1,13 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
-using System.Reactive;
+using System.Net;
 using System.Threading.Tasks;
+using DotNext.Collections.Generic;
 using LightningQueues.Logging;
 using LightningQueues.Net.Protocol.V1;
+using LightningQueues.Net.Security;
+using LightningQueues.Serialization;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
@@ -21,52 +24,21 @@ public class SendingProtocolTests : IDisposable
     public SendingProtocolTests(SharedTestDirectory testDirectory)
     {
         _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
-        _sender = new SendingProtocol(_store, new NulloLogger());
+        _sender = new SendingProtocol(_store, new NoSecurity(), new NulloLogger());
     }
 
     [Fact]
-    public async Task writing_the_length()
+    public async Task writing_single_message()
     {
-        const int expected = 5;
+        var expected = ObjectMother.NewMessage<OutgoingMessage>();
         using var ms = new MemoryStream();
-        await _sender.WriteLength(ms, 5).FirstAsyncWithTimeout();
-        var actual = BitConverter.ToInt32(ms.ToArray(), 0);
-        actual.ShouldBe(expected);
-    }
-
-    [Fact]
-    public async Task writing_the_message_bytes()
-    {
-        var expected = new byte[] { 1, 4, 6 };
-        using var ms = new MemoryStream();
-        await _sender.WriteMessages(ms, expected).FirstAsyncWithTimeout();
-        var actual = ms.ToArray();
-        actual.SequenceEqual(expected).ShouldBeTrue();
-    }
-
-    [Fact]
-    public async Task receive_happy()
-    {
-        using var ms = new MemoryStream();
-        ms.Write(Constants.ReceivedBuffer, 0, Constants.ReceivedBuffer.Length);
-        ms.Position = 0;
-        var result = await _sender.ReadReceived(ms).FirstAsyncWithTimeout();
-        result.ShouldBe(Unit.Default);
-    }
-
-    [Fact]
-    public async Task receive_not_happy()
-    {
-        using var ms = new MemoryStream();
-        await Assert.ThrowsAsync<TimeoutException>(() => _sender.ReadReceived(ms).FirstAsyncWithTimeout(TimeSpan.FromMilliseconds(5)));
-    }
-
-    [Fact]
-    public async Task sending_acknowledgement()
-    {
-        using var ms = new MemoryStream();
-        await _sender.WriteAcknowledgement(ms).FirstAsyncWithTimeout();
-        ms.ToArray().SequenceEqual(Constants.AcknowledgedBuffer).ShouldBeTrue();
+        //not exercising full protocol
+        await Assert.ThrowsAsync<ProtocolViolationException>(async () =>
+            await _sender.SendAsync(new Uri("lq.tcp://localhost:5050"),
+                ms, new[] { expected }, default));
+        var bytes = ms.ToArray();
+        var msg = bytes.ToMessages().First();
+        msg.Id.ShouldBe(expected.Id);
     }
 
     public void Dispose()

@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using LightningQueues.Storage.LMDB;
-using Microsoft.Reactive.Testing;
 using Shouldly;
 using Xunit;
 
@@ -12,81 +12,70 @@ namespace LightningQueues.Tests;
 public class QueueTests : IDisposable
 {
     private readonly SharedTestDirectory _testDirectory;
-    private readonly TestScheduler _scheduler;
     private readonly Queue _queue;
 
     public QueueTests(SharedTestDirectory testDirectory)
     {
         _testDirectory = testDirectory;
-        _scheduler = new TestScheduler();
-        _queue = ObjectMother.NewQueue(testDirectory.CreateNewDirectoryForTest(), scheduler: _scheduler);
+        _queue = ObjectMother.NewQueue(testDirectory.CreateNewDirectoryForTest());
     }
 
     [Fact]
-    public void receive_at_a_later_time()
+    public async ValueTask receive_at_a_later_time()
     {
-        var received = false;
-        _queue.ReceiveLater(new Message {Queue = "test", Id = MessageId.GenerateRandom()}, TimeSpan.FromSeconds(3));
-        using (_queue.Receive("test").Subscribe(_ => received = true))
-        {
-            _scheduler.AdvanceBy(TimeSpan.FromSeconds(2).Ticks);
-            received.ShouldBeFalse();
-            _scheduler.AdvanceBy(TimeSpan.FromSeconds(1).Ticks);
-            received.ShouldBeTrue();
-        }
+        _queue.ReceiveLater(new Message { Queue = "test", Id = MessageId.GenerateRandom() }, TimeSpan.FromSeconds(1));
+        var receiveTask = _queue.Receive("test").FirstAsync();
+        await Task.WhenAny(receiveTask.AsTask(), Task.Delay(100));
+        receiveTask.IsCompleted.ShouldBeFalse();
+        await Task.WhenAny(receiveTask.AsTask(), Task.Delay(1000));
+        receiveTask.IsCompleted.ShouldBeTrue();
     }
 
     [Fact]
-    public void receive_at_a_specified_time()
+    public async ValueTask receive_at_a_specified_time()
     {
-        var received = false;
-        var time = DateTimeOffset.Now.AddSeconds(5);
-        _queue.ReceiveLater(new Message {Queue = "test", Id = MessageId.GenerateRandom()}, time);
-        using (_queue.Receive("test").Subscribe(_ => received = true))
-        {
-            _scheduler.AdvanceBy(time.AddSeconds(-3).Ticks);
-            received.ShouldBeFalse();
-            _scheduler.AdvanceBy(time.AddSeconds(-2).Ticks);
-            received.ShouldBeTrue();
-        }
+        var time = DateTimeOffset.Now.AddSeconds(1);
+        _queue.ReceiveLater(new Message { Queue = "test", Id = MessageId.GenerateRandom() }, time);
+        var receiveTask = _queue.Receive("test").FirstAsync();
+        await Task.WhenAny(receiveTask.AsTask(), Task.Delay(100));
+        receiveTask.IsCompleted.ShouldBeFalse();
+        await Task.WhenAny(receiveTask.AsTask(), Task.Delay(900));
+        receiveTask.IsCompleted.ShouldBeTrue();
     }
 
     [Fact]
-    public void enqueue_a_message()
+    public async ValueTask enqueue_a_message()
     {
-        Message result = null;
         var expected = ObjectMother.NewMessage<Message>("test");
-        using (_queue.Receive("test").Subscribe(x => result = x.Message))
-        {
-            _queue.Enqueue(expected);
-        }
-        expected.ShouldBeSameAs(result);
+        var receiveTask = _queue.Receive("test").FirstAsync();
+        _queue.Enqueue(expected);
+        var result = await receiveTask;
+        expected.ShouldBeSameAs(result.Message);
     }
 
     [Fact]
-    public void moving_queues()
+    public async ValueTask moving_queues()
     {
         _queue.CreateQueue("another");
-        Message first = null;
-        Message afterMove = null;
         var expected = ObjectMother.NewMessage<Message>("test");
-        using (_queue.Receive("another").Subscribe(x => afterMove = x.Message))
-        using (_queue.Receive("test").Subscribe(x => first = x.Message))
-        {
-            _queue.Enqueue(expected);
-            _queue.MoveToQueue("another", first);
-        }
-        afterMove.Queue.ShouldBe("another");
+        var anotherTask = _queue.Receive("another").FirstAsync(); //.ToObservable().Subscribe(x => afterMove = x.Message))
+        var testTask = _queue.Receive("test").FirstAsync(); //.ToObservable().Subscribe(x => first = x.Message))
+        _queue.Enqueue(expected);
+        var first = await testTask;
+        _queue.MoveToQueue("another", first.Message);
+
+        var afterMove = await anotherTask;
+        afterMove.Message.Queue.ShouldBe("another");
     }
 
     [Fact]
     public async Task send_message_to_self()
     {
-        using var queue = ObjectMother.NewQueue(_testDirectory.CreateNewDirectoryForTest());
         var message = ObjectMother.NewMessage<OutgoingMessage>("test");
-        message.Destination = new Uri($"lq.tcp://localhost:{queue.Endpoint.Port}");
-        queue.Send(message);
-        var received = await queue.Receive("test").FirstAsyncWithTimeout();
+        message.Destination = new Uri($"lq.tcp://localhost:{_queue.Endpoint.Port}");
+        _queue.Send(message);
+        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        var received = await _queue.Receive("test").FirstAsync(cancellation.Token);
         received.ShouldNotBeNull();
         received.Message.Queue.ShouldBe(message.Queue);
         received.Message.Data.ShouldBe(message.Data);
@@ -100,7 +89,7 @@ public class QueueTests : IDisposable
         message.MaxAttempts = 1;
         message.Destination = new Uri($"lq.tcp://boom:{queue.Endpoint.Port + 1}");
         queue.Send(message);
-        await Task.Delay(TimeSpan.FromSeconds(10));
+        await Task.Delay(TimeSpan.FromSeconds(1));
         var store = (LmdbMessageStore) queue.Store;
         store.PersistedOutgoingMessages().Any().ShouldBeFalse();
     }
@@ -115,21 +104,16 @@ public class QueueTests : IDisposable
         queueConfiguration.LogWith(new RecordingLogger());
         queueConfiguration.AutomaticEndpoint();
         queueConfiguration.StoreMessagesWith(store);
-        var queue = queueConfiguration.BuildQueue();
-        var queue2 = queueConfiguration.BuildQueue();
-        using(queue)
-        using (queue2)
-        {
-            queue.CreateQueue("test");
-            queue.Start();
-            queue2.CreateQueue("test");
-            queue2.Start();
-            using(queue.Receive("test").Subscribe(_ => { }))
-            using (queue2.Receive("test").Subscribe(_ => { }))
-            {
-                    
-            }
-        }
+        using var queue = queueConfiguration.BuildQueue();
+        using var queue2 = queueConfiguration.BuildQueue();
+        queue.CreateQueue("test");
+        queue.Start();
+        queue2.CreateQueue("test");
+        queue2.Start();
+        var msgs = queue.Receive("test");
+        var msgs2 = queue2.Receive("test");
+        msgs.ShouldNotBeNull();
+        msgs2.ShouldNotBeNull();
     }
 
     public void Dispose()

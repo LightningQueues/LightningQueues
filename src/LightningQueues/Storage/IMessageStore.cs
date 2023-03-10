@@ -16,7 +16,7 @@ public interface IMessageStore : IDisposable
     void SuccessfullyReceived(ITransaction transaction, Message message);
     void StoreOutgoing(ITransaction tx, OutgoingMessage message);
     int FailedToSend(OutgoingMessage message);
-    void SuccessfullySent(params OutgoingMessage[] messages);
+    void SuccessfullySent(IList<OutgoingMessage> messages);
     Message GetMessage(string queueName, MessageId messageId);
     string[] GetAllQueues();
     void ClearAllStorage();

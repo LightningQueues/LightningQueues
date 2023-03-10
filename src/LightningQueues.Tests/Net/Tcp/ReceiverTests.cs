@@ -3,8 +3,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
-using LightningQueues.Net;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Security;
 using LightningQueues.Net.Tcp;
@@ -33,9 +33,9 @@ public class ReceiverTests : IDisposable
         _store.CreateQueue("test");
         _sendingStore = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
         _sendingStore.CreateQueue("test");
-        _sender = new SendingProtocol(_sendingStore, logger);
+        _sender = new SendingProtocol(_sendingStore, new NoSecurity(), logger);
         var protocol = new ReceivingProtocol(_store, new NoSecurity()
-            , new Uri("lq.tcp://localhost"), logger);
+            , new Uri($"lq.tcp://localhost:{_endpoint.Port}"), logger);
         _receiver = new Receiver(_endpoint, protocol, logger);
     }
 
@@ -45,10 +45,8 @@ public class ReceiverTests : IDisposable
         var cancellationTokenSource = new CancellationTokenSource();
         var receivingTask = Task.Factory.StartNew(async () =>
         {
-            var messages = _receiver.StartReceivingAsync(cancellationTokenSource.Token);
-            await foreach (var msg in messages.WithCancellation(cancellationTokenSource.Token))
-            {
-            }
+            var channel = Channel.CreateUnbounded<Message>();
+            await _receiver.StartReceivingAsync(channel.Writer, cancellationTokenSource.Token);
         }, cancellationTokenSource.Token);
         await Task.Delay(100, default);
         var listener = new TcpListener(_endpoint);
@@ -65,10 +63,8 @@ public class ReceiverTests : IDisposable
     {
         var receivingTask = Task.Factory.StartNew(async () =>
         {
-            var messages = _receiver.StartReceivingAsync(default);
-            await foreach (var msg in messages.WithCancellation(default))
-            {
-            }
+            var channel = Channel.CreateUnbounded<Message>();
+            await _receiver.StartReceivingAsync(channel.Writer, default);
         });
         await Task.Delay(100);
         using (var client = new TcpClient())
@@ -83,10 +79,8 @@ public class ReceiverTests : IDisposable
     {
         var receivingTask = Task.Factory.StartNew(async () =>
         {
-            var messages = _receiver.StartReceivingAsync(default);
-            await foreach (var msg in messages.WithCancellation(default))
-            {
-            }
+            var channel = Channel.CreateUnbounded<Message>();
+            await _receiver.StartReceivingAsync(channel.Writer, default);
         });
         await Task.Delay(100);
         using (var client = new TcpClient())
@@ -103,10 +97,8 @@ public class ReceiverTests : IDisposable
         var cancellationTokenSource = new CancellationTokenSource();
         var receivingTask = Task.Factory.StartNew(async () =>
         {
-            var messages = _receiver.StartReceivingAsync(cancellationTokenSource.Token);
-            await foreach (var msg in messages.WithCancellation(cancellationTokenSource.Token))
-            {
-            }
+            var channel = Channel.CreateUnbounded<Message>();
+            await _receiver.StartReceivingAsync(channel.Writer, cancellationTokenSource.Token);
         }, cancellationTokenSource.Token);
         await Task.Delay(50, default);
 
@@ -126,41 +118,27 @@ public class ReceiverTests : IDisposable
     public async Task receiving_a_valid_message()
     {
         var expected = ObjectMother.NewMessage<OutgoingMessage>("test");
+        Message actual = null;
         expected.Data = "hello"u8.ToArray();
         expected.Destination = new Uri($"lq.tcp://localhost:{_endpoint.Port}");
         var tx = _store.BeginTransaction();
         _sendingStore.StoreOutgoing(tx, expected);
         tx.Commit();
         var messages = new[] {expected};
-        var receivingCompletionSource = new TaskCompletionSource<Message>();
         var receivingTask = Task.Factory.StartNew(async () =>
         {
-            var messages = _receiver.StartReceivingAsync(default);
-            await foreach (var msg in messages.WithCancellation(default))
-            {
-                receivingCompletionSource.SetResult(msg);
-            }
+            var channel = Channel.CreateUnbounded<Message>();
+            _receiver.StartReceivingAsync(channel.Writer, default);
+            actual = await channel.Reader.ReadAsync();
         });
         await Task.Delay(100);
         using (var client = new TcpClient())
         {
             await client.ConnectAsync(_endpoint.Address, _endpoint.Port);
-            var outgoing = new OutgoingMessageBatch(expected.Destination, messages, client, new NoSecurity());
-            var completionSource = new TaskCompletionSource<bool>();
-
-            using (_sender.Send(outgoing).Subscribe(_ =>
-                   {
-                       completionSource.SetResult(true);
-                   }))
-            {
-                await Task.WhenAny(completionSource.Task, Task.Delay(1000));
-            }
-            await Task.WhenAny(receivingCompletionSource.Task, Task.Delay(1000));
+            await _sender.SendAsync(expected.Destination, client.GetStream(), messages, default);
         }
 
-        await Task.Delay(100, default);
-        receivingCompletionSource.Task.IsCompleted.ShouldBeTrue();
-        var actual = receivingCompletionSource.Task.Result;
+        await Task.Delay(100);
         actual.ShouldNotBeNull();
         actual.Id.ShouldBe(expected.Id);
         actual.Queue.ShouldBe(expected.Queue);

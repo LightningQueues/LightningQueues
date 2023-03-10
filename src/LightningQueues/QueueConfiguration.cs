@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Net;
-using System.Reactive.Concurrency;
 using System.Threading.Tasks;
 using LightningQueues.Logging;
 using LightningQueues.Net;
@@ -16,7 +15,6 @@ public class QueueConfiguration
 {
     private IStreamSecurity _sendingSecurity;
     private IStreamSecurity _receivingSecurity;
-    private IScheduler _scheduler;
     private IMessageStore _store;
     private IPEndPoint _endpoint;
     private IReceivingProtocol _receivingProtocol;
@@ -54,12 +52,6 @@ public class QueueConfiguration
         return ReceiveMessagesAt(new IPEndPoint(IPAddress.Loopback, PortFinder.FindPort()));
     }
 
-    public QueueConfiguration ScheduleQueueWith(IScheduler scheduler)
-    {
-        _scheduler = scheduler;
-        return this;
-    }
-
     public QueueConfiguration LogWith(ILogger logger)
     {
         _logger = logger;
@@ -84,16 +76,15 @@ public class QueueConfiguration
         InitializeDefaults();
 
         var receiver = new Receiver(_endpoint, _receivingProtocol, _logger);
-        var sender = new Sender(_logger, _sendingProtocol, _sendingSecurity);
-        var queue = new Queue(receiver, sender, _store, _scheduler, _logger);
+        var sender = new Sender(_sendingProtocol, _logger);
+        var queue = new Queue(receiver, sender, _store, _logger);
         return queue;
     }
 
     private void InitializeDefaults()
     {
-        _sendingProtocol ??= new SendingProtocol(_store, _logger);
+        _sendingProtocol ??= new SendingProtocol(_store, _sendingSecurity, _logger);
         _receivingProtocol ??= new ReceivingProtocol(_store, _receivingSecurity, 
             new Uri($"lq.tcp://{_endpoint}"), _logger);
-        _scheduler ??= TaskPoolScheduler.Default;
     }
 }

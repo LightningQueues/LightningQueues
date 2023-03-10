@@ -10,7 +10,6 @@ using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Security;
 using LightningQueues.Serialization;
 using LightningQueues.Storage.LMDB;
-using Microsoft.Reactive.Testing;
 using Shouldly;
 
 namespace LightningQueues.Tests.Net.Protocol.V1;
@@ -25,7 +24,6 @@ public class ReceivingProtocolTests : IDisposable
     public ReceivingProtocolTests(SharedTestDirectory testDirectory)
     {
         _logger = new RecordingLogger();
-        new TestScheduler();
         _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
         _protocol = new ReceivingProtocol(_store, new NoSecurity(),
             new Uri("lq.tcp://localhost"), _logger);

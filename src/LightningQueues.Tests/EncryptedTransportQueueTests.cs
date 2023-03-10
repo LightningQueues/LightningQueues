@@ -1,6 +1,6 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Reactive.Testing;
 using Shouldly;
 using Xunit;
 
@@ -13,8 +13,7 @@ public class EncryptedTransportQueueTests : IDisposable
         
     public EncryptedTransportQueueTests(SharedTestDirectory testDirectory)
     {
-        var scheduler = new TestScheduler();
-        _queue = ObjectMother.NewQueue(testDirectory.CreateNewDirectoryForTest(), scheduler: scheduler, secureTransport: true);
+        _queue = ObjectMother.NewQueue(testDirectory.CreateNewDirectoryForTest(), secureTransport: true);
     }
 
     [Fact]
@@ -24,7 +23,7 @@ public class EncryptedTransportQueueTests : IDisposable
         message.Destination = new Uri($"lq.tcp://localhost:{_queue.Endpoint.Port}");
         await Task.Delay(100);
         _queue.Send(message);
-        var received = await _queue.Receive("test").FirstAsyncWithTimeout();
+        var received = await _queue.Receive("test").FirstAsync();
         received.ShouldNotBeNull();
         received.Message.Queue.ShouldBe(message.Queue);
         received.Message.Data.ShouldBe(message.Data);

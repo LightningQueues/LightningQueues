@@ -33,7 +33,7 @@ public class OutgoingMessageScenarios : IDisposable
         _store.StoreOutgoing(tx, message);
         _store.StoreOutgoing(tx, message2);
         tx.Commit();
-        _store.SuccessfullySent(message);
+        _store.SuccessfullySent(new [] {message});//todo fix
 
         var result = _store.PersistedOutgoingMessages().First();
         result.Id.ShouldBe(message2.Id);

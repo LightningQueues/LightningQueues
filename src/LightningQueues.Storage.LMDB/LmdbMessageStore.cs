@@ -90,7 +90,7 @@ public class LmdbMessageStore : IMessageStore
         return result;
     }
 
-    public void SuccessfullySent(params OutgoingMessage[] messages)
+    public void SuccessfullySent(IList<OutgoingMessage> messages)
     {
         using var tx = Environment.BeginTransaction();
         SuccessfullySent(tx, messages);
@@ -133,7 +133,7 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    private void SuccessfullySent(LightningTransaction tx, params OutgoingMessage[] messages)
+    private void SuccessfullySent(LightningTransaction tx, IList<OutgoingMessage> messages)
     {
         RemoveMessageFromStorage(tx, OutgoingQueue, messages);
     }
@@ -198,10 +198,10 @@ public class LmdbMessageStore : IMessageStore
 
     private void SuccessfullyReceived(LightningTransaction tx, Message message)
     {
-        RemoveMessageFromStorage(tx, message.Queue, message);
+        RemoveMessageFromStorage(tx, message.Queue, new []{message});//todo change
     }
 
-    private void RemoveMessageFromStorage<TMessage>(LightningTransaction tx, string queueName, params TMessage[] messages)
+    private void RemoveMessageFromStorage<TMessage>(LightningTransaction tx, string queueName, IEnumerable<TMessage> messages)
         where TMessage : Message
     {
         var db = OpenDatabase(tx, queueName);
@@ -242,14 +242,14 @@ public class LmdbMessageStore : IMessageStore
         var attempts = message.SentAttempts;
         if (attempts >= message.MaxAttempts)
         {
-            RemoveMessageFromStorage(tx, OutgoingQueue, msg);
+            RemoveMessageFromStorage(tx, OutgoingQueue, new []{msg});
         }
         else if (msg.DeliverBy.HasValue)
         {
             var expire = msg.DeliverBy.Value;
             if (expire != DateTime.MinValue && DateTime.Now >= expire)
             {
-                RemoveMessageFromStorage(tx, OutgoingQueue, msg);
+                RemoveMessageFromStorage(tx, OutgoingQueue, new [] {msg});
             }
         }
         else

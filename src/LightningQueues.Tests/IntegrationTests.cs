@@ -26,13 +26,14 @@ public class IntegrationTests : IDisposable
         var message = ObjectMother.NewMessage<OutgoingMessage>("receiver2");
         message.Destination = new Uri($"lq.tcp://localhost:{_receiver.Endpoint.Port}");
         _sender.Send(message);
+        await Task.Delay(500); //passing buffer delay
         message.Queue = "receiver";
         _sender.Send(message);
-        var received = await _receiver.Receive("receiver").FirstAsyncWithTimeout();
+        var received = await _receiver.Receive("receiver").FirstAsync();
         received.ShouldNotBeNull();
         received.Message.Queue.ShouldBe(message.Queue);
         received.Message.Data.ShouldBe(message.Data);
-        _senderLogger.ErrorMessages.Any(x => x.Contains("Got an error sending")).ShouldBeTrue();
+        _senderLogger.ErrorMessages.Any(x => x.Contains("Queue does not exist")).ShouldBeTrue();
     }
 
     public void Dispose()

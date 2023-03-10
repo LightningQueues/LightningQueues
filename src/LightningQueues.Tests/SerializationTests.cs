@@ -1,4 +1,6 @@
+using System.Buffers;
 using System.Linq;
+using DotNext.Buffers;
 using LightningQueues.Serialization;
 using Xunit;
 
@@ -11,7 +13,9 @@ public class SerializationTests
     {
         var msg = ObjectMother.NewMessage<OutgoingMessage>();
         var msgs = new [] { msg };
-        var serialized = msgs.AsReadonlySequence();
+        using var writer = new PooledBufferWriter<byte>();
+        writer.WriteMessages(msgs);
+        var serialized = new ReadOnlySequence<byte>(writer.WrittenMemory);
         var deserialized = serialized.ToMessages().First();
         Assert.Equal(msg.Id, deserialized.Id);
         Assert.Equal(msg.Data, deserialized.Data);

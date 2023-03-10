@@ -29,7 +29,7 @@ public class SendAndReceive
         _receivingTask = Task.Factory.StartNew(async () =>
         {
             var count = 0;
-            await foreach (var message in _receiver.Receive("receiver").ToAsyncEnumerable())
+            await foreach (var message in _receiver.Receive("receiver"))
             {
                 Interlocked.Increment(ref count);
                 if (count == MessageCount)
