@@ -89,7 +89,7 @@ public class QueueTests : IDisposable
         message.MaxAttempts = 1;
         message.Destination = new Uri($"lq.tcp://boom:{queue.Endpoint.Port + 1}");
         queue.Send(message);
-        await Task.Delay(TimeSpan.FromSeconds(1));
+        await Task.Delay(TimeSpan.FromSeconds(2));
         var store = (LmdbMessageStore) queue.Store;
         store.PersistedOutgoingMessages().Any().ShouldBeFalse();
     }
