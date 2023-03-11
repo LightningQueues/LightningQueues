@@ -4,11 +4,11 @@ namespace LightningQueues.Storage;
 
 public class QueueDoesNotExistException : Exception
 {
-    public QueueDoesNotExistException(string message) : base(message)
+    public QueueDoesNotExistException(string queueName, Exception? inner = default) 
+        : base($"Queue: {queueName} does not exist", inner)
     {
+        QueueName = queueName;
     }
-
-    public QueueDoesNotExistException(string message, Exception inner) : base(message, inner)
-    {
-    }
+    
+    public string QueueName { get; }
 }

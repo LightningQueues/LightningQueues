@@ -2,7 +2,6 @@ using Xunit;
 using System;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using LightningQueues.Storage;
@@ -36,7 +35,7 @@ public class ReceivingProtocolTests : IDisposable
         var iterationContinued = false;
         ms.Write(BitConverter.GetBytes(-2), 0, 4);
         ms.Position = 0;
-        var result = _protocol.ReceiveMessagesAsync(new DnsEndPoint("localhost", 500), ms, default);
+        var result = _protocol.ReceiveMessagesAsync(ms, default);
         await foreach (var _ in result)
         {
             iterationContinued = true;
@@ -52,8 +51,7 @@ public class ReceivingProtocolTests : IDisposable
         ms.Write("Fake this shouldn't pass!!!!!"u8);
         //even though we're not 'disconnecting', by making writable false it achieves the same outcome
         using var mockStream = new MemoryStream(ms.ToArray(), false);
-        var msgs = _protocol.ReceiveMessagesAsync(new DnsEndPoint("localhost", 5050),
-            mockStream, default);
+        var msgs = _protocol.ReceiveMessagesAsync(mockStream, default);
         await foreach (var _ in msgs)
         {
         }
@@ -95,8 +93,7 @@ public class ReceivingProtocolTests : IDisposable
         ms.Write(BitConverter.GetBytes(bytes.Length + differenceFromActualLength), 0, 4);
         ms.Write(bytes, 0, bytes.Length);
         ms.Position = 0;
-        var msgs = _protocol.ReceiveMessagesAsync(new DnsEndPoint("localhost", 5050),
-            ms, default);
+        var msgs = _protocol.ReceiveMessagesAsync(ms, default);
         await foreach (var _ in msgs)
         {
         }
@@ -116,8 +113,7 @@ public class ReceivingProtocolTests : IDisposable
         ms.Write(BitConverter.GetBytes(bytes.Length), 0, 4);
         ms.Write(bytes, 0, bytes.Length);
         ms.Position = 0;
-        var msgs = _protocol.ReceiveMessagesAsync(new DnsEndPoint("localhost", 5050),
-            ms, default);
+        var msgs = _protocol.ReceiveMessagesAsync(ms, default);
         await foreach (var _ in msgs)
         {
         }
@@ -132,8 +128,7 @@ public class ReceivingProtocolTests : IDisposable
         ms.Write(Guid.NewGuid().ToByteArray(), 0, 16);
         ms.Position = 0;
         
-        var msgs = _protocol.ReceiveMessagesAsync(new DnsEndPoint("localhost", 5050),
-            ms, default);
+        var msgs = _protocol.ReceiveMessagesAsync(ms, default);
         await foreach (var _ in msgs)
         {
         }
@@ -145,8 +140,7 @@ public class ReceivingProtocolTests : IDisposable
     {
         var cancelSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
         using var ms = new MemoryStream();
-        var msgs = _protocol.ReceiveMessagesAsync(new DnsEndPoint("localhost", 5000),
-            ms, cancelSource.Token);
+        var msgs = _protocol.ReceiveMessagesAsync(ms, cancelSource.Token);
         await Task.Delay(50, default);
         ms.Write(BitConverter.GetBytes(5));
         await foreach (var _ in msgs.WithCancellation(default))

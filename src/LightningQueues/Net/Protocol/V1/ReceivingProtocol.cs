@@ -1,5 +1,4 @@
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using DotNext.IO.Pipelines;
@@ -30,53 +29,31 @@ public class ReceivingProtocol : IReceivingProtocol
         _receivingUri = receivingUri;
         _logger = logger;
     }
-    
-    public async IAsyncEnumerable<Message> ReceiveMessagesAsync(EndPoint endpoint, Stream stream, [EnumeratorCancellation] CancellationToken cancellationToken)
+
+    public async IAsyncEnumerable<Message> ReceiveMessagesAsync(Stream stream, 
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var cancelReading = new CancellationTokenSource();
-        var doneCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, cancelReading.Token);
-        ValueTask receivingTask;
         var pipe = new Pipe();
-        IEnumerable<Message> messages;
-        try
-        {
-            stream = await _security.Apply(_receivingUri, stream);
-            receivingTask = ReceiveIntoBuffer(pipe.Writer, stream, false, doneCancellation.Token);
-            if(cancellationToken.IsCancellationRequested)
-                yield break;
-            var length = await pipe.Reader.ReadInt32Async(true, cancellationToken);
-            if(length <= 0 || cancellationToken.IsCancellationRequested)
-                yield break;
-            if(_logger.IsEnabled(LogLevel.Debug))
-                _logger.LogDebug("Received length value of {Length}", length);
-            var result = await pipe.Reader.ReadAtLeastAsync(length, cancellationToken);
-            if(cancellationToken.IsCancellationRequested)
-                yield break;
-            var reader = new SequenceReader(result.Buffer);
-            messages = ReadMessages(reader);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error reading messages from {Endpoint}", endpoint);
+        stream = await _security.Apply(_receivingUri, stream);
+        pipe.Writer.ReceiveIntoBuffer(stream, false, cancellationToken);
+        if (cancellationToken.IsCancellationRequested)
             yield break;
-        }
+        var length = await pipe.Reader.ReadInt32Async(true, cancellationToken);
+        if (length <= 0 || cancellationToken.IsCancellationRequested)
+            yield break;
+        _logger.ReceiverReceivedLength(length);
+        var result = await pipe.Reader.ReadAtLeastAsync(length, cancellationToken);
+        if (cancellationToken.IsCancellationRequested)
+            yield break;
+        var reader = new SequenceReader(result.Buffer);
+        var messages = ReadMessages(reader);
 
         using var enumerator = messages.GetEnumerator();
         var hasResult = true;
         while (hasResult)
         {
-            Message msg;
-            try
-            {
-                hasResult = enumerator.MoveNext();
-                msg = hasResult ? enumerator.Current : null;
-            }
-            catch (Exception ex)
-            {
-                if(_logger.IsEnabled(LogLevel.Error))
-                    _logger.LogError(ex, "Error reading messages");
-                yield break;
-            }
+            hasResult = enumerator.MoveNext();
+            var msg = hasResult ? enumerator.Current : null;
 
             if (msg == null)
                 continue;
@@ -86,40 +63,26 @@ public class ReceivingProtocol : IReceivingProtocol
             }
             catch (QueueDoesNotExistException)
             {
-                if(_logger.IsEnabled(LogLevel.Information))
-                    _logger.LogInformation("Queue {QueueName} not found for {MessageIdentifier}", msg.Queue, msg.Id);
                 await SendQueueNotFound(stream, cancellationToken);
-                continue;
+                throw;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                if(_logger.IsEnabled(LogLevel.Information))
-                    _logger.LogError(ex, "Error persisting {MessageIdentifier}", msg.Id);
                 await SendProcessingError(stream, cancellationToken);
-                continue;
+                throw;
             }
 
             yield return msg;
         }
 
-        try
-        {
-            if (cancellationToken.IsCancellationRequested)
-                yield break;
-            await SendReceived(stream, cancellationToken);
-            if (cancellationToken.IsCancellationRequested)
-                yield break;
-            await ReadAcknowledged(pipe, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            if(_logger.IsEnabled(LogLevel.Error))
-                _logger.LogError(ex, "Error finishing protocol acknowledgement");
-        }
-        cancelReading.Cancel();
-        await receivingTask;
+        if (cancellationToken.IsCancellationRequested)
+            yield break;
+        await SendReceived(stream, cancellationToken);
+        if (cancellationToken.IsCancellationRequested)
+            yield break;
+        await ReadAcknowledged(pipe, cancellationToken);
     }
-    
+
     private static async ValueTask SendReceived(Stream stream, CancellationToken cancellationToken)
     {
         await stream.WriteAsync(Constants.ReceivedBuffer.AsMemory(), cancellationToken);
@@ -137,19 +100,12 @@ public class ReceivingProtocol : IReceivingProtocol
     
     private static async ValueTask ReadAcknowledged(Pipe pipe, CancellationToken cancellationToken)
     {
-        bool ValidateAck(ReadOnlySequence<byte> sequence)
-        {
-            var ack = Constants.AcknowledgedBuffer.AsSpan();
-            Span<byte> sequenceSpan = stackalloc byte[Constants.AcknowledgedBuffer.Length];
-            sequence.CopyTo(sequenceSpan);
-            return ack.SequenceEqual(sequenceSpan);
-        }
         var ackLength = Constants.AcknowledgedBuffer.Length;
         var result = await pipe.Reader.ReadAtLeastAsync(ackLength, cancellationToken);
         var sequence = result.Buffer;
-        if (!ValidateAck(sequence))
+        if (!sequence.SequenceEqual(Constants.AcknowledgedBuffer))
         {
-            throw new Exception("Todo better error");
+            throw new ProtocolViolationException("Didn't receive expected acknowledgement");
         }
     }
 
@@ -160,36 +116,6 @@ public class ReceivingProtocol : IReceivingProtocol
         {
             var msg = reader.ReadMessage<Message>();
             yield return msg;
-        }
-    }
-
-    private static async ValueTask ReceiveIntoBuffer(PipeWriter writer, Stream stream, bool shouldComplete,
-        CancellationToken cancellationToken)
-    {
-        const int minimumBufferSize = 512;
-
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            var memory = writer.GetMemory(minimumBufferSize);
-            var bytesRead = await stream.ReadAsync(memory, cancellationToken);
-            if (bytesRead == 0)
-            {
-                break;
-            }
-
-            writer.Advance(bytesRead);
-
-            var result = await writer.FlushAsync(cancellationToken);
-
-            if (result.IsCompleted)
-            {
-                break;
-            }
-        }
-
-        if (shouldComplete)
-        {
-            await writer.CompleteAsync();
         }
     }
 }

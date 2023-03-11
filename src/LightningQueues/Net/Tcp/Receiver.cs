@@ -35,7 +35,7 @@ public class Receiver : IDisposable
         {
             var socket = await _listener.AcceptSocketAsync(cancellationToken);
             await using var stream = new NetworkStream(socket, false);
-            var messages = _protocol.ReceiveMessagesAsync(socket.RemoteEndPoint, stream, cancellationToken);
+            var messages = _protocol.ReceiveMessagesAsync(stream, cancellationToken);
             var messageEnumerator = messages.GetAsyncEnumerator(cancellationToken);
             var hasResult = true;
             while (hasResult)
@@ -49,8 +49,7 @@ public class Receiver : IDisposable
                 }
                 catch (Exception ex)
                 {
-                    if(_logger.IsEnabled(LogLevel.Error))
-                        _logger.LogError(ex, "Error reading messages");
+                    _logger.ReceiverErrorReadingMessages(socket.RemoteEndPoint, ex);
                 }
             }
         }

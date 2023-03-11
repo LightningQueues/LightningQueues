@@ -48,11 +48,13 @@ public class LmdbMessageStore : IMessageStore
 
     private void StoreIncomingMessages(LightningTransaction tx, params Message[] messages)
     {
+        string queueName = null;
         try
         {
             foreach (var messagesByQueue in messages.GroupBy(x => x.Queue))
             {
-                var db = OpenDatabase(tx, messagesByQueue.Key);
+                queueName = messagesByQueue.Key;
+                var db = OpenDatabase(tx, queueName);
                 foreach (var message in messagesByQueue)
                 {
                     tx.Put(db, message.Id.MessageIdentifier.ToByteArray(), message.Serialize()).ThrowOnError();
@@ -62,7 +64,7 @@ public class LmdbMessageStore : IMessageStore
         catch (LightningException ex)
         {
             if (ex.StatusCode == (int)MDBResultCode.NotFound)
-                throw new QueueDoesNotExistException("Queue doesn't exist", ex);
+                throw new QueueDoesNotExistException(queueName, ex);
             throw;
         }
     }
@@ -264,7 +266,7 @@ public class LmdbMessageStore : IMessageStore
         {
             tx.Dispose();
             if (ex.StatusCode == (int)MDBResultCode.NotFound)
-                throw new QueueDoesNotExistException("Queue doesn't exist", ex);
+                throw new QueueDoesNotExistException(queueName, ex);
             throw;
         }
     }
