@@ -34,10 +34,11 @@ public class Sender : IDisposable
         {
             var source = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
-            var messages = sendTo.GroupBy(x => x.Destination);
-            foreach (var messageGroup in messages)
+            var messagesGrouping = sendTo.GroupBy(x => x.Destination);
+            foreach (var messageGroup in messagesGrouping)
             {
                 var uri = messageGroup.Key;
+                var messages = messageGroup.ToList();
                 try
                 {
                     var client = new TcpClient();
@@ -50,20 +51,20 @@ public class Sender : IDisposable
                         await client.ConnectAsync(uri.Host, uri.Port, linked.Token);
                     }
 
-                    await _protocol.SendAsync(uri, client.GetStream(), messageGroup, linked.Token);
+                    await _protocol.SendAsync(uri, client.GetStream(), messages, linked.Token);
                 }
                 catch (QueueDoesNotExistException ex)
                 {
                     if(_logger.IsEnabled(LogLevel.Error))
-                        _logger.LogError("Queue does not exist at {Uri}", uri, ex);
+                        _logger.LogError(ex, "Queue does not exist at {Uri}", uri);
                 }
                 catch (Exception ex)
                 {
                     if(_logger.IsEnabled(LogLevel.Error))
-                        _logger.LogError("Failed to send messages to {Uri}", uri, ex);
+                        _logger.LogError(ex, "Failed to send messages to {Uri}", uri);
                     var failed = new OutgoingMessageFailure
                     {
-                        Batch = new OutgoingMessageBatch(uri, messageGroup, new TcpClient(), null)
+                        Messages = messages
                     };
                     await _failedToSend.Writer.WriteAsync(failed, cancellationToken);
                 }

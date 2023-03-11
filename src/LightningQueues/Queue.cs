@@ -59,7 +59,7 @@ public class Queue : IDisposable
         catch (Exception ex)
         {
             if(_logger.IsEnabled(LogLevel.Error))
-                _logger.LogError("Error starting queue", ex);
+                _logger.LogError(ex, "Error starting queue");
         }
     }
 
@@ -140,7 +140,7 @@ public class Queue : IDisposable
         catch (Exception ex)
         {
             if(_logger.IsEnabled(LogLevel.Error))
-                _logger.LogError("Error with receiving later", ex);
+                _logger.LogError(ex, "Error with receiving later");
         }
     }
 
@@ -181,7 +181,7 @@ public class Queue : IDisposable
         catch (Exception e)
         {
             if(_logger.IsEnabled(LogLevel.Error))
-                _logger.LogError("Failed when shutting down queue", e);
+                _logger.LogError(e, "Failed when shutting down queue");
         }
         GC.SuppressFinalize(this);
     }

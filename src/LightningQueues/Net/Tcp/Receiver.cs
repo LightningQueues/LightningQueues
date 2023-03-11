@@ -14,13 +14,11 @@ public class Receiver : IDisposable
     private readonly IReceivingProtocol _protocol;
     private readonly ILogger _logger;
     private bool _disposed;
-    private readonly Uri _localUri;
     private readonly object _lockObject;
         
     public Receiver(IPEndPoint endpoint, IReceivingProtocol protocol, ILogger logger)
     {
         Endpoint = endpoint;
-        _localUri = new Uri($"lq://localhost:{Endpoint.Port}");
         _protocol = protocol;
         _logger = logger;
         _listener = new TcpListener(Endpoint);
@@ -52,7 +50,7 @@ public class Receiver : IDisposable
                 catch (Exception ex)
                 {
                     if(_logger.IsEnabled(LogLevel.Error))
-                        _logger.LogError("Error reading messages", ex);
+                        _logger.LogError(ex, "Error reading messages");
                 }
             }
         }

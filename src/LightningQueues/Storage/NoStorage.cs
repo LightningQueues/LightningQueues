@@ -71,10 +71,6 @@ public class NoStorage : IMessageStore
     {
     }
 
-    public void StoreOutgoing(ITransaction tx, OutgoingMessage[] message)
-    {
-    }
-
     public int FailedToSend(OutgoingMessage message)
     {
         return message.SentAttempts;

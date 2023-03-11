@@ -57,7 +57,7 @@ public class ReceivingProtocol : IReceivingProtocol
         }
         catch (Exception ex)
         {
-            _logger.LogError("Error reading messages from {Endpoint}", endpoint, ex);
+            _logger.LogError(ex, "Error reading messages from {Endpoint}", endpoint);
             yield break;
         }
 
@@ -74,7 +74,7 @@ public class ReceivingProtocol : IReceivingProtocol
             catch (Exception ex)
             {
                 if(_logger.IsEnabled(LogLevel.Error))
-                    _logger.LogError("Error reading messages", ex);
+                    _logger.LogError(ex, "Error reading messages");
                 yield break;
             }
 
@@ -94,7 +94,7 @@ public class ReceivingProtocol : IReceivingProtocol
             catch (Exception ex)
             {
                 if(_logger.IsEnabled(LogLevel.Information))
-                    _logger.LogError("Error persisting {MessageIdentifier}", msg.Id, ex);
+                    _logger.LogError(ex, "Error persisting {MessageIdentifier}", msg.Id);
                 await SendProcessingError(stream, cancellationToken);
                 continue;
             }
@@ -114,7 +114,7 @@ public class ReceivingProtocol : IReceivingProtocol
         catch (Exception ex)
         {
             if(_logger.IsEnabled(LogLevel.Error))
-                _logger.LogError("Error finishing protocol acknowledgement", ex);
+                _logger.LogError(ex, "Error finishing protocol acknowledgement");
         }
         cancelReading.Cancel();
         await receivingTask;

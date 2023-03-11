@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 using LightningQueues.Storage;
 using Xunit;
 
@@ -21,7 +20,6 @@ public class NoStorageIntegrationTester : IDisposable
     [Fact]
     public async Task can_send_and_receive_without_storage()
     {
-        var taskCompletionSource = new TaskCompletionSource<bool>();
         var receiveTask = _receiver.Receive("test").FirstAsync();
 
         var destination = new Uri($"lq.tcp://localhost:{_receiver.Endpoint.Port}");

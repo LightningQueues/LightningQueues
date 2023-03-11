@@ -217,15 +217,6 @@ public class LmdbMessageStore : IMessageStore
         StoreOutgoing(tx, message);
     }
 
-    public void StoreOutgoing(ITransaction transaction, OutgoingMessage[] messages)
-    {
-        var tx = ((LmdbTransaction) transaction).Transaction;
-        foreach (var message in messages)
-        {
-            StoreOutgoing(tx, message);
-        }
-    }
-
     private void StoreOutgoing(LightningTransaction tx, OutgoingMessage message)
     {
         var db = OpenDatabase(tx, OutgoingQueue);

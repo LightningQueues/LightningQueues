@@ -37,7 +37,7 @@ public class ReceivingProtocolTests : IDisposable
         ms.Write(BitConverter.GetBytes(-2), 0, 4);
         ms.Position = 0;
         var result = _protocol.ReceiveMessagesAsync(new DnsEndPoint("localhost", 500), ms, default);
-        await foreach (var msg in result)
+        await foreach (var _ in result)
         {
             iterationContinued = true;
         }
@@ -54,7 +54,7 @@ public class ReceivingProtocolTests : IDisposable
         using var mockStream = new MemoryStream(ms.ToArray(), false);
         var msgs = _protocol.ReceiveMessagesAsync(new DnsEndPoint("localhost", 5050),
             mockStream, default);
-        await foreach (var msg in msgs)
+        await foreach (var _ in msgs)
         {
         }
         _logger.ErrorMessages.ShouldNotBeEmpty();
@@ -97,7 +97,7 @@ public class ReceivingProtocolTests : IDisposable
         ms.Position = 0;
         var msgs = _protocol.ReceiveMessagesAsync(new DnsEndPoint("localhost", 5050),
             ms, default);
-        await foreach (var msg in msgs)
+        await foreach (var _ in msgs)
         {
         }
     }
@@ -118,7 +118,7 @@ public class ReceivingProtocolTests : IDisposable
         ms.Position = 0;
         var msgs = _protocol.ReceiveMessagesAsync(new DnsEndPoint("localhost", 5050),
             ms, default);
-        await foreach (var msg in msgs)
+        await foreach (var _ in msgs)
         {
         }
         _logger.InfoMessages.ShouldContain($"Queue {message.Queue} not found for {message.Id}");
@@ -134,7 +134,7 @@ public class ReceivingProtocolTests : IDisposable
         
         var msgs = _protocol.ReceiveMessagesAsync(new DnsEndPoint("localhost", 5050),
             ms, default);
-        await foreach (var msg in msgs)
+        await foreach (var _ in msgs)
         {
         }
         _logger.ErrorMessages.Any(x => x.StartsWith("Error reading messages")).ShouldBeTrue();
@@ -149,7 +149,7 @@ public class ReceivingProtocolTests : IDisposable
             ms, cancelSource.Token);
         await Task.Delay(50, default);
         ms.Write(BitConverter.GetBytes(5));
-        await foreach (var msg in msgs.WithCancellation(default))
+        await foreach (var _ in msgs.WithCancellation(default))
         {
         }
         _logger.DebugMessages.ShouldBeEmpty();

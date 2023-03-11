@@ -1,9 +1,7 @@
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Loggers;
-using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Validators;
-using Perfolizer.Horology;
 
 namespace LightningQueues.Benchmarks;
 

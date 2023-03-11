@@ -20,17 +20,4 @@ public static class StreamExtensions
         while (totalRead < length && current > 0);
         return buffer;
     }
-
-    public static async Task<bool> ReadExpectedBuffer(this Stream stream, byte[] expected)
-    {
-        try
-        {
-            var bytes = await stream.ReadBytesAsync(expected.Length).ConfigureAwait(false);
-            return expected.SequenceEqual(bytes);
-        }
-        catch (Exception)
-        {
-            return false;
-        }
-    }
 }

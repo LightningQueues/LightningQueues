@@ -28,7 +28,7 @@ public class SendingErrorPolicy
     {
         await foreach (var messageFailure in _failedToConnect.Reader.ReadAllAsync(cancellationToken))
         {
-            foreach (var message in messageFailure.Batch.Messages)
+            foreach (var message in messageFailure.Messages)
             {
                 IncrementAttempt(message);
                 if (!ShouldRetry(message)) 
@@ -61,7 +61,7 @@ public class SendingErrorPolicy
         catch (Exception ex)
         {
             if(_logger.IsEnabled(LogLevel.Error))
-                _logger.LogError("Failed to increment send failure", ex);
+                _logger.LogError(ex, "Failed to increment send failure");
         }
     }
 }

@@ -1,9 +1,8 @@
-﻿using System;
+﻿using System.Collections.Generic;
 
 namespace LightningQueues.Net;
 
 public class OutgoingMessageFailure
 {
-    public Exception Exception { get; set; }
-    public OutgoingMessageBatch Batch { get; init; }
+    public IList<OutgoingMessage> Messages { get; init; }
 }

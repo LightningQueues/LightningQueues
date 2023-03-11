@@ -7,10 +7,10 @@ namespace LightningQueues.Benchmarks;
 [MemoryDiagnoser]
 public class SendAndReceive
 {
-    private Queue _sender;
-    private Queue _receiver;
-    private OutgoingMessage[] _messages;
-    private Task _receivingTask;
+    private Queue? _sender;
+    private Queue? _receiver;
+    private OutgoingMessage[]? _messages;
+    private Task? _receivingTask;
     
     [Params(10, 100, 1000, 10000)]
     public int MessageCount { get; set; }
@@ -30,7 +30,7 @@ public class SendAndReceive
         _receivingTask = Task.Factory.StartNew(async () =>
         {
             var count = 0;
-            await foreach (var message in _receiver.Receive("receiver"))
+            await foreach (var _ in _receiver.Receive("receiver"))
             {
                 Interlocked.Increment(ref count);
                 if (count == MessageCount)
@@ -51,8 +51,8 @@ public class SendAndReceive
     [GlobalCleanup]
     public void GlobalCleanup()
     {
-        _sender.Dispose();
-        _receiver.Dispose();
+        _sender?.Dispose();
+        _receiver?.Dispose();
     }
 
     [Benchmark]
@@ -60,9 +60,10 @@ public class SendAndReceive
     {
         for (var i = 0; i < MessageCount; ++i)
         {
-            _sender.Send(_messages[i]);
+            _sender?.Send(_messages?[i]);
         }
 
-        await _receivingTask;
+        if(_receivingTask != null)
+            await _receivingTask;
     }
 }

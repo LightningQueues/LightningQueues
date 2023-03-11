@@ -42,6 +42,7 @@ public class QueueConfiguration
 
     public QueueConfiguration()
     {
+        _logger = new NoLoggingLogger();
         _sendingSecurity = new NoSecurity();
         _receivingSecurity = new NoSecurity();
     }

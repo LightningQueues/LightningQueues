@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Linq;
-using System.Net.Sockets;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using LightningQueues.Net;
-using LightningQueues.Net.Security;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using NSubstitute;
@@ -85,7 +83,7 @@ public class SendingErrorPolicyTests : IDisposable
         tx.Commit();
         var failure = new OutgoingMessageFailure
         {
-            Batch = new OutgoingMessageBatch(message.Destination, new[] { message }, new TcpClient(), new NoSecurity())
+            Messages = new [] { message }
         };
         var retryTask = _errorPolicy.Retries.ReadAllAsync().FirstAsync();
         _failureChannel.Writer.TryWrite(failure);
@@ -104,7 +102,7 @@ public class SendingErrorPolicyTests : IDisposable
         tx.Commit();
         var failure = new OutgoingMessageFailure
         {
-            Batch = new OutgoingMessageBatch(message.Destination, new[] { message }, new TcpClient(), new NoSecurity())
+            Messages = new [] { message }
         };
         var retryTask = _errorPolicy.Retries.ReadAllAsync().FirstAsync();
         _failureChannel.Writer.TryWrite(failure);
@@ -125,7 +123,7 @@ public class SendingErrorPolicyTests : IDisposable
         tx.Commit();
         var failure = new OutgoingMessageFailure
         {
-            Batch = new OutgoingMessageBatch(message.Destination, new[] { message }, new TcpClient(), new NoSecurity())
+            Messages = new [] { message }
         };
         var retryTask = Task.Factory.StartNew(async () =>
         {
@@ -156,11 +154,11 @@ public class SendingErrorPolicyTests : IDisposable
         var ended = false;
         var failure = new OutgoingMessageFailure
         {
-            Batch = new OutgoingMessageBatch(message.Destination, new[] { message }, new TcpClient(), new NoSecurity())
+            Messages = new [] { message }
         };
         var retryTask = Task.Factory.StartNew(async () =>
         {
-            await foreach (var message in errorPolicy.Retries.ReadAllAsync())
+            await foreach (var _ in errorPolicy.Retries.ReadAllAsync())
             {
             }
             ended = true;

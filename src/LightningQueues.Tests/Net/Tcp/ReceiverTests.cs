@@ -64,7 +64,7 @@ public class ReceiverTests : IDisposable
         var receivingTask = Task.Factory.StartNew(async () =>
         {
             var channel = Channel.CreateUnbounded<Message>();
-            await _receiver.StartReceivingAsync(channel.Writer, default);
+            await _receiver.StartReceivingAsync(channel.Writer);
         });
         await Task.Delay(100);
         using (var client = new TcpClient())
@@ -80,7 +80,7 @@ public class ReceiverTests : IDisposable
         var receivingTask = Task.Factory.StartNew(async () =>
         {
             var channel = Channel.CreateUnbounded<Message>();
-            await _receiver.StartReceivingAsync(channel.Writer, default);
+            await _receiver.StartReceivingAsync(channel.Writer);
         });
         await Task.Delay(100);
         using (var client = new TcpClient())
@@ -107,9 +107,9 @@ public class ReceiverTests : IDisposable
         await client1.ConnectAsync(_endpoint.Address, _endpoint.Port, default);
         await client2.ConnectAsync(_endpoint.Address, _endpoint.Port, default);
         await client2.GetStream()
-            .WriteAsync((new byte[] { 1, 4, 6 }).AsMemory(0, 3), default);
+            .WriteAsync(new byte[] { 1, 4, 6 }.AsMemory(0, 3));
         await client1.GetStream()
-            .WriteAsync((new byte[] { 1, 4, 6 }).AsMemory(0, 3), default);
+            .WriteAsync((new byte[] { 1, 4, 6 }).AsMemory(0, 3));
         cancellationTokenSource.Cancel();
         await receivingTask;
     }
@@ -128,7 +128,7 @@ public class ReceiverTests : IDisposable
         var receivingTask = Task.Factory.StartNew(async () =>
         {
             var channel = Channel.CreateUnbounded<Message>();
-            _receiver.StartReceivingAsync(channel.Writer, default);
+            _receiver.StartReceivingAsync(channel.Writer);
             actual = await channel.Reader.ReadAsync();
         });
         await Task.Delay(100);
