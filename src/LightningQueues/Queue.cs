@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using LightningQueues.Logging;
+using Microsoft.Extensions.Logging;
 using LightningQueues.Net;
 using LightningQueues.Net.Tcp;
 using LightningQueues.Storage;
@@ -59,7 +58,8 @@ public class Queue : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.Error("Error starting queue", ex);
+            if(_logger.IsEnabled(LogLevel.Error))
+                _logger.LogError("Error starting queue", ex);
         }
     }
 
@@ -70,7 +70,8 @@ public class Queue : IDisposable
 
     private async Task StartSendingAsync()
     {
-        _logger.Debug("Starting LightningQueues");
+        if(_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("Starting LightningQueues");
         var errorPolicy = new SendingErrorPolicy(_logger, Store, _sender.FailedToSend());
         var errorTask = errorPolicy.StartRetries(_cancelOnDispose.Token);
         var persistedMessages = Store.PersistedOutgoingMessages();
@@ -100,7 +101,8 @@ public class Queue : IDisposable
         else
             cancellationToken = _cancelOnDispose.Token;
         
-        _logger.DebugFormat("Starting to receive for queue {0}", queueName);
+        if(_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("Starting to receive for queue {QueueName}", queueName);
         return Store.PersistedMessages(queueName).ToAsyncEnumerable(cancellationToken)
             .Concat(_receivingChannel.Reader.ReadAllAsync(cancellationToken)
                     .Where(x => x.Queue == queueName))
@@ -109,7 +111,8 @@ public class Queue : IDisposable
 
     public void MoveToQueue(string queueName, Message message)
     {
-        _logger.DebugFormat("Moving message {0} to {1}", message.Id.MessageIdentifier, queueName);
+        if(_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("Moving message {MessageIdentifier} to {QueueName}", message.Id.MessageIdentifier, queueName);
         var tx = Store.BeginTransaction();
         Store.MoveToQueue(tx, queueName, message);
         tx.Commit();
@@ -119,14 +122,16 @@ public class Queue : IDisposable
 
     public void Enqueue(Message message)
     {
-        _logger.DebugFormat("Enqueueing message {0} to queue {1}", message.Id.MessageIdentifier, message.Queue);
+        if(_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("Enqueueing message {MessageIdentifier} to {QueueName}", message.Id.MessageIdentifier, message.Queue);
         Store.StoreIncomingMessages(message);
         ReceivingChannel.TryWrite(message);
     }
 
     public async void ReceiveLater(Message message, TimeSpan timeSpan)
     {
-        _logger.DebugFormat("Delaying message {0} until {1}", message.Id.MessageIdentifier, timeSpan);
+        if(_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("Delaying message {MessageIdentifier} until {DelayTime}", message.Id.MessageIdentifier, message.Queue);
         try
         {
             await Task.Delay(timeSpan);
@@ -134,13 +139,15 @@ public class Queue : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.Error("Error with receiving later", ex);
+            if(_logger.IsEnabled(LogLevel.Error))
+                _logger.LogError("Error with receiving later", ex);
         }
     }
 
     public async void Send(params OutgoingMessage[] messages)
     {
-        _logger.DebugFormat("Sending {0} messages", messages.Length);
+        if(_logger.IsEnabled(LogLevel.Error))
+            _logger.LogDebug("Sending {MessageCount} messages", messages.Length);
         var tx = Store.BeginTransaction();
         foreach (var message in messages)
         {
@@ -160,7 +167,8 @@ public class Queue : IDisposable
 
     public void Dispose()
     {
-        _logger.Info("Disposing queue");
+        if(_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("Disposing queue");
         Store.Dispose();
         try
         {
@@ -172,7 +180,8 @@ public class Queue : IDisposable
         }
         catch (Exception e)
         {
-            _logger.Error("Failed when shutting down queue", e);
+            if(_logger.IsEnabled(LogLevel.Error))
+                _logger.LogError("Failed when shutting down queue", e);
         }
         GC.SuppressFinalize(this);
     }

@@ -3,8 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using DotNext.Collections.Generic;
-using LightningQueues.Logging;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Security;
 using LightningQueues.Serialization;
@@ -24,7 +22,7 @@ public class SendingProtocolTests : IDisposable
     public SendingProtocolTests(SharedTestDirectory testDirectory)
     {
         _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
-        _sender = new SendingProtocol(_store, new NoSecurity(), new NulloLogger());
+        _sender = new SendingProtocol(_store, new NoSecurity(), new RecordingLogger());
     }
 
     [Fact]

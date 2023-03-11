@@ -9,7 +9,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using DotNext.IO;
-using LightningQueues.Logging;
+using Microsoft.Extensions.Logging;
 using LightningQueues.Net.Security;
 using LightningQueues.Serialization;
 using LightningQueues.Storage;
@@ -47,7 +47,8 @@ public class ReceivingProtocol : IReceivingProtocol
             var length = await pipe.Reader.ReadInt32Async(true, cancellationToken);
             if(length <= 0 || cancellationToken.IsCancellationRequested)
                 yield break;
-            _logger.Debug($"Received length value of {length}");
+            if(_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug("Received length value of {Length}", length);
             var result = await pipe.Reader.ReadAtLeastAsync(length, cancellationToken);
             if(cancellationToken.IsCancellationRequested)
                 yield break;
@@ -56,7 +57,7 @@ public class ReceivingProtocol : IReceivingProtocol
         }
         catch (Exception ex)
         {
-            _logger.Error($"Error reading messages from {endpoint}", ex);
+            _logger.LogError("Error reading messages from {Endpoint}", endpoint, ex);
             yield break;
         }
 
@@ -72,7 +73,8 @@ public class ReceivingProtocol : IReceivingProtocol
             }
             catch (Exception ex)
             {
-                _logger.Error("Error reading messages", ex);
+                if(_logger.IsEnabled(LogLevel.Error))
+                    _logger.LogError("Error reading messages", ex);
                 yield break;
             }
 
@@ -84,13 +86,15 @@ public class ReceivingProtocol : IReceivingProtocol
             }
             catch (QueueDoesNotExistException)
             {
-                _logger.Info($"Queue {msg.Queue} not found for {msg.Id}");
+                if(_logger.IsEnabled(LogLevel.Information))
+                    _logger.LogInformation("Queue {QueueName} not found for {MessageIdentifier}", msg.Queue, msg.Id);
                 await SendQueueNotFound(stream, cancellationToken);
                 continue;
             }
             catch (Exception ex)
             {
-                _logger.Error($"Error persisting {msg.Id}", ex);
+                if(_logger.IsEnabled(LogLevel.Information))
+                    _logger.LogError("Error persisting {MessageIdentifier}", msg.Id, ex);
                 await SendProcessingError(stream, cancellationToken);
                 continue;
             }
@@ -109,7 +113,8 @@ public class ReceivingProtocol : IReceivingProtocol
         }
         catch (Exception ex)
         {
-            _logger.Error("Error finishing protocol acknowledgement", ex);
+            if(_logger.IsEnabled(LogLevel.Error))
+                _logger.LogError("Error finishing protocol acknowledgement", ex);
         }
         cancelReading.Cancel();
         await receivingTask;

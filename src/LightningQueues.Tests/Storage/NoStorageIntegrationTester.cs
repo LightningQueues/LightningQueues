@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
-using LightningQueues.Logging;
+using Microsoft.Extensions.Logging;
 using LightningQueues.Storage;
 using Xunit;
 
@@ -14,8 +14,8 @@ public class NoStorageIntegrationTester : IDisposable
 
     public NoStorageIntegrationTester()
     {
-        _sender = ObjectMother.NewQueue(logger: new NulloLogger(), store:new NoStorage());
-        _receiver = ObjectMother.NewQueue(logger: new NulloLogger(), store:new NoStorage());
+        _sender = ObjectMother.NewQueue(store:new NoStorage());
+        _receiver = ObjectMother.NewQueue(store:new NoStorage());
     }
 
     [Fact]

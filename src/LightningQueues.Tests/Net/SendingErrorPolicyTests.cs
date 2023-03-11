@@ -3,7 +3,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using LightningQueues.Logging;
+using Microsoft.Extensions.Logging;
 using LightningQueues.Net;
 using LightningQueues.Net.Security;
 using LightningQueues.Storage;

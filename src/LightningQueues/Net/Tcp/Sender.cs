@@ -5,7 +5,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using LightningQueues.Logging;
+using Microsoft.Extensions.Logging;
 using LightningQueues.Storage;
 
 namespace LightningQueues.Net.Tcp;
@@ -54,11 +54,13 @@ public class Sender : IDisposable
                 }
                 catch (QueueDoesNotExistException ex)
                 {
-                    _logger.Error($"Queue does not exist at {uri}", ex);
+                    if(_logger.IsEnabled(LogLevel.Error))
+                        _logger.LogError("Queue does not exist at {Uri}", uri, ex);
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Failed to send messages to {uri}", ex);
+                    if(_logger.IsEnabled(LogLevel.Error))
+                        _logger.LogError("Failed to send messages to {Uri}", uri, ex);
                     var failed = new OutgoingMessageFailure
                     {
                         Batch = new OutgoingMessageBatch(uri, messageGroup, new TcpClient(), null)
@@ -71,7 +73,8 @@ public class Sender : IDisposable
 
     public void Dispose()
     {
-        _logger.Info("Disposing Sender to ");
+        if(_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("Disposing Sender");
         if (_cancellation.IsCancellationRequested) return;
         _cancellation.Cancel();
         GC.SuppressFinalize(this);

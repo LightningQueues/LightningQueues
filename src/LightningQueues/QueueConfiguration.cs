@@ -2,17 +2,36 @@
 using System.IO;
 using System.Net;
 using System.Threading.Tasks;
-using LightningQueues.Logging;
 using LightningQueues.Net;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Security;
 using LightningQueues.Net.Tcp;
 using LightningQueues.Storage;
+using Microsoft.Extensions.Logging;
 
 namespace LightningQueues;
 
 public class QueueConfiguration
 {
+    #region NoLogging
+    private class NoLoggingLogger : ILogger
+    {
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+        {
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return false;
+        }
+
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull
+        {
+            return null;
+        }
+    }
+    #endregion //NoLogging
+    
     private IStreamSecurity _sendingSecurity;
     private IStreamSecurity _receivingSecurity;
     private IMessageStore _store;
@@ -23,7 +42,6 @@ public class QueueConfiguration
 
     public QueueConfiguration()
     {
-        _logger = new NulloLogger();
         _sendingSecurity = new NoSecurity();
         _receivingSecurity = new NoSecurity();
     }
@@ -74,6 +92,7 @@ public class QueueConfiguration
             throw new ArgumentNullException(nameof(_endpoint), "Endpoint has not been configured. Are you missing a call to ReceiveMessageAt?");
 
         InitializeDefaults();
+
 
         var receiver = new Receiver(_endpoint, _receivingProtocol, _logger);
         var sender = new Sender(_sendingProtocol, _logger);

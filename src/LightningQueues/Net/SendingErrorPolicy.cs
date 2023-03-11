@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using LightningQueues.Logging;
+using Microsoft.Extensions.Logging;
 using LightningQueues.Storage;
 
 namespace LightningQueues.Net;
@@ -42,9 +42,10 @@ public class SendingErrorPolicy
     public bool ShouldRetry(OutgoingMessage message)
     {
         var totalAttempts = message.MaxAttempts ?? 100;
-        _logger.DebugFormat("Failed to send should retry with AttemptCount: {0}, TotalAttempts {1}", message.SentAttempts, totalAttempts);
-        if(message.DeliverBy.HasValue)
-            _logger.DebugFormat("Failed to send should retry with DeliverBy: {0}, CurrentTime {1}", message.DeliverBy, DateTime.Now);
+        if(_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("Failed to send should retry with on: {AttemptCount}, out of {TotalAttempts}", message.SentAttempts, totalAttempts);
+        if(message.DeliverBy.HasValue && _logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("Failed to send should retry with: {DeliverBy}, due to {CurrentTime}", message.DeliverBy, DateTime.Now);
         return message.SentAttempts < totalAttempts
                &&
                (!message.DeliverBy.HasValue || DateTime.Now < message.DeliverBy);
@@ -59,7 +60,8 @@ public class SendingErrorPolicy
         }
         catch (Exception ex)
         {
-            _logger.Error("Failed to increment send failure", ex);
+            if(_logger.IsEnabled(LogLevel.Error))
+                _logger.LogError("Failed to increment send failure", ex);
         }
     }
 }

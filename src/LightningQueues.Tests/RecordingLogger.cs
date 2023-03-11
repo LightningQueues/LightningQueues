@@ -1,76 +1,51 @@
 ﻿using System;
 using System.Collections.Generic;
-using LightningQueues.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace LightningQueues.Tests;
 
 public class RecordingLogger : ILogger
 {
-    private readonly Action<string> _outputHook;
+    private readonly LogLevel _level;
     private readonly IList<string> _debug = new List<string>();
     private readonly IList<string> _error = new List<string>();
     private readonly IList<string> _info = new List<string>();
 
-    public RecordingLogger() : this(_ => { })
+    public RecordingLogger(LogLevel logLevel = LogLevel.Debug)
     {
+        _level = logLevel;
     }
-
-    public RecordingLogger(Action<string> outputHook)
-    {
-        _outputHook = outputHook;
-    }
-
-
 
     public IEnumerable<string> DebugMessages => _debug;
     public IEnumerable<string> InfoMessages => _info;
 
     public IEnumerable<string> ErrorMessages => _error;
 
-    public void Debug(string message)
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception,
+        Func<TState, Exception, string> formatter)
     {
-        _outputHook(message);
-        _debug.Add(message);
+        var list = logLevel switch
+        {
+            LogLevel.Debug => _debug,
+            LogLevel.Information => _info,
+            LogLevel.Error => _error,
+            _ => throw new ArgumentOutOfRangeException(nameof(logLevel))
+        };
+        list.Add(formatter(state, exception));
     }
 
-    public void DebugFormat(string message, params object[] args)
+    public bool IsEnabled(LogLevel logLevel) => logLevel switch
     {
-        Debug(string.Format(message, args));
-    }
+        LogLevel.Debug when _level == LogLevel.Debug => true,
+        LogLevel.Information when _level is LogLevel.Debug or LogLevel.Information => true,
+        LogLevel.Error when _level is LogLevel.Debug 
+            or LogLevel.Information 
+            or LogLevel.Error => true,
+        _ => false
+    };
 
-    public void DebugFormat(string message, object arg1, object arg2)
+    public IDisposable BeginScope<TState>(TState state) where TState : notnull
     {
-        Debug(string.Format(message, arg1, arg2));
-    }
-
-    public void DebugFormat(string message, object arg1)
-    {
-        Debug(string.Format(message, arg1));
-    }
-
-    public void Info(string message)
-    {
-        _info.Add(message);
-    }
-
-    public void InfoFormat(string message, params object[] args)
-    {
-        _info.Add(string.Format(message, args));
-    }
-
-    public void InfoFormat(string message, object arg1, object arg2)
-    {
-        _info.Add(string.Format(message, arg1, arg2));
-    }
-
-    public void InfoFormat(string message, object arg1)
-    {
-        _info.Add(string.Format(message, arg1));
-    }
-
-    public void Error(string message, Exception exception)
-    {
-        _outputHook(message + exception);
-        _error.Add(message);
+        return null;
     }
 }

@@ -7,10 +7,10 @@ using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using DotNext.Buffers;
-using LightningQueues.Logging;
 using LightningQueues.Net.Security;
 using LightningQueues.Serialization;
 using LightningQueues.Storage;
+using Microsoft.Extensions.Logging;
 
 namespace LightningQueues.Net.Protocol.V1;
 
@@ -35,15 +35,20 @@ public class SendingProtocol : ISendingProtocol
         var messages = batch.ToList();
         writer.WriteMessages(messages);
         await stream.WriteAsync(BitConverter.GetBytes(writer.WrittenMemory.Length), token);
-        _logger.Debug("Writing message batch to destination");
+        if(_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("Writing message batch to destination");
         await stream.WriteAsync(writer.WrittenMemory, token);
-        _logger.Debug("Successfully wrote message batch to destination");
+        if(_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("Successfully wrote message batch to destination");
         await ReadReceived(stream, token);
-        _logger.Debug("Successfully read received message");
+        if(_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("Successfully read received message");
         await WriteAcknowledgement(stream, token);
-        _logger.Debug("Successfully wrote acknowledgement");
+        if(_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("Successfully wrote acknowledgement");
         _store.SuccessfullySent(messages);
-        _logger.Debug("Stored that messages were successful");
+        if(_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("Stored that messages were successful");
     }
 
     private static async ValueTask ReadReceived(Stream stream, CancellationToken token)

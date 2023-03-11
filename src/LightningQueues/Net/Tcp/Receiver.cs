@@ -1,12 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using LightningQueues.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace LightningQueues.Net.Tcp;
 
@@ -53,7 +51,8 @@ public class Receiver : IDisposable
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error("Error reading messages", ex);
+                    if(_logger.IsEnabled(LogLevel.Error))
+                        _logger.LogError("Error reading messages", ex);
                 }
             }
         }
@@ -69,8 +68,11 @@ public class Receiver : IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
-        _logger.InfoFormat("Disposing TcpListener at {0}", Endpoint.Port);
+        if (_disposed)
+            return;
+        
+        if(_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("Disposing TcpListener at {Port}", Endpoint.Port);
         _disposed = true;
         _listener.Stop();
         GC.SuppressFinalize(this);
