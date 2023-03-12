@@ -26,7 +26,7 @@ public class IntegrationTests : IDisposable
         var message = ObjectMother.NewMessage<OutgoingMessage>("receiver2");
         message.Destination = new Uri($"lq.tcp://localhost:{_receiver.Endpoint.Port}");
         _sender.Send(message);
-        await Task.Delay(500); //passing buffer delay
+        await Task.Delay(5500); //passing buffer delay
         message.Queue = "receiver";
         _sender.Send(message);
         var received = await _receiver.Receive("receiver").FirstAsync();
