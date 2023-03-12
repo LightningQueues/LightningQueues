@@ -1,5 +1,4 @@
-﻿using System;
-using LightningDB;
+﻿using LightningDB;
 
 namespace LightningQueues.Storage.LMDB;
 
@@ -8,12 +7,9 @@ public class LmdbTransaction : ITransaction
     public LmdbTransaction(LightningEnvironment env)
     {
         Transaction = env.BeginTransaction();
-        TransactionId = Guid.NewGuid();
     }
 
     public LightningTransaction Transaction { get; }
-
-    public Guid TransactionId { get; }
 
     void ITransaction.Rollback()
     {
@@ -23,6 +19,6 @@ public class LmdbTransaction : ITransaction
     void ITransaction.Commit()
     {
         using(Transaction)
-            Transaction.Commit();
+            Transaction.Commit().ThrowOnError();
     }
 }

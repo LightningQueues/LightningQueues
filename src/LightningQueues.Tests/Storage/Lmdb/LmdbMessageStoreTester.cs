@@ -67,6 +67,7 @@ public class LmdbMessageStoreTester : IDisposable
         tx.Commit();
         _store.Dispose();
         using var store2 = new LmdbMessageStore(_path);
+        store2.CreateQueue("test");
         store2.PersistedMessages("test").Count().ShouldBe(1);
         store2.PersistedOutgoingMessages().Count().ShouldBe(1);
     }
