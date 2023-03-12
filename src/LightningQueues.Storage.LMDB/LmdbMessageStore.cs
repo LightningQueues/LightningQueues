@@ -17,7 +17,7 @@ public class LmdbMessageStore : IMessageStore
     public LmdbMessageStore(string path, EnvironmentConfiguration config)
     {
         Environment = new LightningEnvironment(path, config);
-        Environment.Open(EnvironmentOpenFlags.WriteMap | EnvironmentOpenFlags.NoSync);
+        Environment.Open();
         CreateQueue(OutgoingQueue);
     }
 
