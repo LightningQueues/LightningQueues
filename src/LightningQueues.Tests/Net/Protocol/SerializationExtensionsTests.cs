@@ -1,4 +1,4 @@
-﻿using System.Linq;
+﻿using System;
 using LightningQueues.Serialization;
 using Shouldly;
 using Xunit;
@@ -14,10 +14,11 @@ public class SerializationExtensionsTests
         {
             Data = "hello"u8.ToArray(),
             Id = MessageId.GenerateRandom(),
-            Queue = "queue"
+            Queue = "queue",
+            Destination = new Uri("lq.tcp://fake:1234")
         };
-        var messagesBytes = new[] {expected}.Serialize();
-        var actual = messagesBytes.ToMessages(wire: false).First();
+        var messagesBytes = expected.AsReadOnlyMemory();
+        var actual = messagesBytes.Span.ToMessage<OutgoingMessage>();
 
         actual.Queue.ShouldBe(expected.Queue);
         actual.Data.ShouldBe(expected.Data);

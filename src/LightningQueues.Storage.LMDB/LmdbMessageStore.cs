@@ -51,13 +51,15 @@ public class LmdbMessageStore : IMessageStore
         string queueName = null;
         try
         {
+            Span<byte> id = stackalloc byte[16];
             foreach (var messagesByQueue in messages.GroupBy(x => x.Queue))
             {
                 queueName = messagesByQueue.Key;
                 var db = OpenDatabase(tx, queueName);
                 foreach (var message in messagesByQueue)
                 {
-                    tx.Put(db, message.Id.MessageIdentifier.ToByteArray(), message.Serialize()).ThrowOnError();
+                    message.Id.MessageIdentifier.TryWriteBytes(id);
+                    tx.Put(db, id, message.AsReadOnlyMemory().Span).ThrowOnError();
                 }
             }
         }
@@ -74,7 +76,7 @@ public class LmdbMessageStore : IMessageStore
         using var tx = Environment.BeginTransaction();
         foreach (var grouping in messages.GroupBy(x => x.Queue))
         {
-            RemoveMessageFromStorage(tx, grouping.Key, grouping.ToArray());
+            RemoveMessagesFromStorage(tx, grouping.Key, grouping);
         }
         tx.Commit();
     }
@@ -101,10 +103,13 @@ public class LmdbMessageStore : IMessageStore
 
     public Message GetMessage(string queueName, MessageId messageId)
     {
+        Span<byte> id = stackalloc byte[16];
+        messageId.MessageIdentifier.TryWriteBytes(id);
         using var tx = Environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
         var db = OpenDatabase(tx, queueName);
-        var result = tx.Get(db, messageId.MessageIdentifier.ToByteArray());
-        return result.value.CopyToNewArray().ToMessage();
+        var result = tx.Get(db, id);
+        var messageBuffer = result.value.AsSpan();
+        return messageBuffer.ToMessage<Message>();
     }
 
     public string[] GetAllQueues()
@@ -135,9 +140,9 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    private void SuccessfullySent(LightningTransaction tx, IList<OutgoingMessage> messages)
+    private void SuccessfullySent(LightningTransaction tx, IEnumerable<OutgoingMessage> messages)
     {
-        RemoveMessageFromStorage(tx, OutgoingQueue, messages);
+        RemoveMessagesFromStorage(tx, OutgoingQueue, messages);
     }
         
     public IEnumerable<Message> PersistedMessages(string queueName)
@@ -200,17 +205,26 @@ public class LmdbMessageStore : IMessageStore
 
     private void SuccessfullyReceived(LightningTransaction tx, Message message)
     {
-        RemoveMessageFromStorage(tx, message.Queue, new []{message});//todo change
+        var db = tx.OpenDatabase(message.Queue);
+        RemoveMessageFromStorage(tx, db, message);
     }
 
-    private void RemoveMessageFromStorage<TMessage>(LightningTransaction tx, string queueName, IEnumerable<TMessage> messages)
+    private void RemoveMessagesFromStorage<TMessage>(LightningTransaction tx, string queueName, IEnumerable<TMessage> messages)
         where TMessage : Message
     {
         var db = OpenDatabase(tx, queueName);
         foreach (var message in messages)
         {
-            tx.Delete(db, message.Id.MessageIdentifier.ToByteArray());
+            RemoveMessageFromStorage(tx, db, message);
         }
+    }
+
+    private void RemoveMessageFromStorage<TMessage>(LightningTransaction tx, LightningDatabase db, TMessage message)
+        where TMessage : Message
+    {
+        Span<byte> id = stackalloc byte[16];
+        message.Id.MessageIdentifier.TryWriteBytes(id);
+        tx.Delete(db, id);
     }
 
     public void StoreOutgoing(ITransaction transaction, OutgoingMessage message)
@@ -221,33 +235,37 @@ public class LmdbMessageStore : IMessageStore
 
     private void StoreOutgoing(LightningTransaction tx, OutgoingMessage message)
     {
+        Span<byte> id = stackalloc byte[16];
+        message.Id.MessageIdentifier.TryWriteBytes(id);
         var db = OpenDatabase(tx, OutgoingQueue);
-        tx.Put(db, message.Id.MessageIdentifier.ToByteArray(), message.Serialize());
+        tx.Put(db, id, message.AsReadOnlyMemory().Span);
     }
 
     private int FailedToSend(LightningTransaction tx, OutgoingMessage message)
     {
+        Span<byte> id = stackalloc byte[16];
+        message.Id.MessageIdentifier.TryWriteBytes(id);
         var db = OpenDatabase(tx, OutgoingQueue);
-        var value = tx.Get(db, message.Id.MessageIdentifier.ToByteArray());
+        var value = tx.Get(db, id);
         if (value.resultCode == MDBResultCode.NotFound)
             return int.MaxValue;
-        var msg = value.value.CopyToNewArray().ToOutgoingMessage();
+        var msg = value.value.AsSpan().ToOutgoingMessage();
         var attempts = message.SentAttempts;
         if (attempts >= message.MaxAttempts)
         {
-            RemoveMessageFromStorage(tx, OutgoingQueue, new []{msg});
+            RemoveMessageFromStorage(tx, db, msg);
         }
         else if (msg.DeliverBy.HasValue)
         {
             var expire = msg.DeliverBy.Value;
             if (expire != DateTime.MinValue && DateTime.Now >= expire)
             {
-                RemoveMessageFromStorage(tx, OutgoingQueue, new [] {msg});
+                RemoveMessageFromStorage(tx, db, msg);
             }
         }
         else
         {
-            tx.Put(db, message.Id.MessageIdentifier.ToByteArray(), message.Serialize());
+            tx.Put(db, id, message.AsReadOnlyMemory().Span);
         }
         return attempts;
     }
@@ -256,11 +274,12 @@ public class LmdbMessageStore : IMessageStore
     {
         try
         {
-            var idBytes = message.Id.MessageIdentifier.ToByteArray();
+            Span<byte> id = stackalloc byte[16];
+            message.Id.MessageIdentifier.TryWriteBytes(id);
             var original = OpenDatabase(tx, message.Queue);
             var newDb = OpenDatabase(tx, queueName);
-            tx.Delete(original, idBytes).ThrowOnError();
-            tx.Put(newDb, idBytes, message.Serialize()).ThrowOnError();
+            tx.Delete(original, id).ThrowOnError();
+            tx.Put(newDb, id, message.AsReadOnlyMemory().Span).ThrowOnError();
         }
         catch (LightningException ex)
         {

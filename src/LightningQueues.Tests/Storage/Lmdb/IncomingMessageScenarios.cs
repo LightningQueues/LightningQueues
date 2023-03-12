@@ -32,7 +32,9 @@ public class IncomingMessageScenarios : IDisposable
         transaction.Commit();
         using var tx = _store.Environment.BeginTransaction();
         using var db = tx.OpenDatabase(message.Queue);
-        var msg = tx.Get(db, message.Id.MessageIdentifier.ToByteArray()).value.CopyToNewArray().ToMessage();
+        Span<byte> id = stackalloc byte[16];
+        message.Id.MessageIdentifier.TryWriteBytes(id);
+        var msg = tx.Get(db, id).value.AsSpan().ToMessage<Message>();
         System.Text.Encoding.UTF8.GetString(msg.Data).ShouldBe("hello");
         msg.Headers.First().Value.ShouldBe("my_value");
     }

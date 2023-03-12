@@ -35,7 +35,7 @@ public class SendingProtocol : ISendingProtocol
         stream = await _security.Apply(destination, stream);
         using var writer = new PooledBufferWriter<byte>();
         var messages = batch.ToList();
-        writer.WriteMessages(messages);
+        writer.WriteOutgoingMessages(messages);
         await stream.WriteAsync(BitConverter.GetBytes(writer.WrittenMemory.Length), doneCancellation.Token);
         _logger.SenderWritingMessageBatch();
         await stream.WriteAsync(writer.WrittenMemory, doneCancellation.Token);

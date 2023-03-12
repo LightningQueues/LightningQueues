@@ -1,3 +1,4 @@
+using System;
 using System.Buffers;
 using System.Linq;
 using DotNext.Buffers;
@@ -12,9 +13,10 @@ public class SerializationTests
     public void can_serialize_and_deserialize_message_as_span()
     {
         var msg = ObjectMother.NewMessage<OutgoingMessage>();
+        msg.Destination = new Uri("lq.tcp://fake:1234");
         var msgs = new [] { msg };
         using var writer = new PooledBufferWriter<byte>();
-        writer.WriteMessages(msgs);
+        writer.WriteOutgoingMessages(msgs);
         var serialized = new ReadOnlySequence<byte>(writer.WrittenMemory);
         var deserialized = serialized.ToMessages().First();
         Assert.Equal(msg.Id, deserialized.Id);

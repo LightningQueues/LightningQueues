@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using DotNext.Buffers;
 using LightningQueues.Storage;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Security;
@@ -88,10 +89,11 @@ public class ReceivingProtocolTests : IDisposable
             Data = "hello"u8.ToArray(),
             Queue = "test"
         };
-        var bytes = new[] { message }.Serialize();
+        
+        var bytes = new[] { message }.AsReadOnlyMemory();
         using var ms = new MemoryStream();
         ms.Write(BitConverter.GetBytes(bytes.Length + differenceFromActualLength), 0, 4);
-        ms.Write(bytes, 0, bytes.Length);
+        ms.Write(bytes.Span);
         ms.Position = 0;
         var msgs = _protocol.ReceiveMessagesAsync(ms, default);
         await foreach (var _ in msgs)
@@ -108,10 +110,10 @@ public class ReceivingProtocolTests : IDisposable
             Data = "hello"u8.ToArray(),
             Queue = "test"
         };
-        var bytes = new[] { message }.Serialize();
+        var bytes = new[] { message }.AsReadOnlyMemory();
         using var ms = new MemoryStream();
         ms.Write(BitConverter.GetBytes(bytes.Length), 0, 4);
-        ms.Write(bytes, 0, bytes.Length);
+        ms.Write(bytes.Span);
         ms.Position = 0;
         var msgs = _protocol.ReceiveMessagesAsync(ms, default);
         await foreach (var _ in msgs)
