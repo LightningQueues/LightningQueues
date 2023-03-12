@@ -32,7 +32,7 @@ public static class ObjectMother
     }
 
     public static Queue NewQueue(string path = null, string queueName = "test", ILogger logger = null, 
-        IMessageStore store = null, bool secureTransport = false)
+        IMessageStore store = null, bool secureTransport = false, TimeSpan? timeoutAfter = null)
     {
         logger ??= new RecordingLogger();
         store ??= new LmdbMessageStore(path);
@@ -40,6 +40,10 @@ public static class ObjectMother
         queueConfiguration.LogWith(logger);
         queueConfiguration.AutomaticEndpoint();
         queueConfiguration.StoreMessagesWith(store);
+        if (timeoutAfter.HasValue)
+        {
+            queueConfiguration.TimeoutNetworkBatchAfter(timeoutAfter.Value);
+        }
         if (secureTransport)
         {
             var certificate = CreateCertificate();

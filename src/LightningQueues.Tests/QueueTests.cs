@@ -84,12 +84,12 @@ public class QueueTests : IDisposable
     [Fact]
     public async Task sending_to_bad_endpoint_no_retries_integration_test()
     {
-        using var queue = ObjectMother.NewQueue(_testDirectory.CreateNewDirectoryForTest());
+        using var queue = ObjectMother.NewQueue(_testDirectory.CreateNewDirectoryForTest(), timeoutAfter: TimeSpan.FromSeconds(1));
         var message = ObjectMother.NewMessage<OutgoingMessage>("test");
         message.MaxAttempts = 1;
         message.Destination = new Uri($"lq.tcp://boom:{queue.Endpoint.Port + 1}");
         queue.Send(message);
-        await Task.Delay(5500); //connect timeout cancellation
+        await Task.Delay(1000); //connect timeout cancellation
         var store = (LmdbMessageStore) queue.Store;
         store.PersistedOutgoingMessages().Any().ShouldBeFalse();
     }

@@ -39,17 +39,25 @@ public class QueueConfiguration
     private IReceivingProtocol _receivingProtocol;
     private ISendingProtocol _sendingProtocol;
     private ILogger _logger;
+    private TimeSpan _timeoutBatchAfter;
 
     public QueueConfiguration()
     {
         _logger = new NoLoggingLogger();
         _sendingSecurity = new NoSecurity();
         _receivingSecurity = new NoSecurity();
+        _timeoutBatchAfter = TimeSpan.FromSeconds(5);
     }
 
     public QueueConfiguration StoreMessagesWith(IMessageStore store)
     {
         _store = store;
+        return this;
+    }
+
+    public QueueConfiguration TimeoutNetworkBatchAfter(TimeSpan timeSpan)
+    {
+        _timeoutBatchAfter = timeSpan;
         return this;
     }
 
@@ -96,7 +104,7 @@ public class QueueConfiguration
 
 
         var receiver = new Receiver(_endpoint, _receivingProtocol, _logger);
-        var sender = new Sender(_sendingProtocol, _logger);
+        var sender = new Sender(_sendingProtocol, _logger, _timeoutBatchAfter);
         var queue = new Queue(receiver, sender, _store, _logger);
         return queue;
     }

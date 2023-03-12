@@ -16,11 +16,13 @@ public class Sender : IDisposable
     private readonly Channel<OutgoingMessageFailure> _failedToSend;
     private readonly ILogger _logger;
     private readonly CancellationTokenSource _cancellation;
+    private readonly TimeSpan _sendTimeout;
 
-    public Sender(ISendingProtocol protocol, ILogger logger)
+    public Sender(ISendingProtocol protocol, ILogger logger, TimeSpan sendTimeout)
     {
         _protocol = protocol;
         _logger = logger;
+        _sendTimeout = sendTimeout;
         _failedToSend = Channel.CreateUnbounded<OutgoingMessageFailure>();
         _cancellation = new CancellationTokenSource();
     }
@@ -32,7 +34,7 @@ public class Sender : IDisposable
         var allOutgoing = outgoing.ReadAllAsync(cancellationToken);
         await foreach (var sendTo in allOutgoing.Buffer(TimeSpan.FromMilliseconds(200), 50, cancellationToken))
         {
-            var source = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var source = new CancellationTokenSource(_sendTimeout);
             var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
             var messagesGrouping = sendTo.GroupBy(x => x.Destination);
             foreach (var messageGroup in messagesGrouping)
