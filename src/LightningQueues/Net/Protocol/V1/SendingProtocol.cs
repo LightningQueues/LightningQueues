@@ -31,24 +31,22 @@ public class SendingProtocol : ISendingProtocol
     public async ValueTask SendAsync(Uri destination, Stream stream,
         IEnumerable<OutgoingMessage> batch, CancellationToken token)
     {
-        var doneCancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
         stream = await _security.Apply(destination, stream);
         using var writer = new PooledBufferWriter<byte>();
         var messages = batch.ToList();
         writer.WriteOutgoingMessages(messages);
-        await stream.WriteAsync(BitConverter.GetBytes(writer.WrittenMemory.Length), doneCancellation.Token);
+        await stream.WriteAsync(BitConverter.GetBytes(writer.WrittenMemory.Length), token);
         _logger.SenderWritingMessageBatch();
-        await stream.WriteAsync(writer.WrittenMemory, doneCancellation.Token);
+        await stream.WriteAsync(writer.WrittenMemory, token);
         _logger.SenderSuccessfullyWroteMessageBatch();
         var pipe = new Pipe();
-        pipe.Writer.ReceiveIntoBuffer(stream, true, doneCancellation.Token);
-        await ReadReceived(pipe.Reader, doneCancellation.Token);
+        pipe.Writer.ReceiveIntoBuffer(stream, true, token);
+        await ReadReceived(pipe.Reader, token);
         _logger.SenderSuccessfullyReadReceived();
-        await WriteAcknowledgement(stream, doneCancellation.Token);
+        await WriteAcknowledgement(stream, token);
         _logger.SenderSuccessfullyWroteAcknowledgement();
         _store.SuccessfullySent(messages);
         _logger.SenderStorageSuccessfullySent();
-        doneCancellation.Cancel();
     }
 
     private static async ValueTask ReadReceived(PipeReader reader, CancellationToken token)

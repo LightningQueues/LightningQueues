@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using DotNext.Buffers;
+using LightningQueues.Builders;
 using LightningQueues.Storage;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Security;

@@ -6,7 +6,7 @@ using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
 using Xunit;
-using static LightningQueues.Tests.ObjectMother;
+using static LightningQueues.Builders.QueueBuilder;
 
 namespace LightningQueues.Tests.Storage.Lmdb;
 

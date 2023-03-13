@@ -4,6 +4,7 @@ using System.Linq;
 using DotNext.Buffers;
 using LightningQueues.Serialization;
 using Xunit;
+using static LightningQueues.Builders.QueueBuilder;
 
 namespace LightningQueues.Tests;
 
@@ -12,7 +13,7 @@ public class SerializationTests
     [Fact]
     public void can_serialize_and_deserialize_message_as_span()
     {
-        var msg = ObjectMother.NewMessage<OutgoingMessage>();
+        var msg = NewMessage<OutgoingMessage>();
         msg.Destination = new Uri("lq.tcp://fake:1234");
         var msgs = new [] { msg };
         using var writer = new PooledBufferWriter<byte>();

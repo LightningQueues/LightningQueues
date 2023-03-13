@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using LightningQueues.Builders;
 using Shouldly;
 using Xunit;
+using static LightningQueues.Builders.QueueBuilder;
 
 namespace LightningQueues.Tests;
 
@@ -16,14 +18,14 @@ public class IntegrationTests : IDisposable
     public IntegrationTests(SharedTestDirectory testDirectory)
     {
         _senderLogger = new RecordingLogger();
-        _receiver = ObjectMother.NewQueue(testDirectory.CreateNewDirectoryForTest(), "receiver");
-        _sender = ObjectMother.NewQueue(testDirectory.CreateNewDirectoryForTest(), "sender", _senderLogger);
+        _receiver = NewQueue(testDirectory.CreateNewDirectoryForTest(), "receiver");
+        _sender = NewQueue(testDirectory.CreateNewDirectoryForTest(), "sender", _senderLogger);
     }
 
     [Fact]
     public async Task can_send_and_receive_after_queue_not_found()
     {
-        var message = ObjectMother.NewMessage<OutgoingMessage>("receiver2");
+        var message = NewMessage<OutgoingMessage>("receiver2");
         message.Destination = new Uri($"lq.tcp://localhost:{_receiver.Endpoint.Port}");
         _sender.Send(message);
         await Task.Delay(500); //passing buffer delay

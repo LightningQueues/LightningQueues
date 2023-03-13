@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using LightningQueues.Builders;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Security;
 using LightningQueues.Net.Tcp;
@@ -12,6 +13,7 @@ using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
 using Xunit;
+using static LightningQueues.Builders.QueueBuilder;
 
 namespace LightningQueues.Tests.Net.Tcp;
 
@@ -117,14 +119,14 @@ public class ReceiverTests : IDisposable
     [Fact]
     public async Task receiving_a_valid_message()
     {
-        var expected = ObjectMother.NewMessage<OutgoingMessage>("test");
+        var expected = NewMessage<OutgoingMessage>("test");
         Message actual = null;
         expected.Data = "hello"u8.ToArray();
         expected.Destination = new Uri($"lq.tcp://localhost:{_endpoint.Port}");
-        var tx = _store.BeginTransaction();
+        var tx = _sendingStore.BeginTransaction();
         _sendingStore.StoreOutgoing(tx, expected);
         tx.Commit();
-        var messages = new[] {expected};
+        var messages = new[] { expected };
         var receivingTask = Task.Factory.StartNew(async () =>
         {
             var channel = Channel.CreateUnbounded<Message>();
@@ -132,11 +134,9 @@ public class ReceiverTests : IDisposable
             actual = await channel.Reader.ReadAsync();
         });
         await Task.Delay(100);
-        using (var client = new TcpClient())
-        {
-            await client.ConnectAsync(_endpoint.Address, _endpoint.Port);
-            await _sender.SendAsync(expected.Destination, client.GetStream(), messages, default);
-        }
+        using var client = new TcpClient();
+        await client.ConnectAsync(_endpoint.Address, _endpoint.Port);
+        await _sender.SendAsync(expected.Destination, client.GetStream(), messages, default);
 
         await Task.Delay(100);
         actual.ShouldNotBeNull();

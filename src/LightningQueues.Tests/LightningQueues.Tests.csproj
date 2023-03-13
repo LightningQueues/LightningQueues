@@ -10,6 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\LightningQueues.Builders\LightningQueues.Builders.csproj" />
     <ProjectReference Include="..\LightningQueues\LightningQueues.csproj" />
     <ProjectReference Include="..\LightningQueues.Storage.LMDB\LightningQueues.Storage.LMDB.csproj" />
   </ItemGroup>

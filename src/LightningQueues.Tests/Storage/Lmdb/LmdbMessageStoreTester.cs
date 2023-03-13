@@ -3,6 +3,7 @@ using System.Linq;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
 using Xunit;
+using static LightningQueues.Builders.QueueBuilder;
 
 namespace LightningQueues.Tests.Storage.Lmdb;
 
@@ -38,8 +39,8 @@ public class LmdbMessageStoreTester : IDisposable
     public void clear_all_history_with_persistent_data()
     {
         _store.CreateQueue("test");
-        var message = ObjectMother.NewMessage<Message>("test");
-        var outgoingMessage = ObjectMother.NewMessage<OutgoingMessage>();
+        var message = NewMessage<Message>("test");
+        var outgoingMessage = NewMessage<OutgoingMessage>();
         outgoingMessage.Destination = new Uri("lq.tcp://localhost:3030");
         outgoingMessage.SentAt = DateTime.Now;
         var tx = _store.BeginTransaction();
@@ -57,8 +58,8 @@ public class LmdbMessageStoreTester : IDisposable
     public void store_can_read_previously_stored_items()
     {
         _store.CreateQueue("test");
-        var message = ObjectMother.NewMessage<Message>("test");
-        var outgoingMessage = ObjectMother.NewMessage<OutgoingMessage>();
+        var message = NewMessage<Message>("test");
+        var outgoingMessage = NewMessage<OutgoingMessage>();
         outgoingMessage.Destination = new Uri("lq.tcp://localhost:3030");
         outgoingMessage.SentAt = DateTime.Now;
         var tx = _store.BeginTransaction();
@@ -76,8 +77,8 @@ public class LmdbMessageStoreTester : IDisposable
     public void retrieve_message_by_id()
     {
         _store.CreateQueue("test");
-        var message = ObjectMother.NewMessage<Message>("test");
-        var outgoingMessage = ObjectMother.NewMessage<OutgoingMessage>();
+        var message = NewMessage<Message>("test");
+        var outgoingMessage = NewMessage<OutgoingMessage>();
         outgoingMessage.Destination = new Uri("lq.tcp://localhost:3030");
         outgoingMessage.SentAt = DateTime.Now;
         var tx = _store.BeginTransaction();

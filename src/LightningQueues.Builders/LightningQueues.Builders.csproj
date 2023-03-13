@@ -1,24 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <OutputType>Exe</OutputType>
         <TargetFramework>net7.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="BenchmarkDotNet" Version="0.13.5" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\LightningQueues.Builders\LightningQueues.Builders.csproj" />
       <ProjectReference Include="..\LightningQueues.Storage.LMDB\LightningQueues.Storage.LMDB.csproj" />
       <ProjectReference Include="..\LightningQueues\LightningQueues.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="BenchmarkDotNet.Artifacts" />
     </ItemGroup>
 
 </Project>

@@ -1,6 +1,4 @@
-﻿using System;
-using LightningQueues.Storage.LMDB;
-using System.Collections.Generic;
+﻿using LightningQueues.Storage.LMDB;
 using System.Net;
 using System.Net.Security;
 using System.Security.Authentication;
@@ -9,11 +7,10 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using LightningQueues.Storage;
-using Xunit;
 
-namespace LightningQueues.Tests;
+namespace LightningQueues.Builders;
 
-public static class ObjectMother
+public static class QueueBuilder
 {
     public  static T NewMessage<T>(string queueName = "clever_queue_name", string payload = "hello", string headerValue = "my_value") where T : Message, new()
     {
@@ -50,15 +47,8 @@ public static class ObjectMother
             queueConfiguration.SecureTransportWith(async (_, receiving) =>
             {
                 var sslStream = new SslStream(receiving, false);
-                try
-                {
-                    await sslStream.AuthenticateAsServerAsync(certificate, false,
-                        checkCertificateRevocation: false, enabledSslProtocols: SslProtocols.Tls12);
-                }
-                catch (Exception ex)
-                {
-                    Assert.True(false, $"Error occurred from receiving encryption {ex}");
-                }
+                await sslStream.AuthenticateAsServerAsync(certificate, false,
+                    checkCertificateRevocation: false, enabledSslProtocols: SslProtocols.Tls12);
                 return sslStream;
             }, async (uri, sending) =>
             {
@@ -69,16 +59,7 @@ public static class ObjectMother
                 }
 
                 var sslStream = new SslStream(sending, true, ValidateServerCertificate, null);
-                    
-                try
-                {
-                    await sslStream.AuthenticateAsClientAsync(uri.Host);
-                }
-                catch (Exception ex)
-                {
-                    Assert.True(false, $"Authenticating as a client failed for {ex}");
-                }
-
+                await sslStream.AuthenticateAsClientAsync(uri.Host);
                 return sslStream;
             });
         }

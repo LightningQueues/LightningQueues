@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 
-namespace LightningQueues.Tests;
+namespace LightningQueues.Builders;
 
 public class RecordingLogger : ILogger
 {

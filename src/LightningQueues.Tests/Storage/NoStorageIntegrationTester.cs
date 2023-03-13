@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using LightningQueues.Storage;
 using Xunit;
+using static LightningQueues.Builders.QueueBuilder;
 
 namespace LightningQueues.Tests.Storage;
 
@@ -13,8 +14,8 @@ public class NoStorageIntegrationTester : IDisposable
 
     public NoStorageIntegrationTester()
     {
-        _sender = ObjectMother.NewQueue(store:new NoStorage());
-        _receiver = ObjectMother.NewQueue(store:new NoStorage());
+        _sender = NewQueue(store:new NoStorage());
+        _receiver = NewQueue(store:new NoStorage());
     }
 
     [Fact]
@@ -23,7 +24,7 @@ public class NoStorageIntegrationTester : IDisposable
         var receiveTask = _receiver.Receive("test").FirstAsync();
 
         var destination = new Uri($"lq.tcp://localhost:{_receiver.Endpoint.Port}");
-        var message = ObjectMother.NewMessage<OutgoingMessage>("test");
+        var message = NewMessage<OutgoingMessage>("test");
         message.Destination = destination;
         _sender.Send(message);
         await receiveTask;

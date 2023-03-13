@@ -2,9 +2,11 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using LightningQueues.Builders;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
 using Xunit;
+using static LightningQueues.Builders.QueueBuilder;
 
 namespace LightningQueues.Tests;
 
@@ -17,7 +19,7 @@ public class QueueTests : IDisposable
     public QueueTests(SharedTestDirectory testDirectory)
     {
         _testDirectory = testDirectory;
-        _queue = ObjectMother.NewQueue(testDirectory.CreateNewDirectoryForTest());
+        _queue = NewQueue(testDirectory.CreateNewDirectoryForTest());
     }
 
     [Fact]
@@ -46,7 +48,7 @@ public class QueueTests : IDisposable
     [Fact]
     public async ValueTask enqueue_a_message()
     {
-        var expected = ObjectMother.NewMessage<Message>("test");
+        var expected = NewMessage<Message>("test");
         var receiveTask = _queue.Receive("test").FirstAsync();
         _queue.Enqueue(expected);
         var result = await receiveTask;
@@ -57,7 +59,7 @@ public class QueueTests : IDisposable
     public async ValueTask moving_queues()
     {
         _queue.CreateQueue("another");
-        var expected = ObjectMother.NewMessage<Message>("test");
+        var expected = NewMessage<Message>("test");
         var anotherTask = _queue.Receive("another").FirstAsync(); //.ToObservable().Subscribe(x => afterMove = x.Message))
         var testTask = _queue.Receive("test").FirstAsync(); //.ToObservable().Subscribe(x => first = x.Message))
         _queue.Enqueue(expected);
@@ -71,7 +73,7 @@ public class QueueTests : IDisposable
     [Fact]
     public async Task send_message_to_self()
     {
-        var message = ObjectMother.NewMessage<OutgoingMessage>("test");
+        var message = NewMessage<OutgoingMessage>("test");
         message.Destination = new Uri($"lq.tcp://localhost:{_queue.Endpoint.Port}");
         _queue.Send(message);
         var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(20));
@@ -84,8 +86,8 @@ public class QueueTests : IDisposable
     [Fact]
     public async Task sending_to_bad_endpoint_no_retries_integration_test()
     {
-        using var queue = ObjectMother.NewQueue(_testDirectory.CreateNewDirectoryForTest(), timeoutAfter: TimeSpan.FromSeconds(1));
-        var message = ObjectMother.NewMessage<OutgoingMessage>("test");
+        using var queue = NewQueue(_testDirectory.CreateNewDirectoryForTest(), timeoutAfter: TimeSpan.FromSeconds(1));
+        var message = NewMessage<OutgoingMessage>("test");
         message.MaxAttempts = 1;
         message.Destination = new Uri($"lq.tcp://boom:{queue.Endpoint.Port + 1}");
         queue.Send(message);

@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using LightningQueues.Builders;
 using Microsoft.Extensions.Logging;
 using LightningQueues.Net;
 using LightningQueues.Storage;
@@ -10,6 +11,7 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Shouldly;
 using Xunit;
+using static LightningQueues.Builders.QueueBuilder;
 
 namespace LightningQueues.Tests.Net;
 
@@ -31,7 +33,7 @@ public class SendingErrorPolicyTests : IDisposable
     [Fact]
     public void max_attempts_is_reached()
     {
-        var message = ObjectMother.NewMessage<OutgoingMessage>();
+        var message = NewMessage<OutgoingMessage>();
         message.MaxAttempts = 3;
         message.SentAttempts = 3;
         _errorPolicy.ShouldRetry(message).ShouldBeFalse();
@@ -40,7 +42,7 @@ public class SendingErrorPolicyTests : IDisposable
     [Fact]
     public void max_attempts_is_not_reached()
     {
-        var message = ObjectMother.NewMessage<OutgoingMessage>();
+        var message = NewMessage<OutgoingMessage>();
         message.MaxAttempts = 20;
         message.SentAttempts = 5;
         _errorPolicy.ShouldRetry(message).ShouldBeTrue();
@@ -49,7 +51,7 @@ public class SendingErrorPolicyTests : IDisposable
     [Fact]
     public void deliver_by_has_expired()
     {
-        var message = ObjectMother.NewMessage<OutgoingMessage>();
+        var message = NewMessage<OutgoingMessage>();
         message.DeliverBy = DateTime.Now.Subtract(TimeSpan.FromSeconds(1));
         message.SentAttempts = 5;
         _errorPolicy.ShouldRetry(message).ShouldBeFalse();
@@ -58,7 +60,7 @@ public class SendingErrorPolicyTests : IDisposable
     [Fact]
     public void deliver_by_has_not_expired()
     {
-        var message = ObjectMother.NewMessage<OutgoingMessage>();
+        var message = NewMessage<OutgoingMessage>();
         message.DeliverBy = DateTime.Now.Add(TimeSpan.FromSeconds(1));
         message.SentAttempts = 5;
         _errorPolicy.ShouldRetry(message).ShouldBeTrue();
@@ -67,7 +69,7 @@ public class SendingErrorPolicyTests : IDisposable
     [Fact]
     public void has_neither_deliver_by_nor_max_attempts()
     {
-        var message = ObjectMother.NewMessage<OutgoingMessage>();
+        var message = NewMessage<OutgoingMessage>();
         message.SentAttempts = 5;
         _errorPolicy.ShouldRetry(message).ShouldBeTrue();
     }
@@ -75,7 +77,7 @@ public class SendingErrorPolicyTests : IDisposable
     [Fact]
     public async ValueTask message_is_observed_after_time()
     {
-        var message = ObjectMother.NewMessage<OutgoingMessage>();
+        var message = NewMessage<OutgoingMessage>();
         message.Destination = new Uri("lq.tcp://localhost:5150/blah");
         message.MaxAttempts = 2;
         var tx = _store.BeginTransaction();
@@ -94,7 +96,7 @@ public class SendingErrorPolicyTests : IDisposable
     [Fact]
     public async ValueTask message_removed_from_storage_after_max()
     {
-        var message = ObjectMother.NewMessage<OutgoingMessage>();
+        var message = NewMessage<OutgoingMessage>();
         message.Destination = new Uri("lq.tcp://localhost:5150/blah");
         message.MaxAttempts = 1;
         var tx = _store.BeginTransaction();
@@ -115,7 +117,7 @@ public class SendingErrorPolicyTests : IDisposable
     public async ValueTask time_increases_with_each_failure()
     {
         Message observed = null;
-        var message = ObjectMother.NewMessage<OutgoingMessage>();
+        var message = NewMessage<OutgoingMessage>();
         message.Destination = new Uri("lq.tcp://localhost:5150/blah");
         message.MaxAttempts = 5;
         var tx = _store.BeginTransaction();
@@ -147,7 +149,7 @@ public class SendingErrorPolicyTests : IDisposable
     [Fact]
     public async ValueTask errors_in_storage_dont_end_stream()
     {
-        var message = ObjectMother.NewMessage<OutgoingMessage>();
+        var message = NewMessage<OutgoingMessage>();
         var store = Substitute.For<IMessageStore>();
         store.FailedToSend(Arg.Is(message)).Throws(new Exception("bam!"));
         var errorPolicy = new SendingErrorPolicy(new RecordingLogger(), store, _failureChannel);

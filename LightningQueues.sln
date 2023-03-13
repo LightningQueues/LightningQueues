@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LightningQueues.Storage.LMD
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LightningQueues.Benchmarks", "src\LightningQueues.Benchmarks\LightningQueues.Benchmarks.csproj", "{06303FFF-DECB-4233-BA34-557387F982E9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LightningQueues.Builders", "src\LightningQueues.Builders\LightningQueues.Builders.csproj", "{CC22E8D5-982B-4536-A7F9-B662E558BA3C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{06303FFF-DECB-4233-BA34-557387F982E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{06303FFF-DECB-4233-BA34-557387F982E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{06303FFF-DECB-4233-BA34-557387F982E9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CC22E8D5-982B-4536-A7F9-B662E558BA3C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CC22E8D5-982B-4536-A7F9-B662E558BA3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CC22E8D5-982B-4536-A7F9-B662E558BA3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CC22E8D5-982B-4536-A7F9-B662E558BA3C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

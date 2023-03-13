@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Shouldly;
 using Xunit;
+using static LightningQueues.Builders.QueueBuilder;
 
 namespace LightningQueues.Tests;
 
@@ -13,13 +14,13 @@ public class EncryptedTransportQueueTests : IDisposable
         
     public EncryptedTransportQueueTests(SharedTestDirectory testDirectory)
     {
-        _queue = ObjectMother.NewQueue(testDirectory.CreateNewDirectoryForTest(), secureTransport: true);
+        _queue = NewQueue(testDirectory.CreateNewDirectoryForTest(), secureTransport: true);
     }
 
     [Fact]
     public async Task can_send_and_receive_messages_over_TLS1_2()
     {
-        var message = ObjectMother.NewMessage<OutgoingMessage>("test");
+        var message = NewMessage<OutgoingMessage>("test");
         message.Destination = new Uri($"lq.tcp://localhost:{_queue.Endpoint.Port}");
         await Task.Delay(100);
         _queue.Send(message);

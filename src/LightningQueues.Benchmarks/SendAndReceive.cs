@@ -1,6 +1,7 @@
 using BenchmarkDotNet.Attributes;
-using LightningQueues.Tests;
+using LightningQueues.Builders;
 using Microsoft.Extensions.Logging;
+using static LightningQueues.Builders.QueueBuilder;
 
 namespace LightningQueues.Benchmarks;
 
@@ -25,8 +26,8 @@ public class SendAndReceive
         var senderPath = Path.Combine(Path.GetTempPath(), "sender", Guid.NewGuid().ToString());
         var receiverPath = Path.Combine(Path.GetTempPath(), "receiver", Guid.NewGuid().ToString());
         _messages = new OutgoingMessage[MessageCount];
-        _sender = ObjectMother.NewQueue(path: senderPath, queueName: "sender", new RecordingLogger(LogLevel.None));
-        _receiver = ObjectMother.NewQueue(path: receiverPath, queueName: "receiver", new RecordingLogger(LogLevel.None));
+        _sender = NewQueue(path: senderPath, queueName: "sender", new RecordingLogger(LogLevel.None));
+        _receiver = NewQueue(path: receiverPath, queueName: "receiver", new RecordingLogger(LogLevel.None));
         _receivingTask = Task.Factory.StartNew(async () =>
         {
             var count = 0;
@@ -40,7 +41,7 @@ public class SendAndReceive
         var random = new Random();
         for (var i = 0; i < MessageCount; ++i)
         {
-            var msg = ObjectMother.NewMessage<OutgoingMessage>("receiver");
+            var msg = NewMessage<OutgoingMessage>("receiver");
             msg.Destination = new Uri($"lq.tcp://{_receiver.Endpoint}");
             msg.Data = new byte[MessageDataSize];
             random.NextBytes(msg.Data);

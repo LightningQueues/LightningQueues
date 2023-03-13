@@ -105,7 +105,7 @@ public class LmdbMessageStore : IMessageStore
         messageId.MessageIdentifier.TryWriteBytes(id);
         using var tx = Environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
         var db = OpenDatabase(queueName);
-        var result = tx.Get(db, id);
+        var result = tx.Get(db, id).ThrowOnReadError();
         var messageBuffer = result.value.AsSpan();
         return messageBuffer.ToMessage<Message>();
     }
@@ -122,7 +122,7 @@ public class LmdbMessageStore : IMessageStore
         foreach (var databaseName in databases)
         {
             var db = OpenDatabase(databaseName);
-            tx.TruncateDatabase(db);
+            tx.TruncateDatabase(db).ThrowOnError();
         }
         tx.Commit().ThrowOnError();
     }
@@ -217,12 +217,12 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    private void RemoveMessageFromStorage<TMessage>(LightningTransaction tx, LightningDatabase db, TMessage message)
+    private static void RemoveMessageFromStorage<TMessage>(LightningTransaction tx, LightningDatabase db, TMessage message)
         where TMessage : Message
     {
         Span<byte> id = stackalloc byte[16];
         message.Id.MessageIdentifier.TryWriteBytes(id);
-        tx.Delete(db, id);
+        tx.Delete(db, id).ThrowOnError();
     }
 
     public void StoreOutgoing(ITransaction transaction, OutgoingMessage message)
@@ -236,7 +236,7 @@ public class LmdbMessageStore : IMessageStore
         Span<byte> id = stackalloc byte[16];
         message.Id.MessageIdentifier.TryWriteBytes(id);
         var db = OpenDatabase(OutgoingQueue);
-        tx.Put(db, id, message.AsReadOnlyMemory().Span);
+        tx.Put(db, id, message.AsReadOnlyMemory().Span).ThrowOnError();
     }
 
     private int FailedToSend(LightningTransaction tx, OutgoingMessage message)
@@ -263,7 +263,7 @@ public class LmdbMessageStore : IMessageStore
         }
         else
         {
-            tx.Put(db, id, message.AsReadOnlyMemory().Span);
+            tx.Put(db, id, message.AsReadOnlyMemory().Span).ThrowOnError();
         }
         return attempts;
     }

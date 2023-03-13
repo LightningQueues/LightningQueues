@@ -4,6 +4,7 @@ using System.IO;
 using System.Net;
 using System.Threading.Tasks;
 using DotNext.IO;
+using LightningQueues.Builders;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Security;
 using LightningQueues.Serialization;
@@ -11,6 +12,7 @@ using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
 using Xunit;
+using static LightningQueues.Builders.QueueBuilder;
 
 namespace LightningQueues.Tests.Net.Protocol.V1;
 
@@ -29,7 +31,7 @@ public class SendingProtocolTests : IDisposable
     [Fact]
     public async Task writing_single_message()
     {
-        var expected = ObjectMother.NewMessage<OutgoingMessage>();
+        var expected = NewMessage<OutgoingMessage>();
         expected.Destination = new Uri("lq.tcp://fake:1234");
         using var ms = new MemoryStream();
         //not exercising full protocol
