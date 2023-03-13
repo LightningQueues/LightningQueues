@@ -98,8 +98,8 @@ public class ReceivingProtocol : IReceivingProtocol
         await SendReceived(stream, cancellationToken);
         if (cancellationToken.IsCancellationRequested)
             yield break;
-        await ReadAcknowledged(pipe, cancellationToken);
-        await receivingTask;
+        var acknowledgeTask = ReadAcknowledged(pipe, cancellationToken);
+        await Task.WhenAny(acknowledgeTask.AsTask(), receivingTask.AsTask());
     }
 
     private static async ValueTask SendReceived(Stream stream, CancellationToken cancellationToken)
