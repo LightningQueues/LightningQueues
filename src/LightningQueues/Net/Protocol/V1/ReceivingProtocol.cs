@@ -30,12 +30,30 @@ public class ReceivingProtocol : IReceivingProtocol
         _logger = logger;
     }
 
-    public async IAsyncEnumerable<Message> ReceiveMessagesAsync(Stream stream, 
+    public async IAsyncEnumerable<Message> ReceiveMessagesAsync(Stream stream,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var doneCancellation = new CancellationTokenSource();
+        var linkedCancel = CancellationTokenSource.CreateLinkedTokenSource(doneCancellation.Token, cancellationToken);
+        try
+        {
+            await foreach (var message in ReceiveMessagesAsyncImpl(stream, linkedCancel.Token))
+            {
+                yield return message;
+            }
+        }
+        finally
+        {
+            doneCancellation.Cancel();
+        }
+    }
+
+    private async IAsyncEnumerable<Message> ReceiveMessagesAsyncImpl(Stream stream, 
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var pipe = new Pipe();
         stream = await _security.Apply(_receivingUri, stream);
-        pipe.Writer.ReceiveIntoBuffer(stream, false, cancellationToken);
+        var receivingTask = pipe.Writer.ReceiveIntoBuffer(stream, _logger, cancellationToken);
         if (cancellationToken.IsCancellationRequested)
             yield break;
         var length = await pipe.Reader.ReadInt32Async(true, cancellationToken);
@@ -81,6 +99,7 @@ public class ReceivingProtocol : IReceivingProtocol
         if (cancellationToken.IsCancellationRequested)
             yield break;
         await ReadAcknowledged(pipe, cancellationToken);
+        await receivingTask;
     }
 
     private static async ValueTask SendReceived(Stream stream, CancellationToken cancellationToken)
