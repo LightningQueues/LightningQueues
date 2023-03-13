@@ -119,26 +119,29 @@ public class ReceiverTests : IDisposable
     [Fact]
     public async Task receiving_a_valid_message()
     {
+        var taskSource = new TaskCompletionSource<Message>();
+        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var expected = NewMessage<OutgoingMessage>("test");
-        Message actual = null;
         expected.Data = "hello"u8.ToArray();
         expected.Destination = new Uri($"lq.tcp://localhost:{_endpoint.Port}");
         var tx = _sendingStore.BeginTransaction();
         _sendingStore.StoreOutgoing(tx, expected);
         tx.Commit();
         var messages = new[] { expected };
-        var receivingTask = Task.Factory.StartNew(async () =>
+        var _ = Task.Factory.StartNew(async () =>
         {
             var channel = Channel.CreateUnbounded<Message>();
-            _receiver.StartReceivingAsync(channel.Writer);
-            actual = await channel.Reader.ReadAsync();
-        });
-        await Task.Delay(100);
+            var _ = _receiver.StartReceivingAsync(channel.Writer, cancellation.Token);
+            var msg = await channel.Reader.ReadAsync(cancellation.Token);
+            taskSource.SetResult(msg);
+        }, cancellation.Token);
+        
+        await Task.Delay(100, cancellation.Token);
         using var client = new TcpClient();
-        await client.ConnectAsync(_endpoint.Address, _endpoint.Port);
-        await _sender.SendAsync(expected.Destination, client.GetStream(), messages, default);
+        await client.ConnectAsync(_endpoint.Address, _endpoint.Port, cancellation.Token);
+        await _sender.SendAsync(expected.Destination, client.GetStream(), messages, cancellation.Token);
 
-        await Task.Delay(100);
+        var actual = await taskSource.Task;
         actual.ShouldNotBeNull();
         actual.Id.ShouldBe(expected.Id);
         actual.Queue.ShouldBe(expected.Queue);
