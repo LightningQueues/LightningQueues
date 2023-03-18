@@ -25,23 +25,25 @@ public class QueueTests : IDisposable
     [Fact]
     public async ValueTask receive_at_a_later_time()
     {
+        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         _queue.ReceiveLater(new Message { Queue = "test", Id = MessageId.GenerateRandom() }, TimeSpan.FromSeconds(1));
-        var receiveTask = _queue.Receive("test").FirstAsync();
-        await Task.WhenAny(receiveTask.AsTask(), Task.Delay(100));
+        var receiveTask = _queue.Receive("test", cancellation.Token).FirstAsync(cancellation.Token);
+        await Task.Delay(100, cancellation.Token);
         receiveTask.IsCompleted.ShouldBeFalse();
-        await Task.WhenAny(receiveTask.AsTask(), Task.Delay(1000));
+        await Task.WhenAny(receiveTask.AsTask(), Task.Delay(1000, cancellation.Token));
         receiveTask.IsCompleted.ShouldBeTrue();
     }
 
     [Fact]
     public async ValueTask receive_at_a_specified_time()
     {
+        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var time = DateTimeOffset.Now.AddSeconds(1);
         _queue.ReceiveLater(new Message { Queue = "test", Id = MessageId.GenerateRandom() }, time);
-        var receiveTask = _queue.Receive("test").FirstAsync();
-        await Task.WhenAny(receiveTask.AsTask(), Task.Delay(100));
+        var receiveTask = _queue.Receive("test", cancellation.Token).FirstAsync(cancellation.Token);
+        await Task.Delay(100, cancellation.Token);
         receiveTask.IsCompleted.ShouldBeFalse();
-        await Task.WhenAny(receiveTask.AsTask(), Task.Delay(900));
+        await Task.WhenAny(receiveTask.AsTask(), Task.Delay(900, cancellation.Token));
         receiveTask.IsCompleted.ShouldBeTrue();
     }
 
@@ -73,11 +75,11 @@ public class QueueTests : IDisposable
     [Fact]
     public async Task send_message_to_self()
     {
+        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var message = NewMessage<OutgoingMessage>("test");
         message.Destination = new Uri($"lq.tcp://localhost:{_queue.Endpoint.Port}");
         _queue.Send(message);
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        var received = await _queue.Receive("test").FirstAsync(cancellation.Token);
+        var received = await _queue.Receive("test", cancellation.Token).FirstAsync(cancellation.Token);
         received.ShouldNotBeNull();
         received.Message.Queue.ShouldBe(message.Queue);
         received.Message.Data.ShouldBe(message.Data);

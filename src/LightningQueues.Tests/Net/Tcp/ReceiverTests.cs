@@ -44,7 +44,7 @@ public class ReceiverTests : IDisposable
     [Fact]
     public async ValueTask stops_listening_on_task_cancellation()
     {
-        var cancellationTokenSource = new CancellationTokenSource();
+        var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var receivingTask = Task.Factory.StartNew(async () =>
         {
             var channel = Channel.CreateUnbounded<Message>();
@@ -55,6 +55,7 @@ public class ReceiverTests : IDisposable
         Assert.Throws<SocketException>(() => listener.Start());
         cancellationTokenSource.Cancel();
         await Task.Delay(100, default);
+        receivingTask.IsCanceled.ShouldBe(true);
         listener.Start();
         listener.Stop();
     }
@@ -96,7 +97,7 @@ public class ReceiverTests : IDisposable
     [Fact]
     public async Task accepts_concurrently_connected_clients()
     {
-        var cancellationTokenSource = new CancellationTokenSource();
+        var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var receivingTask = Task.Factory.StartNew(async () =>
         {
             var channel = Channel.CreateUnbounded<Message>();
@@ -109,9 +110,9 @@ public class ReceiverTests : IDisposable
         await client1.ConnectAsync(_endpoint.Address, _endpoint.Port, default);
         await client2.ConnectAsync(_endpoint.Address, _endpoint.Port, default);
         await client2.GetStream()
-            .WriteAsync(new byte[] { 1, 4, 6 }.AsMemory(0, 3));
+            .WriteAsync(new byte[] { 1, 4, 6 }.AsMemory(0, 3), cancellationTokenSource.Token);
         await client1.GetStream()
-            .WriteAsync((new byte[] { 1, 4, 6 }).AsMemory(0, 3));
+            .WriteAsync(new byte[] { 1, 4, 6 }.AsMemory(0, 3), cancellationTokenSource.Token);
         cancellationTokenSource.Cancel();
         await receivingTask;
     }
@@ -128,12 +129,15 @@ public class ReceiverTests : IDisposable
         _sendingStore.StoreOutgoing(tx, expected);
         tx.Commit();
         var messages = new[] { expected };
-        var _ = Task.Factory.StartNew(async () =>
+        var receivingTask = Task.Factory.StartNew(async () =>
         {
+            var innerCancel = CancellationTokenSource.CreateLinkedTokenSource(cancellation.Token);
             var channel = Channel.CreateUnbounded<Message>();
-            var _ = _receiver.StartReceivingAsync(channel.Writer, cancellation.Token);
+            var receiving = _receiver.StartReceivingAsync(channel.Writer, innerCancel.Token);
             var msg = await channel.Reader.ReadAsync(cancellation.Token);
             taskSource.SetResult(msg);
+            innerCancel.Cancel();
+            await receiving;
         }, cancellation.Token);
         
         await Task.Delay(100, cancellation.Token);
@@ -142,6 +146,7 @@ public class ReceiverTests : IDisposable
         await _sender.SendAsync(expected.Destination, client.GetStream(), messages, cancellation.Token);
 
         var actual = await taskSource.Task;
+        await receivingTask;
         actual.ShouldNotBeNull();
         actual.Id.ShouldBe(expected.Id);
         actual.Queue.ShouldBe(expected.Queue);

@@ -129,9 +129,9 @@ public class SendingErrorPolicyTests : IDisposable
         };
         var retryTask = Task.Factory.StartNew(async () =>
         {
-            await foreach (var message in _errorPolicy.Retries.ReadAllAsync())
+            await foreach (var msg in _errorPolicy.Retries.ReadAllAsync())
             {
-                observed = message;
+                observed = msg;
             }
         });
         _failureChannel.Writer.TryWrite(failure);
@@ -142,7 +142,7 @@ public class SendingErrorPolicyTests : IDisposable
         observed.ShouldBeNull("second");
         await Task.Delay(TimeSpan.FromSeconds(1));
         observed.ShouldBeNull("third");
-        await Task.Delay(TimeSpan.FromSeconds(3));
+        await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(3)), retryTask);
         observed.ShouldNotBeNull("fourth");
     }
 

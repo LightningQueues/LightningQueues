@@ -145,9 +145,10 @@ public class ReceivingProtocolTests : IDisposable
         var msgs = _protocol.ReceiveMessagesAsync(ms, cancelSource.Token);
         await Task.Delay(50, default);
         ms.Write(BitConverter.GetBytes(5));
-        await foreach (var _ in msgs.WithCancellation(default))
+        await foreach (var _ in msgs.WithCancellation(cancelSource.Token))
         {
         }
+        cancelSource.IsCancellationRequested.ShouldBe(true);
         _logger.DebugMessages.ShouldBeEmpty();
     }
 

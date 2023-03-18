@@ -10,8 +10,6 @@ public class NoStorage : IMessageStore
 
     private class NoStorageTransaction : ITransaction
     {
-        public Guid TransactionId => Guid.Empty;
-
         public void Commit()
         {
         }
