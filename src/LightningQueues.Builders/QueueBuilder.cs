@@ -1,7 +1,5 @@
 ﻿using LightningQueues.Storage.LMDB;
 using System.Net;
-using System.Net.Security;
-using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -34,9 +32,9 @@ public static class QueueBuilder
         logger ??= new RecordingLogger();
         store ??= new LmdbMessageStore(path);
         var queueConfiguration = new QueueConfiguration();
-        queueConfiguration.LogWith(logger);
-        queueConfiguration.AutomaticEndpoint();
-        queueConfiguration.StoreMessagesWith(store);
+        queueConfiguration.LogWith(logger)
+            .AutomaticEndpoint()
+            .StoreMessagesWith(store);
         if (timeoutAfter.HasValue)
         {
             queueConfiguration.TimeoutNetworkBatchAfter(timeoutAfter.Value);
@@ -44,24 +42,8 @@ public static class QueueBuilder
         if (secureTransport)
         {
             var certificate = CreateCertificate();
-            queueConfiguration.SecureTransportWith(async (_, receiving) =>
-            {
-                var sslStream = new SslStream(receiving, false);
-                await sslStream.AuthenticateAsServerAsync(certificate, false,
-                    checkCertificateRevocation: false, enabledSslProtocols: SslProtocols.Tls12);
-                return sslStream;
-            }, async (uri, sending) =>
-            {
-                bool ValidateServerCertificate(object sender, X509Certificate cert, X509Chain chain,
-                    SslPolicyErrors sslPolicyErrors)
-                {
-                    return true; //we only care that the transport is encrypted
-                }
-
-                var sslStream = new SslStream(sending, true, ValidateServerCertificate, null);
-                await sslStream.AuthenticateAsClientAsync(uri.Host);
-                return sslStream;
-            });
+            queueConfiguration.SecureTransportWith(new ClientTLSSecurity(certificate), 
+                new ServerTLSSecurity(certificate));
         }
         var queue = queueConfiguration.BuildQueue();
         queue.CreateQueue(queueName);

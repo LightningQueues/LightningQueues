@@ -85,10 +85,10 @@ public class QueueConfiguration
         return this;
     }
 
-    public QueueConfiguration SecureTransportWith(Func<Uri, Stream, Task<Stream>> receivingSecurity, Func<Uri, Stream, Task<Stream>> sendingSecurity)
+    public QueueConfiguration SecureTransportWith(IStreamSecurity sending, IStreamSecurity receiving)
     {
-        _receivingSecurity = new TlsStreamSecurity(sendingSecurity);
-        _sendingSecurity = new TlsStreamSecurity(receivingSecurity);
+        _receivingSecurity = receiving;
+        _sendingSecurity = sending;
         return this;
     }
 
