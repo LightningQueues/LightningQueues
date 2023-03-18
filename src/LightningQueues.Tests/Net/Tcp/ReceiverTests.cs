@@ -64,34 +64,38 @@ public class ReceiverTests : IDisposable
     [Fact]
     public async Task can_handle_connect_then_disconnect()
     {
+        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var receivingTask = Task.Factory.StartNew(async () =>
         {
             var channel = Channel.CreateUnbounded<Message>();
-            await _receiver.StartReceivingAsync(channel.Writer);
-        });
-        await Task.Delay(100);
+            await _receiver.StartReceivingAsync(channel.Writer, cancellation.Token);
+        }, cancellation.Token);
+        await Task.Delay(100, cancellation.Token);
         using (var client = new TcpClient())
         {
-            await client.ConnectAsync(_endpoint.Address, _endpoint.Port);
+            await client.ConnectAsync(_endpoint.Address, _endpoint.Port, cancellation.Token);
         }
         receivingTask.IsFaulted.ShouldBeFalse();
+        cancellation.Cancel();
     }
 
     [Fact]
     public async Task can_handle_sending_three_bytes_then_disconnect()
     {
+        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var receivingTask = Task.Factory.StartNew(async () =>
         {
             var channel = Channel.CreateUnbounded<Message>();
-            await _receiver.StartReceivingAsync(channel.Writer);
-        });
-        await Task.Delay(100);
+            await _receiver.StartReceivingAsync(channel.Writer, cancellation.Token);
+        }, cancellation.Token);
+        await Task.Delay(100, cancellation.Token);
         using (var client = new TcpClient())
         {
-            await client.ConnectAsync(_endpoint.Address, _endpoint.Port);
-            client.GetStream().Write(new byte[] { 1, 4, 6 }, 0, 3);
+            await client.ConnectAsync(_endpoint.Address, _endpoint.Port, cancellation.Token);
+            await client.GetStream().WriteAsync((new byte[] { 1, 4, 6 }).AsMemory(0, 3), cancellation.Token);
         }
         receivingTask.IsFaulted.ShouldBeFalse();
+        cancellation.Cancel();
     }
 
     [Fact]
@@ -151,6 +155,7 @@ public class ReceiverTests : IDisposable
         actual.Id.ShouldBe(expected.Id);
         actual.Queue.ShouldBe(expected.Queue);
         Encoding.UTF8.GetString(actual.Data).ShouldBe("hello");
+        cancellation.Cancel();
     }
 
     public void Dispose()

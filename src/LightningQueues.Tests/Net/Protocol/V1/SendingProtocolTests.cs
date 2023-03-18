@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.IO;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using DotNext.IO;
 using LightningQueues.Builders;
@@ -31,19 +32,21 @@ public class SendingProtocolTests : IDisposable
     [Fact]
     public async Task writing_single_message()
     {
+        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var expected = NewMessage<OutgoingMessage>();
         expected.Destination = new Uri("lq.tcp://fake:1234");
         using var ms = new MemoryStream();
         //not exercising full protocol
         await Assert.ThrowsAsync<ProtocolViolationException>(async () =>
             await _sender.SendAsync(new Uri("lq.tcp://localhost:5050"),
-                ms, new[] { expected }, default));
+                ms, new[] { expected }, cancellation.Token));
         var bytes = new ReadOnlySequence<byte>(ms.ToArray());
         var reader = new SequenceReader(bytes);
         reader.ReadInt32(true); //ignore payload length
         reader.ReadInt32(true); //ignore message count
         var msg = reader.ReadOutgoingMessage();
         msg.Id.ShouldBe(expected.Id);
+        cancellation.Cancel();
     }
 
     public void Dispose()
