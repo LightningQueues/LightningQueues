@@ -146,17 +146,26 @@ public class Queue : IDisposable
 
     public async void Send(params OutgoingMessage[] messages)
     {
-        if(_logger.IsEnabled(LogLevel.Error))
+        if (_logger.IsEnabled(LogLevel.Error))
             _logger.LogDebug("Sending {MessageCount} messages", messages.Length);
-        var tx = Store.BeginTransaction();
-        foreach (var message in messages)
+        try
         {
-            Store.StoreOutgoing(tx, message);
+            var tx = Store.BeginTransaction();
+            foreach (var message in messages)
+            {
+                Store.StoreOutgoing(tx, message);
+            }
+
+            tx.Commit();
+            foreach (var message in messages)
+            {
+                await _sendChannel.Writer.WriteAsync(message, _cancelOnDispose.Token);
+            }
         }
-        tx.Commit();
-        foreach (var message in messages)
+        catch (Exception ex)
         {
-            await _sendChannel.Writer.WriteAsync(message, _cancelOnDispose.Token);
+            if(_logger.IsEnabled(LogLevel.Error))
+                _logger.LogError(ex, "Error sending queue outgoing messages");
         }
     }
 
