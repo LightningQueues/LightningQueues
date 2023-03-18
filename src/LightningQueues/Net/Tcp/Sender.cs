@@ -44,7 +44,7 @@ public class Sender : IDisposable
                 try
                 {
                     var client = new TcpClient();
-                    if (Dns.GetHostName() == uri.Host)
+                    if (uri.IsLoopback || Dns.GetHostName() == uri.Host)
                     {
                         await client.ConnectAsync(IPAddress.Loopback, uri.Port, linked.Token);
                     }
