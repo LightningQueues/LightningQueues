@@ -15,19 +15,17 @@ using LightningQueues.Storage;
 
 namespace LightningQueues.Net.Protocol.V1;
 
-public class ReceivingProtocol : IReceivingProtocol
+public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
 {
     private readonly IMessageStore _store;
     private readonly IStreamSecurity _security;
     private readonly Uri _receivingUri;
-    private readonly ILogger _logger;
 
-    public ReceivingProtocol(IMessageStore store, IStreamSecurity security, Uri receivingUri, ILogger logger)
+    public ReceivingProtocol(IMessageStore store, IStreamSecurity security, Uri receivingUri, ILogger logger) : base(logger)
     {
         _store = store;
         _security = security;
         _receivingUri = receivingUri;
-        _logger = logger;
     }
 
     public async IAsyncEnumerable<Message> ReceiveMessagesAsync(Stream stream,
@@ -53,7 +51,7 @@ public class ReceivingProtocol : IReceivingProtocol
     {
         var pipe = new Pipe();
         stream = await _security.Apply(_receivingUri, stream);
-        var receivingTask = pipe.Writer.ReceiveIntoBuffer(stream, _logger, cancellationToken);
+        var receivingTask = ReceiveIntoBuffer(pipe.Writer, stream, cancellationToken);
         if (cancellationToken.IsCancellationRequested)
             yield break;
         var length = await pipe.Reader.ReadInt32Async(true, cancellationToken);
@@ -122,7 +120,7 @@ public class ReceivingProtocol : IReceivingProtocol
         var ackLength = Constants.AcknowledgedBuffer.Length;
         var result = await pipe.Reader.ReadAtLeastAsync(ackLength, cancellationToken);
         var sequence = result.Buffer;
-        if (!sequence.SequenceEqual(Constants.AcknowledgedBuffer))
+        if (!SequenceEqual(ref sequence, Constants.AcknowledgedBuffer))
         {
             throw new ProtocolViolationException("Didn't receive expected acknowledgement");
         }

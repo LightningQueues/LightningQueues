@@ -8,10 +8,15 @@ using Microsoft.Extensions.Logging;
 
 namespace LightningQueues.Net.Protocol;
 
-internal static class ProtocolExtensions
+public abstract class ProtocolBase
 {
-    internal static async ValueTask ReceiveIntoBuffer(this PipeWriter writer, Stream stream, ILogger logger,
-        CancellationToken cancellationToken)
+    protected readonly ILogger _logger;
+
+    protected ProtocolBase(ILogger logger)
+    {
+        _logger = logger;
+    }
+    protected async ValueTask ReceiveIntoBuffer(PipeWriter writer, Stream stream, CancellationToken cancellationToken)
     {
         const int minimumBufferSize = 512;
 
@@ -40,13 +45,13 @@ internal static class ProtocolExtensions
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error reading from stream");
+            _logger.LogError(ex, "Error reading from stream");
             if (!cancellationToken.IsCancellationRequested)
                 throw;
         }
     }
 
-    internal static bool SequenceEqual(this ref ReadOnlySequence<byte> sequence, byte[] target)
+    protected static bool SequenceEqual(ref ReadOnlySequence<byte> sequence, byte[] target)
     {
         var targetSpan = target.AsSpan();
         Span<byte> sequenceSpan = stackalloc byte[targetSpan.Length];

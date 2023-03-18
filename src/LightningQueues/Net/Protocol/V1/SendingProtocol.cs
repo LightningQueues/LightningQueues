@@ -15,17 +15,15 @@ using Microsoft.Extensions.Logging;
 
 namespace LightningQueues.Net.Protocol.V1;
 
-public class SendingProtocol : ISendingProtocol
+public class SendingProtocol : ProtocolBase, ISendingProtocol
 {
     private readonly IMessageStore _store;
     private readonly IStreamSecurity _security;
-    private readonly ILogger _logger;
 
-    public SendingProtocol(IMessageStore store, IStreamSecurity security, ILogger logger)
+    public SendingProtocol(IMessageStore store, IStreamSecurity security, ILogger logger) : base(logger)
     {
         _store = store;
         _security = security;
-        _logger = logger;
     }
 
     public async ValueTask SendAsync(Uri destination, Stream stream,
@@ -55,7 +53,7 @@ public class SendingProtocol : ISendingProtocol
         await stream.WriteAsync(writer.WrittenMemory, token);
         _logger.SenderSuccessfullyWroteMessageBatch();
         var pipe = new Pipe();
-        var receiveTask = pipe.Writer.ReceiveIntoBuffer(stream, _logger, token);
+        var receiveTask = ReceiveIntoBuffer(pipe.Writer, stream, token);
         await ReadReceived(pipe.Reader, token);
         _logger.SenderSuccessfullyReadReceived();
         var acknowledgeTask = WriteAcknowledgement(stream, token);
@@ -69,15 +67,15 @@ public class SendingProtocol : ISendingProtocol
     {
         var result = await reader.ReadAtLeastAsync(Constants.ReceivedBuffer.Length, token).ConfigureAwait(false);
         var buffer = result.Buffer;
-        if (buffer.SequenceEqual(Constants.ReceivedBuffer))
+        if (SequenceEqual(ref buffer, Constants.ReceivedBuffer))
         {
             return;
         }
-        if (buffer.SequenceEqual(Constants.SerializationFailureBuffer))
+        if (SequenceEqual(ref buffer, Constants.SerializationFailureBuffer))
         {
             throw new SerializationException("The destination returned serialization error");
         }
-        if (buffer.SequenceEqual(Constants.QueueDoesNotExistBuffer))
+        if (SequenceEqual(ref buffer, Constants.QueueDoesNotExistBuffer))
         {
             throw new QueueDoesNotExistException("Destination queue does not exist.");
         }
