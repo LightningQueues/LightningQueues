@@ -32,6 +32,7 @@ public class QueueTests : IDisposable
         receiveTask.IsCompleted.ShouldBeFalse();
         await Task.WhenAny(receiveTask.AsTask(), Task.Delay(1000, cancellation.Token));
         receiveTask.IsCompleted.ShouldBeTrue();
+        cancellation.Cancel();
     }
 
     [Fact]
@@ -45,31 +46,36 @@ public class QueueTests : IDisposable
         receiveTask.IsCompleted.ShouldBeFalse();
         await Task.WhenAny(receiveTask.AsTask(), Task.Delay(900, cancellation.Token));
         receiveTask.IsCompleted.ShouldBeTrue();
+        cancellation.Cancel();
     }
 
     [Fact]
     public async ValueTask enqueue_a_message()
     {
+        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var expected = NewMessage<Message>("test");
-        var receiveTask = _queue.Receive("test").FirstAsync();
+        var receiveTask = _queue.Receive("test", cancellation.Token).FirstAsync(cancellation.Token);
         _queue.Enqueue(expected);
         var result = await receiveTask;
         expected.ShouldBeSameAs(result.Message);
+        cancellation.Cancel();
     }
 
     [Fact]
     public async ValueTask moving_queues()
     {
+        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         _queue.CreateQueue("another");
         var expected = NewMessage<Message>("test");
-        var anotherTask = _queue.Receive("another").FirstAsync(); //.ToObservable().Subscribe(x => afterMove = x.Message))
-        var testTask = _queue.Receive("test").FirstAsync(); //.ToObservable().Subscribe(x => first = x.Message))
+        var anotherTask = _queue.Receive("another", cancellation.Token).FirstAsync(cancellation.Token);
+        var testTask = _queue.Receive("test", cancellation.Token).FirstAsync(cancellation.Token);
         _queue.Enqueue(expected);
         var first = await testTask;
         _queue.MoveToQueue("another", first.Message);
 
         var afterMove = await anotherTask;
         afterMove.Message.Queue.ShouldBe("another");
+        cancellation.Cancel();
     }
 
     [Fact]
@@ -83,6 +89,7 @@ public class QueueTests : IDisposable
         received.ShouldNotBeNull();
         received.Message.Queue.ShouldBe(message.Queue);
         received.Message.Data.ShouldBe(message.Data);
+        cancellation.Cancel();
     }
 
     [Fact]
@@ -102,6 +109,7 @@ public class QueueTests : IDisposable
     public void can_start_two_instances_for_IIS_stop_and_start()
     {
         //This shows that the port doesn't have an exclusive lock, and that lmdb itself can have multiple instances
+        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var path = _testDirectory.CreateNewDirectoryForTest();
         var store = new LmdbMessageStore(path);
         var queueConfiguration = new QueueConfiguration();
@@ -114,10 +122,11 @@ public class QueueTests : IDisposable
         queue.Start();
         queue2.CreateQueue("test");
         queue2.Start();
-        var msgs = queue.Receive("test");
-        var msgs2 = queue2.Receive("test");
+        var msgs = queue.Receive("test", cancellation.Token);
+        var msgs2 = queue2.Receive("test", cancellation.Token);
         msgs.ShouldNotBeNull();
         msgs2.ShouldNotBeNull();
+        cancellation.Cancel();
     }
 
     public void Dispose()

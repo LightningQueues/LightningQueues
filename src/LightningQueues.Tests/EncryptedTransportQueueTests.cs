@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Shouldly;
 using Xunit;
@@ -20,14 +21,17 @@ public class EncryptedTransportQueueTests : IDisposable
     [Fact]
     public async Task can_send_and_receive_messages_over_TLS1_2()
     {
+        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var message = NewMessage<OutgoingMessage>("test");
         message.Destination = new Uri($"lq.tcp://localhost:{_queue.Endpoint.Port}");
-        await Task.Delay(100);
+        await Task.Delay(100, cancellation.Token);
         _queue.Send(message);
-        var received = await _queue.Receive("test").FirstAsync();
+        var received = await _queue.Receive("test", cancellation.Token)
+            .FirstAsync(cancellation.Token);
         received.ShouldNotBeNull();
         received.Message.Queue.ShouldBe(message.Queue);
         received.Message.Data.ShouldBe(message.Data);
+        cancellation.Cancel();
     }
 
     public void Dispose()
