@@ -50,15 +50,16 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var pipe = new Pipe();
-        stream = await _security.Apply(_receivingUri, stream);
+        stream = await _security.Apply(_receivingUri, stream).ConfigureAwait(false);
         var receivingTask = ReceiveIntoBuffer(pipe.Writer, stream, cancellationToken);
+        receivingTask.ConfigureAwait(false);
         if (cancellationToken.IsCancellationRequested)
             yield break;
-        var length = await pipe.Reader.ReadInt32Async(true, cancellationToken);
+        var length = await pipe.Reader.ReadInt32Async(true, cancellationToken).ConfigureAwait(false);
         if (length <= 0 || cancellationToken.IsCancellationRequested)
             yield break;
         _logger.ReceiverReceivedLength(length);
-        var result = await pipe.Reader.ReadAtLeastAsync(length, cancellationToken);
+        var result = await pipe.Reader.ReadAtLeastAsync(length, cancellationToken).ConfigureAwait(false);
         if (cancellationToken.IsCancellationRequested)
             yield break;
         var reader = new SequenceReader(result.Buffer);
@@ -75,7 +76,7 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
                 continue;
             try
             {
-                _store.StoreIncomingMessages(msg);
+                _store.StoreIncomingMessage(msg);
             }
             catch (QueueDoesNotExistException)
             {
@@ -102,23 +103,26 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
 
     private static async ValueTask SendReceived(Stream stream, CancellationToken cancellationToken)
     {
-        await stream.WriteAsync(Constants.ReceivedBuffer.AsMemory(), cancellationToken);
+        await stream.WriteAsync(Constants.ReceivedBuffer.AsMemory(), cancellationToken)
+            .ConfigureAwait(false);
     }
     
     private static async ValueTask SendQueueNotFound(Stream stream, CancellationToken cancellationToken)
     {
-        await stream.WriteAsync(Constants.QueueDoesNotExistBuffer.AsMemory(), cancellationToken);
+        await stream.WriteAsync(Constants.QueueDoesNotExistBuffer.AsMemory(), cancellationToken)
+            .ConfigureAwait(false);
     }
     
     private static async ValueTask SendProcessingError(Stream stream, CancellationToken cancellationToken)
     {
-        await stream.WriteAsync(Constants.ProcessingFailureBuffer.AsMemory(), cancellationToken);
+        await stream.WriteAsync(Constants.ProcessingFailureBuffer.AsMemory(), cancellationToken)
+            .ConfigureAwait(false);
     }
     
     private static async ValueTask ReadAcknowledged(Pipe pipe, CancellationToken cancellationToken)
     {
         var ackLength = Constants.AcknowledgedBuffer.Length;
-        var result = await pipe.Reader.ReadAtLeastAsync(ackLength, cancellationToken);
+        var result = await pipe.Reader.ReadAtLeastAsync(ackLength, cancellationToken).ConfigureAwait(false);
         var sequence = result.Buffer;
         if (!SequenceEqual(ref sequence, Constants.AcknowledgedBuffer))
         {

@@ -25,7 +25,7 @@ public abstract class ProtocolBase
             while (!cancellationToken.IsCancellationRequested)
             {
                 var memory = writer.GetMemory(minimumBufferSize);
-                var bytesRead = await stream.ReadAsync(memory, cancellationToken);
+                var bytesRead = await stream.ReadAsync(memory, cancellationToken).ConfigureAwait(false);
                 if (bytesRead == 0)
                 {
                     break;
@@ -41,7 +41,7 @@ public abstract class ProtocolBase
                 }
             }
 
-            await writer.CompleteAsync();
+            await writer.CompleteAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {

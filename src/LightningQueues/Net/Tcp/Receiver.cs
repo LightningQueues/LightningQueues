@@ -33,24 +33,33 @@ public class Receiver : IDisposable
         StartListener();
         while (!cancellationToken.IsCancellationRequested && !_disposed)
         {
-            var socket = await _listener.AcceptSocketAsync(cancellationToken);
-            await using var stream = new NetworkStream(socket, false);
-            var messages = _protocol.ReceiveMessagesAsync(stream, cancellationToken);
-            var messageEnumerator = messages.GetAsyncEnumerator(cancellationToken);
-            var hasResult = true;
-            while (hasResult)
+            try
             {
-                try
+                var socket = await _listener.AcceptSocketAsync(cancellationToken).ConfigureAwait(false);
+                await using var stream = new NetworkStream(socket, false);
+                var messages = _protocol.ReceiveMessagesAsync(stream, cancellationToken);
+                messages.ConfigureAwait(false);
+                var messageEnumerator = messages.GetAsyncEnumerator(cancellationToken);
+                var hasResult = true;
+                while (hasResult)
                 {
-                    hasResult = await messageEnumerator.MoveNextAsync();
-                    var msg = hasResult ? messageEnumerator.Current : null;
-                    if (msg != null)
-                        await receivedChannel.WriteAsync(msg, cancellationToken);
+                    try
+                    {
+                        hasResult = await messageEnumerator.MoveNextAsync().ConfigureAwait(false);
+                        var msg = hasResult ? messageEnumerator.Current : null;
+                        if (msg != null)
+                            await receivedChannel.WriteAsync(msg, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.ReceiverErrorReadingMessages(socket.RemoteEndPoint, ex);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    _logger.ReceiverErrorReadingMessages(socket.RemoteEndPoint, ex);
-                }
+            }
+            catch (Exception ex)
+            {
+                if(_logger.IsEnabled(LogLevel.Error))
+                    _logger.LogError(ex, "Error accepting socket");
             }
         }
     }

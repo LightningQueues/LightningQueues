@@ -33,7 +33,7 @@ public class SendingProtocol : ProtocolBase, ISendingProtocol
         var linkedCancel = CancellationTokenSource.CreateLinkedTokenSource(doneCancellation.Token, token);
         try
         {
-            await SendAsyncImpl(destination, stream, batch, linkedCancel.Token);
+            await SendAsyncImpl(destination, stream, batch, linkedCancel.Token).ConfigureAwait(false);
         }
         finally
         {
@@ -44,19 +44,21 @@ public class SendingProtocol : ProtocolBase, ISendingProtocol
     private async ValueTask SendAsyncImpl(Uri destination, Stream stream,
         IEnumerable<OutgoingMessage> batch, CancellationToken token)
     {
-        stream = await _security.Apply(destination, stream);
+        stream = await _security.Apply(destination, stream).ConfigureAwait(false);
         using var writer = new PooledBufferWriter<byte>();
         var messages = batch.ToList();
         writer.WriteOutgoingMessages(messages);
-        await stream.WriteAsync(BitConverter.GetBytes(writer.WrittenMemory.Length), token);
+        await stream.WriteAsync(BitConverter.GetBytes(writer.WrittenMemory.Length), token).ConfigureAwait(false);
         _logger.SenderWritingMessageBatch();
-        await stream.WriteAsync(writer.WrittenMemory, token);
+        await stream.WriteAsync(writer.WrittenMemory, token).ConfigureAwait(false);
         _logger.SenderSuccessfullyWroteMessageBatch();
         var pipe = new Pipe();
         var receiveTask = ReceiveIntoBuffer(pipe.Writer, stream, token);
-        await ReadReceived(pipe.Reader, token);
+        receiveTask.ConfigureAwait(false);
+        await ReadReceived(pipe.Reader, token).ConfigureAwait(false);
         _logger.SenderSuccessfullyReadReceived();
         var acknowledgeTask = WriteAcknowledgement(stream, token);
+        acknowledgeTask.ConfigureAwait(false);
         await Task.WhenAny(acknowledgeTask.AsTask(), receiveTask.AsTask());
         _logger.SenderSuccessfullyWroteAcknowledgement();
         _store.SuccessfullySent(messages);

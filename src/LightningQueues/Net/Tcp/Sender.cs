@@ -31,45 +31,59 @@ public class Sender : IDisposable
 
     public async ValueTask StartSendingAsync(ChannelReader<OutgoingMessage> outgoing, CancellationToken cancellationToken)
     {
-        var allOutgoing = outgoing.ReadAllAsync(cancellationToken);
-        await foreach (var sendTo in allOutgoing.Buffer(TimeSpan.FromMilliseconds(200), 50, cancellationToken))
+        while (!cancellationToken.IsCancellationRequested)
         {
-            var source = new CancellationTokenSource(_sendTimeout);
-            var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
-            var messagesGrouping = sendTo.GroupBy(x => x.Destination);
-            foreach (var messageGroup in messagesGrouping)
+            try
             {
-                var uri = messageGroup.Key;
-                var messages = messageGroup.ToList();
-                try
+                var allOutgoing = outgoing.ReadAllAsync(cancellationToken);
+                allOutgoing.ConfigureAwait(false);
+                await foreach (var sendTo in allOutgoing.Buffer(TimeSpan.FromMilliseconds(200), 50, cancellationToken))
                 {
-                    var client = new TcpClient();
-                    if (uri.IsLoopback || Dns.GetHostName() == uri.Host)
+                    var source = new CancellationTokenSource(_sendTimeout);
+                    var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
+                    var messagesGrouping = sendTo.GroupBy(x => x.Destination);
+                    foreach (var messageGroup in messagesGrouping)
                     {
-                        await client.ConnectAsync(IPAddress.Loopback, uri.Port, linked.Token);
-                    }
-                    else
-                    {
-                        await client.ConnectAsync(uri.Host, uri.Port, linked.Token);
-                    }
+                        var uri = messageGroup.Key;
+                        var messages = messageGroup.ToList();
+                        try
+                        {
+                            var client = new TcpClient();
+                            if (uri.IsLoopback || Dns.GetHostName() == uri.Host)
+                            {
+                                await client.ConnectAsync(IPAddress.Loopback, uri.Port, linked.Token)
+                                    .ConfigureAwait(false);
+                            }
+                            else
+                            {
+                                await client.ConnectAsync(uri.Host, uri.Port, linked.Token).ConfigureAwait(false);
+                            }
 
-                    await _protocol.SendAsync(uri, client.GetStream(), messages, linked.Token);
+                            await _protocol.SendAsync(uri, client.GetStream(), messages, linked.Token)
+                                .ConfigureAwait(false);
+                        }
+                        catch (QueueDoesNotExistException ex)
+                        {
+                            if (_logger.IsEnabled(LogLevel.Error))
+                                _logger.LogError(ex, "Queue does not exist at {Uri}", uri);
+                        }
+                        catch (Exception ex)
+                        {
+                            if (_logger.IsEnabled(LogLevel.Error))
+                                _logger.LogError(ex, "Failed to send messages to {Uri}", uri);
+                            var failed = new OutgoingMessageFailure
+                            {
+                                Messages = messages
+                            };
+                            await _failedToSend.Writer.WriteAsync(failed, cancellationToken).ConfigureAwait(false);
+                        }
+                    }
                 }
-                catch (QueueDoesNotExistException ex)
-                {
-                    if(_logger.IsEnabled(LogLevel.Error))
-                        _logger.LogError(ex, "Queue does not exist at {Uri}", uri);
-                }
-                catch (Exception ex)
-                {
-                    if(_logger.IsEnabled(LogLevel.Error))
-                        _logger.LogError(ex, "Failed to send messages to {Uri}", uri);
-                    var failed = new OutgoingMessageFailure
-                    {
-                        Messages = messages
-                    };
-                    await _failedToSend.Writer.WriteAsync(failed, cancellationToken);
-                }
+            }
+            catch (Exception ex)
+            {
+                if(_logger.IsEnabled(LogLevel.Error))
+                   _logger.LogError(ex, "Error sending messages in channel loop");
             }
         }
     }

@@ -31,6 +31,14 @@ public class LmdbMessageStore : IMessageStore
 
     public LightningEnvironment Environment { get; }
 
+    public void StoreIncomingMessage(Message message)
+    {
+        using var tx = Environment.BeginTransaction();
+        var db = OpenDatabase(message.Queue);
+        StoreIncomingMessage(tx, db, message);
+        tx.Commit();
+    }
+
     public void StoreIncomingMessages(params Message[] messages)
     {
         using var tx = Environment.BeginTransaction();
@@ -46,25 +54,29 @@ public class LmdbMessageStore : IMessageStore
 
     private void StoreIncomingMessages(LightningTransaction tx, params Message[] messages)
     {
-        string queueName = null;
+        foreach (var messagesByQueue in messages.GroupBy(x => x.Queue))
+        {
+            var queueName = messagesByQueue.Key;
+            var db = OpenDatabase(queueName);
+            foreach (var message in messagesByQueue)
+            {
+                StoreIncomingMessage(tx, db, message);
+            }
+        }
+    }
+
+    private static void StoreIncomingMessage(LightningTransaction tx, LightningDatabase db, Message message)
+    {
         try
         {
             Span<byte> id = stackalloc byte[16];
-            foreach (var messagesByQueue in messages.GroupBy(x => x.Queue))
-            {
-                queueName = messagesByQueue.Key;
-                var db = OpenDatabase(queueName);
-                foreach (var message in messagesByQueue)
-                {
-                    message.Id.MessageIdentifier.TryWriteBytes(id);
-                    tx.Put(db, id, message.AsReadOnlyMemory().Span).ThrowOnError();
-                }
-            }
+            message.Id.MessageIdentifier.TryWriteBytes(id);
+            tx.Put(db, id, message.AsReadOnlyMemory().Span).ThrowOnError();
         }
         catch (LightningException ex)
         {
             if (ex.StatusCode == (int)MDBResultCode.NotFound)
-                throw new QueueDoesNotExistException(queueName, ex);
+                throw new QueueDoesNotExistException(message.Queue, ex);
             throw;
         }
     }

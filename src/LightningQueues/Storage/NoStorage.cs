@@ -34,6 +34,10 @@ public class NoStorage : IMessageStore
         _queues.Add(queueName);
     }
 
+    public void StoreIncomingMessage(Message message)
+    {
+    }
+
     public void StoreIncomingMessages(params Message[] messages)
     {
     }

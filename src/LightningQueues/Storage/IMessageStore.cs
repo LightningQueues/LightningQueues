@@ -7,6 +7,7 @@ public interface IMessageStore : IDisposable
 {
     ITransaction BeginTransaction();
     void CreateQueue(string queueName);
+    void StoreIncomingMessage(Message message);
     void StoreIncomingMessages(params Message[] messages);
     void StoreIncomingMessages(ITransaction transaction, params Message[] messages);
     void DeleteIncomingMessages(params Message[] messages);

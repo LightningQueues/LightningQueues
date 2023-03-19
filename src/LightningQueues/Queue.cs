@@ -52,8 +52,8 @@ public class Queue : IDisposable
     {
         try
         {
-            var sending = StartSendingAsync();
-            var receiving = StartReceivingAsync();
+            var sending = StartSendingAsync(_cancelOnDispose.Token);
+            var receiving = StartReceivingAsync(_cancelOnDispose.Token);
             await Task.WhenAll(sending, receiving);
         }
         catch (Exception ex)
@@ -63,31 +63,31 @@ public class Queue : IDisposable
         }
     }
 
-    private async Task StartReceivingAsync()
+    private async Task StartReceivingAsync(CancellationToken token)
     {
-        await _receiver.StartReceivingAsync(_receivingChannel.Writer, _cancelOnDispose.Token);
+        await _receiver.StartReceivingAsync(_receivingChannel.Writer, token);
     }
 
-    private async Task StartSendingAsync()
+    private async Task StartSendingAsync(CancellationToken token)
     {
         if(_logger.IsEnabled(LogLevel.Debug))
             _logger.LogDebug("Starting LightningQueues");
         var errorPolicy = new SendingErrorPolicy(_logger, Store, _sender.FailedToSend());
-        var errorTask = errorPolicy.StartRetries(_cancelOnDispose.Token);
+        var errorTask = errorPolicy.StartRetries(token);
         var persistedMessages = Store.PersistedOutgoingMessages();
         var sendingTask = Task.Factory.StartNew(async () =>
         {
-            await _sender.StartSendingAsync(_sendChannel.Reader, _cancelOnDispose.Token);
-        }, _cancelOnDispose.Token);
+            await _sender.StartSendingAsync(_sendChannel.Reader, token).ConfigureAwait(false);
+        }, token);
         foreach (var message in persistedMessages)
         {
-            await _sendChannel.Writer.WriteAsync(message);
+            await _sendChannel.Writer.WriteAsync(message, token).ConfigureAwait(false);
         }
 
-        var outgoingRetries = errorPolicy.Retries.ReadAllAsync(_cancelOnDispose.Token);
-        await foreach (var message in outgoingRetries)
+        var outgoingRetries = errorPolicy.Retries.ReadAllAsync(token);
+        await foreach (var message in outgoingRetries.WithCancellation(token))
         {
-            await _sendChannel.Writer.WriteAsync(message, _cancelOnDispose.Token);
+            await _sendChannel.Writer.WriteAsync(message, token);
         }
 
         await Task.WhenAll(sendingTask, errorTask.AsTask());
@@ -178,14 +178,15 @@ public class Queue : IDisposable
     {
         if(_logger.IsEnabled(LogLevel.Information))
             _logger.LogInformation("Disposing queue");
+        
+        _cancelOnDispose.Cancel();
         Store.Dispose();
         try
         {
-            _cancelOnDispose.Cancel();
+            _receivingChannel.Writer.TryComplete();
+            _sendChannel.Writer.TryComplete();
             _sender.Dispose();
             _receiver.Dispose();
-            _receivingChannel.Writer.Complete();
-            _sendChannel.Writer.Complete();
         }
         catch (Exception e)
         {
