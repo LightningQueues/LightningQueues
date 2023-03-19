@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using LightningDB;
 using LightningQueues.Serialization;
 using DotNext.IO;
@@ -13,6 +14,7 @@ namespace LightningQueues.Storage.LMDB;
 public class LmdbMessageStore : IMessageStore
 {
     private const string OutgoingQueue = "outgoing";
+    private readonly ReaderWriterLockSlim _lock;
 
     public LmdbMessageStore(string path, EnvironmentConfiguration config) : this(new LightningEnvironment(path, config))
     {
@@ -24,6 +26,7 @@ public class LmdbMessageStore : IMessageStore
 
     public LmdbMessageStore(LightningEnvironment environment)
     {
+        _lock = new ReaderWriterLockSlim();
         Environment = environment;
         Environment.Open();
         CreateQueue(OutgoingQueue);
@@ -33,17 +36,33 @@ public class LmdbMessageStore : IMessageStore
 
     public void StoreIncomingMessage(Message message)
     {
-        using var tx = Environment.BeginTransaction();
-        var db = OpenDatabase(message.Queue);
-        StoreIncomingMessage(tx, db, message);
-        tx.Commit();
+        try
+        {
+            _lock.EnterWriteLock();
+            using var tx = Environment.BeginTransaction();
+            var db = OpenDatabase(message.Queue);
+            StoreIncomingMessage(tx, db, message);
+            tx.Commit();
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
     }
 
     public void StoreIncomingMessages(params Message[] messages)
     {
-        using var tx = Environment.BeginTransaction();
-        StoreIncomingMessages(tx, messages);
-        tx.Commit().ThrowOnError();
+        try
+        {
+            _lock.EnterWriteLock();
+            using var tx = Environment.BeginTransaction();
+            StoreIncomingMessages(tx, messages);
+            tx.Commit().ThrowOnError();
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
     }
 
     public void StoreIncomingMessages(ITransaction transaction, params Message[] messages)
@@ -83,43 +102,77 @@ public class LmdbMessageStore : IMessageStore
 
     public void DeleteIncomingMessages(params Message[] messages)
     {
-        using var tx = Environment.BeginTransaction();
-        foreach (var grouping in messages.GroupBy(x => x.Queue))
+        try
         {
-            RemoveMessagesFromStorage(tx, grouping.Key, grouping);
+            _lock.EnterWriteLock();
+            using var tx = Environment.BeginTransaction();
+            foreach (var grouping in messages.GroupBy(x => x.Queue))
+            {
+                RemoveMessagesFromStorage(tx, grouping.Key, grouping);
+            }
+
+            tx.Commit().ThrowOnError();
         }
-        tx.Commit().ThrowOnError();
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
     }
 
     public ITransaction BeginTransaction()
     {
-        return new LmdbTransaction(Environment);
+        _lock.EnterWriteLock();
+        return new LmdbTransaction(Environment.BeginTransaction(), _lock.ExitWriteLock);
     }
 
     public int FailedToSend(OutgoingMessage message)
     {
-        using var tx = Environment.BeginTransaction();
-        var result = FailedToSend(tx, message);
-        tx.Commit().ThrowOnError();
-        return result;
+        try
+        {
+            _lock.EnterWriteLock();
+            using var tx = Environment.BeginTransaction();
+            var result = FailedToSend(tx, message);
+            tx.Commit().ThrowOnError();
+            return result;
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
     }
 
     public void SuccessfullySent(IList<OutgoingMessage> messages)
     {
-        using var tx = Environment.BeginTransaction();
-        SuccessfullySent(tx, messages);
-        tx.Commit().ThrowOnError();
+        try
+        {
+            _lock.EnterWriteLock();
+            using var tx = Environment.BeginTransaction();
+            SuccessfullySent(tx, messages);
+            tx.Commit().ThrowOnError();
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
     }
 
     public Message GetMessage(string queueName, MessageId messageId)
     {
         Span<byte> id = stackalloc byte[16];
         messageId.MessageIdentifier.TryWriteBytes(id);
-        using var tx = Environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
-        var db = OpenDatabase(queueName);
-        var result = tx.Get(db, id).ThrowOnReadError();
-        var messageBuffer = result.value.AsSpan();
-        return messageBuffer.ToMessage<Message>();
+        try
+        {
+            _lock.EnterReadLock();
+            using var tx = Environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
+            var db = OpenDatabase(queueName);
+            var result = tx.Get(db, id).ThrowOnReadError();
+            var messageBuffer = result.value.AsSpan();
+            return messageBuffer.ToMessage<Message>();
+        }
+        finally
+        {
+            _lock.ExitReadLock();
+        }
     }
 
     public string[] GetAllQueues()
@@ -130,23 +183,40 @@ public class LmdbMessageStore : IMessageStore
     public void ClearAllStorage()
     {
         var databases = GetAllQueuesImpl().ToArray();
-        using var tx = Environment.BeginTransaction();
-        foreach (var databaseName in databases)
+        try
         {
-            var db = OpenDatabase(databaseName);
-            tx.TruncateDatabase(db).ThrowOnError();
+            _lock.EnterWriteLock();
+            using var tx = Environment.BeginTransaction();
+            foreach (var databaseName in databases)
+            {
+                var db = OpenDatabase(databaseName);
+                tx.TruncateDatabase(db).ThrowOnError();
+            }
+
+            tx.Commit().ThrowOnError();
         }
-        tx.Commit().ThrowOnError();
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
     }
 
     private IEnumerable<string> GetAllQueuesImpl()
     {
-        using var tx = Environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
-        using var db = tx.OpenDatabase();
-        using var cursor = tx.CreateCursor(db);
-        foreach (var (key, _) in cursor.AsEnumerable())
+        try
         {
-            yield return Encoding.UTF8.GetString(key.CopyToNewArray());
+            _lock.EnterReadLock();
+            using var tx = Environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
+            using var db = tx.OpenDatabase();
+            using var cursor = tx.CreateCursor(db);
+            foreach (var (key, _) in cursor.AsEnumerable())
+            {
+                yield return Encoding.UTF8.GetString(key.CopyToNewArray());
+            }
+        }
+        finally
+        {
+            _lock.ExitReadLock();
         }
     }
 
@@ -157,53 +227,70 @@ public class LmdbMessageStore : IMessageStore
         
     public IEnumerable<Message> PersistedMessages(string queueName)
     {
-        using var tx = Environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
-        var db = OpenDatabase(queueName);
-        using var cursor = tx.CreateCursor(db);
-        foreach (var (_, value) in cursor.AsEnumerable())
+        try
         {
-            var valueSpan = value.AsSpan();
-            var bytes = ArrayPool<byte>.Shared.Rent(valueSpan.Length);
-            try
+            _lock.EnterReadLock();
+            using var tx = Environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
+            var db = OpenDatabase(queueName);
+            using var cursor = tx.CreateCursor(db);
+            foreach (var (_, value) in cursor.AsEnumerable())
             {
-                valueSpan.CopyTo(bytes);
-                var reader = new SequenceReader(new ReadOnlySequence<byte>(bytes));
-                var msg = reader.ReadMessage<Message>();
-                yield return msg;
+                var valueSpan = value.AsSpan();
+                var bytes = ArrayPool<byte>.Shared.Rent(valueSpan.Length);
+                try
+                {
+                    valueSpan.CopyTo(bytes);
+                    var reader = new SequenceReader(new ReadOnlySequence<byte>(bytes));
+                    var msg = reader.ReadMessage<Message>();
+                    yield return msg;
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(bytes);
+                }
             }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(bytes);
-            }
+        }
+        finally
+        {
+            _lock.ExitReadLock();
         }
     }
 
     public IEnumerable<OutgoingMessage> PersistedOutgoingMessages()
     {
-        using var tx = Environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
-        var db = OpenDatabase(OutgoingQueue);
-        using var cursor = tx.CreateCursor(db);
-        foreach (var (_, value) in cursor.AsEnumerable())
+        try
         {
-            var valueSpan = value.AsSpan();
-            var bytes = ArrayPool<byte>.Shared.Rent(valueSpan.Length);
-            try
+            _lock.EnterReadLock();
+            using var tx = Environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
+            var db = OpenDatabase(OutgoingQueue);
+            using var cursor = tx.CreateCursor(db);
+            foreach (var (_, value) in cursor.AsEnumerable())
             {
-                valueSpan.CopyTo(bytes);
-                var reader = new SequenceReader(new ReadOnlySequence<byte>(bytes));
-                var msg = reader.ReadOutgoingMessage();
-                yield return msg; 
+                var valueSpan = value.AsSpan();
+                var bytes = ArrayPool<byte>.Shared.Rent(valueSpan.Length);
+                try
+                {
+                    valueSpan.CopyTo(bytes);
+                    var reader = new SequenceReader(new ReadOnlySequence<byte>(bytes));
+                    var msg = reader.ReadOutgoingMessage();
+                    yield return msg;
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(bytes);
+                }
             }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(bytes);
-            }
+        }
+        finally
+        {
+            _lock.ExitReadLock();
         }
     }
 
     public void MoveToQueue(ITransaction transaction, string queueName, Message message)
     {
-        var tx = ((LmdbTransaction) transaction).Transaction;
+
+        var tx = ((LmdbTransaction)transaction).Transaction;
         MoveToQueue(tx, queueName, message);
     }
 
@@ -302,10 +389,18 @@ public class LmdbMessageStore : IMessageStore
 
     public void CreateQueue(string queueName)
     {
-        using var tx = Environment.BeginTransaction();
-        var db = tx.OpenDatabase(queueName, new DatabaseConfiguration {Flags = DatabaseOpenFlags.Create});
-        _databaseCache[queueName] = db;
-        tx.Commit().ThrowOnError();
+        try
+        {
+            _lock.EnterWriteLock();
+            using var tx = Environment.BeginTransaction();
+            var db = tx.OpenDatabase(queueName, new DatabaseConfiguration { Flags = DatabaseOpenFlags.Create });
+            _databaseCache[queueName] = db;
+            tx.Commit().ThrowOnError();
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
     }
 
     private readonly ConcurrentDictionary<string, LightningDatabase> _databaseCache = new();
@@ -315,7 +410,7 @@ public class LmdbMessageStore : IMessageStore
             return value;
         throw new QueueDoesNotExistException(database);
     }
-
+    
     public void Dispose()
     {
         Dispose(true);
