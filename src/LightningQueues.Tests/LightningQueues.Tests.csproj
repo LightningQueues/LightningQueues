@@ -26,4 +26,8 @@
     <PackageReference Include="Shouldly" Version="4.1.0" />
     <PackageReference Include="NSubstitute" Version="5.0.0" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

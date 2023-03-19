@@ -132,6 +132,7 @@ public class ReceiverTests : IDisposable
         var tx = _sendingStore.BeginTransaction();
         _sendingStore.StoreOutgoing(tx, expected);
         tx.Commit();
+        tx.Dispose();
         var messages = new[] { expected };
         var receivingTask = Task.Factory.StartNew(async () =>
         {

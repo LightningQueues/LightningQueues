@@ -1,7 +1,8 @@
-﻿namespace LightningQueues.Storage;
+﻿using System;
 
-public interface ITransaction
+namespace LightningQueues.Storage;
+
+public interface ITransaction : IDisposable
 {
     void Commit();
-    void Rollback();
 }

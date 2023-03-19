@@ -14,7 +14,7 @@ public class NoStorage : IMessageStore
         {
         }
 
-        public void Rollback()
+        public void Dispose()
         {
         }
     }

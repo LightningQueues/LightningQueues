@@ -20,20 +20,20 @@ internal class QueueContext : IQueueContext
 
     public void CommitChanges()
     {
-        _transaction = _queue.Store.BeginTransaction();
         try
         {
+            _transaction = _queue.Store.BeginTransaction();
             foreach (var action in _queueActions)
             {
                 action.Execute();
             }
             _transaction.Commit();
         }
-        catch (Exception)
+        finally
         {
-            _transaction.Rollback();
-            throw;
+            _transaction.Dispose();
         }
+
         foreach (var action in _queueActions)
         {
             action.Success();

@@ -25,8 +25,7 @@ public class ReceivingProtocolTests : IDisposable
     {
         _logger = new RecordingLogger();
         _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
-        _protocol = new ReceivingProtocol(_store, new NoSecurity(),
-            new Uri("lq.tcp://localhost"), _logger);
+        _protocol = new ReceivingProtocol(_store, new NoSecurity(), new Uri("lq.tcp://localhost"), _logger);
     }
 
     [Fact]

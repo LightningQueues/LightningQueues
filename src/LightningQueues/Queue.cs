@@ -113,7 +113,7 @@ public class Queue : IDisposable
     {
         if(_logger.IsEnabled(LogLevel.Debug))
             _logger.LogDebug("Moving message {MessageIdentifier} to {QueueName}", message.Id.MessageIdentifier, queueName);
-        var tx = Store.BeginTransaction();
+        using var tx = Store.BeginTransaction();
         Store.MoveToQueue(tx, queueName, message);
         tx.Commit();
         message.Queue = queueName;
@@ -150,12 +150,11 @@ public class Queue : IDisposable
             _logger.LogDebug("Sending {MessageCount} messages", messages.Length);
         try
         {
-            var tx = Store.BeginTransaction();
+            using var tx = Store.BeginTransaction();
             foreach (var message in messages)
             {
                 Store.StoreOutgoing(tx, message);
             }
-
             tx.Commit();
             foreach (var message in messages)
             {
@@ -181,13 +180,13 @@ public class Queue : IDisposable
         
         _cancelOnDispose.Cancel();
         _cancelOnDispose.Dispose();
-        Store.Dispose();
         try
         {
             _sender.Dispose();
             _receiver.Dispose();
             _receivingChannel.Writer.TryComplete();
             _sendChannel.Writer.TryComplete();
+            Store.Dispose();
         }
         catch (Exception e)
         {

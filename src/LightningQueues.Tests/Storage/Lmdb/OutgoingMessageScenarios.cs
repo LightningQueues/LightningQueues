@@ -34,6 +34,7 @@ public class OutgoingMessageScenarios : IDisposable
         _store.StoreOutgoing(tx, message);
         _store.StoreOutgoing(tx, message2);
         tx.Commit();
+        tx.Dispose();
         _store.SuccessfullySent(new [] {message});//todo fix
 
         var result = _store.PersistedOutgoingMessages().First();
@@ -57,6 +58,7 @@ public class OutgoingMessageScenarios : IDisposable
         var tx = _store.BeginTransaction();
         _store.StoreOutgoing(tx, message);
         tx.Commit();
+        tx.Dispose();
 
         _store.FailedToSend(message);
 
@@ -74,6 +76,7 @@ public class OutgoingMessageScenarios : IDisposable
         var tx = _store.BeginTransaction();
         _store.StoreOutgoing(tx, message);
         tx.Commit();
+        tx.Dispose();
 
         _store.FailedToSend(message);
 

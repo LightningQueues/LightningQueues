@@ -15,24 +15,16 @@ public class LmdbTransaction : ITransaction
     
     public LightningTransaction Transaction { get; }
 
-    void ITransaction.Rollback()
-    {
-        try
-        {
-            Transaction.Dispose();
-        }
-        finally
-        {
-            _complete();
-        }
-    }
-
     void ITransaction.Commit()
     {
+        Transaction.Commit().ThrowOnError();
+    }
+
+    public void Dispose()
+    {
         try
         {
-            using (Transaction)
-                Transaction.Commit().ThrowOnError();
+            Transaction?.Dispose();
         }
         finally
         {

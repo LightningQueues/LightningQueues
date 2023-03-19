@@ -27,9 +27,11 @@ public class IncomingMessageScenarios : IDisposable
     {
         var message = NewMessage<Message>();
         _store.CreateQueue(message.Queue);
-        var transaction = _store.BeginTransaction();
-        _store.StoreIncomingMessages(transaction, message);
-        transaction.Commit();
+        using (var transaction = _store.BeginTransaction())
+        {
+            _store.StoreIncomingMessages(transaction, message);
+            transaction.Commit();
+        }
         var msg = _store.GetMessage(message.Queue, message.Id);
         System.Text.Encoding.UTF8.GetString(msg.Data).ShouldBe("hello");
         msg.Headers.First().Value.ShouldBe("my_value");
@@ -41,7 +43,7 @@ public class IncomingMessageScenarios : IDisposable
         var message = NewMessage<Message>();
         Assert.Throws<QueueDoesNotExistException>(() =>
         {
-            var tx = _store.BeginTransaction();
+            using var tx = _store.BeginTransaction();
             _store.StoreIncomingMessages(tx, message);
         });
     }
@@ -51,10 +53,12 @@ public class IncomingMessageScenarios : IDisposable
     {
         var message = NewMessage<Message>();
         _store.CreateQueue(message.Queue);
-        var transaction = _store.BeginTransaction();
-        _store.StoreIncomingMessages(transaction, message);
-        _store.Dispose();
-        //crash
+        using (var transaction = _store.BeginTransaction())
+        {
+            _store.StoreIncomingMessages(transaction, message);
+            _store.Dispose();
+            //crash
+        }
         _store = new LmdbMessageStore(_queuePath);
         _store.CreateQueue(message.Queue);
         var msg = _store.GetMessage(message.Queue, message.Id);
@@ -68,7 +72,7 @@ public class IncomingMessageScenarios : IDisposable
         _store.CreateQueue(message.Queue);
         var transaction = _store.BeginTransaction();
         _store.StoreIncomingMessages(transaction, message);
-        transaction.Rollback();
+        transaction.Dispose();
 
         var msg = _store.GetMessage(message.Queue, message.Id);
         msg.ShouldBeNull();

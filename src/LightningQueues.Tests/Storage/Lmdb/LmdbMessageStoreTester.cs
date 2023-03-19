@@ -47,6 +47,7 @@ public class LmdbMessageStoreTester : IDisposable
         _store.StoreOutgoing(tx, outgoingMessage);
         _store.StoreIncomingMessages(tx, message);
         tx.Commit();
+        tx.Dispose();
         _store.PersistedMessages("test").Count().ShouldBe(1);
         _store.PersistedOutgoingMessages().Count().ShouldBe(1);
         _store.ClearAllStorage();
@@ -85,6 +86,7 @@ public class LmdbMessageStoreTester : IDisposable
         _store.StoreOutgoing(tx, outgoingMessage);
         _store.StoreIncomingMessages(tx, message);
         tx.Commit();
+        tx.Dispose();
         var message2 = _store.GetMessage(message.Queue, message.Id);
         var outgoing2 = _store.GetMessage("outgoing", outgoingMessage.Id);
         message2.ShouldNotBeNull();
