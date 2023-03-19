@@ -60,10 +60,8 @@ public class OutgoingMessageScenarios : IDisposable
 
         _store.FailedToSend(message);
 
-        using var ltx = _store.Environment.BeginTransaction();
-        using var db = ltx.OpenDatabase("outgoing");
-        var result = ltx.Get(db, message.Id.MessageIdentifier.ToByteArray());
-        result.resultCode.ShouldBe(MDBResultCode.NotFound);
+        var outgoing = _store.GetMessage("outgoing", message.Id);
+        outgoing.ShouldBeNull();
     }
 
     [Fact]
@@ -79,10 +77,8 @@ public class OutgoingMessageScenarios : IDisposable
 
         _store.FailedToSend(message);
 
-        using var ltx = _store.Environment.BeginTransaction();
-        using var db = ltx.OpenDatabase("outgoing");
-        var result = ltx.Get(db, message.Id.MessageIdentifier.ToByteArray());
-        result.resultCode.ShouldBe(MDBResultCode.NotFound);
+        var outgoing = _store.GetMessage("outgoing", message.Id);
+        outgoing.ShouldBeNull();
     }
 
     public void Dispose()

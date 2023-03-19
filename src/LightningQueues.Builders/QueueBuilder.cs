@@ -3,6 +3,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using LightningDB;
 using Microsoft.Extensions.Logging;
 using LightningQueues.Storage;
 
@@ -30,7 +31,17 @@ public static class QueueBuilder
         IMessageStore store = null, bool secureTransport = false, TimeSpan? timeoutAfter = null)
     {
         logger ??= new RecordingLogger();
-        store ??= new LmdbMessageStore(path);
+        if (store == null)
+        {
+            var environment = new LightningEnvironment(path, new EnvironmentConfiguration
+            {
+                MapSize = 1024 * 1024 * 100,
+                MaxDatabases = 5
+            });
+            environment.Open(EnvironmentOpenFlags.NoLock);
+            store ??= new LmdbMessageStore(environment);
+        }
+
         var queueConfiguration = new QueueConfiguration();
         queueConfiguration.LogWith(logger)
             .AutomaticEndpoint()

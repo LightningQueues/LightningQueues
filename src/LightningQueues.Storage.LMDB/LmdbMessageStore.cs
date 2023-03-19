@@ -28,7 +28,8 @@ public class LmdbMessageStore : IMessageStore
     {
         _lock = new ReaderWriterLockSlim();
         Environment = environment;
-        Environment.Open();
+        if(!environment.IsOpened)
+            Environment.Open(EnvironmentOpenFlags.NoLock);
         CreateQueue(OutgoingQueue);
     }
 
@@ -64,7 +65,7 @@ public class LmdbMessageStore : IMessageStore
             _lock.ExitWriteLock();
         }
     }
-
+    
     public void StoreIncomingMessages(ITransaction transaction, params Message[] messages)
     {
         var tx = ((LmdbTransaction) transaction).Transaction;
@@ -166,6 +167,8 @@ public class LmdbMessageStore : IMessageStore
             using var tx = Environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
             var db = OpenDatabase(queueName);
             var result = tx.Get(db, id).ThrowOnReadError();
+            if (result.resultCode == MDBResultCode.NotFound)
+                return null;
             var messageBuffer = result.value.AsSpan();
             return messageBuffer.ToMessage<Message>();
         }

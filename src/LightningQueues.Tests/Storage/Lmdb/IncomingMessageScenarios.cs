@@ -30,11 +30,7 @@ public class IncomingMessageScenarios : IDisposable
         var transaction = _store.BeginTransaction();
         _store.StoreIncomingMessages(transaction, message);
         transaction.Commit();
-        using var tx = _store.Environment.BeginTransaction();
-        using var db = tx.OpenDatabase(message.Queue);
-        Span<byte> id = stackalloc byte[16];
-        message.Id.MessageIdentifier.TryWriteBytes(id);
-        var msg = tx.Get(db, id).value.AsSpan().ToMessage<Message>();
+        var msg = _store.GetMessage(message.Queue, message.Id);
         System.Text.Encoding.UTF8.GetString(msg.Data).ShouldBe("hello");
         msg.Headers.First().Value.ShouldBe("my_value");
     }
@@ -60,10 +56,9 @@ public class IncomingMessageScenarios : IDisposable
         _store.Dispose();
         //crash
         _store = new LmdbMessageStore(_queuePath);
-        using var tx = _store.Environment.BeginTransaction();
-        using var db = tx.OpenDatabase(message.Queue);
-        var result = tx.Get(db, message.Id.MessageIdentifier.ToByteArray());
-        result.resultCode.ShouldBe(MDBResultCode.NotFound);
+        _store.CreateQueue(message.Queue);
+        var msg = _store.GetMessage(message.Queue, message.Id);
+        msg.ShouldBeNull();
     }
 
     [Fact]
@@ -74,10 +69,9 @@ public class IncomingMessageScenarios : IDisposable
         var transaction = _store.BeginTransaction();
         _store.StoreIncomingMessages(transaction, message);
         transaction.Rollback();
-        using var tx = _store.Environment.BeginTransaction();
-        using var db = tx.OpenDatabase(message.Queue);
-        var result = tx.Get(db, message.Id.MessageIdentifier.ToByteArray());
-        result.resultCode.ShouldBe(MDBResultCode.NotFound);
+
+        var msg = _store.GetMessage(message.Queue, message.Id);
+        msg.ShouldBeNull();
     }
 
     [Fact]
