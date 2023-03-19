@@ -31,7 +31,7 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
     public async IAsyncEnumerable<Message> ReceiveMessagesAsync(Stream stream,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var doneCancellation = new CancellationTokenSource();
+        using var doneCancellation = new CancellationTokenSource();
         var linkedCancel = CancellationTokenSource.CreateLinkedTokenSource(doneCancellation.Token, cancellationToken);
         try
         {
@@ -52,7 +52,6 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
         var pipe = new Pipe();
         stream = await _security.Apply(_receivingUri, stream).ConfigureAwait(false);
         var receivingTask = ReceiveIntoBuffer(pipe.Writer, stream, cancellationToken);
-        receivingTask.ConfigureAwait(false);
         if (cancellationToken.IsCancellationRequested)
             yield break;
         var length = await pipe.Reader.ReadInt32Async(true, cancellationToken).ConfigureAwait(false);
@@ -98,7 +97,7 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
         if (cancellationToken.IsCancellationRequested)
             yield break;
         var acknowledgeTask = ReadAcknowledged(pipe, cancellationToken);
-        await Task.WhenAny(acknowledgeTask.AsTask(), receivingTask.AsTask());
+        await Task.WhenAny(acknowledgeTask.AsTask(), receivingTask.AsTask()).ConfigureAwait(false);
     }
 
     private static async ValueTask SendReceived(Stream stream, CancellationToken cancellationToken)

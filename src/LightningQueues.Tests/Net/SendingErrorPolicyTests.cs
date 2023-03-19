@@ -78,7 +78,7 @@ public class SendingErrorPolicyTests : IDisposable
     [Fact]
     public async ValueTask message_is_observed_after_time()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var message = NewMessage<OutgoingMessage>();
         message.Destination = new Uri("lq.tcp://localhost:5150/blah");
         message.MaxAttempts = 2;
@@ -99,7 +99,7 @@ public class SendingErrorPolicyTests : IDisposable
     [Fact]
     public async ValueTask message_removed_from_storage_after_max()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var message = NewMessage<OutgoingMessage>();
         message.Destination = new Uri("lq.tcp://localhost:5150/blah");
         message.MaxAttempts = 1;
@@ -121,7 +121,7 @@ public class SendingErrorPolicyTests : IDisposable
     [Fact]
     public async ValueTask time_increases_with_each_failure()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         Message observed = null;
         var message = NewMessage<OutgoingMessage>();
         message.Destination = new Uri("lq.tcp://localhost:5150/blah");
@@ -156,7 +156,7 @@ public class SendingErrorPolicyTests : IDisposable
     [Fact]
     public async ValueTask errors_in_storage_dont_end_stream()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var message = NewMessage<OutgoingMessage>();
         var store = Substitute.For<IMessageStore>();
         store.FailedToSend(Arg.Is(message)).Throws(new Exception("bam!"));

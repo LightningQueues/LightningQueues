@@ -21,7 +21,7 @@ public class EncryptedTransportQueueTests : IDisposable
     [Fact]
     public async Task can_send_and_receive_messages_over_TLS1_2()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var message = NewMessage<OutgoingMessage>("test");
         message.Destination = new Uri($"lq.tcp://localhost:{_queue.Endpoint.Port}");
         await Task.Delay(100, cancellation.Token);

@@ -26,7 +26,7 @@ public class IntegrationTests : IDisposable
     [Fact]
     public async Task can_send_and_receive_after_queue_not_found()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var message = NewMessage<OutgoingMessage>("receiver2");
         message.Destination = new Uri($"lq.tcp://localhost:{_receiver.Endpoint.Port}");
         _sender.Send(message);

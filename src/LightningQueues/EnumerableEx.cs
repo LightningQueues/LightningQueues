@@ -11,42 +11,47 @@ internal static class EnumerableEx
     internal static async IAsyncEnumerable<T> ToAsyncEnumerable<T>(this IEnumerable<T> items, 
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        foreach (var item in items)
+        var enumerator = items.GetEnumerator();
+        while (enumerator.MoveNext())
         {
             if(cancellationToken.IsCancellationRequested)
                 yield break;
-            var result = await ValueTask.FromResult(item);
-            yield return result;
+            yield return await ValueTask.FromResult(enumerator.Current);
         }
     }
 
     internal static async IAsyncEnumerable<T> Where<T>(this IAsyncEnumerable<T> items, Func<T, bool> filter)
     {
-        await foreach (var item in items)
+        var enumerator = items.GetAsyncEnumerator();
+        while (await enumerator.MoveNextAsync())
         {
-            if (filter(item))
-                yield return item;
+            var current = enumerator.Current;
+            if (filter(current))
+                yield return current;
         }
     }
     
     internal static async IAsyncEnumerable<T> Concat<T>(this IAsyncEnumerable<T> items, IAsyncEnumerable<T> items2)
     {
-        await foreach (var item in items)
+        var itemsEnumerator = items.GetAsyncEnumerator();
+        while (await itemsEnumerator.MoveNextAsync())
         {
-            yield return item;
+            yield return itemsEnumerator.Current;
         }
 
-        await foreach (var item in items2)
+        var items2Enumerator = items2.GetAsyncEnumerator();
+        while (await items2Enumerator.MoveNextAsync())
         {
-            yield return item;
+            yield return items2Enumerator.Current;
         }
     }
     
     internal static async IAsyncEnumerable<TResult> Select<T, TResult>(this IAsyncEnumerable<T> items, Func<T, TResult> selector)
     {
-        await foreach (var item in items)
+        var enumerator = items.GetAsyncEnumerator();
+        while (await enumerator.MoveNextAsync())
         {
-            yield return selector(item);
+            yield return selector(enumerator.Current);
         }
     }
 }

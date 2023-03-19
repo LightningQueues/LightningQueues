@@ -22,7 +22,7 @@ public class NoStorageIntegrationTester : IDisposable
     [Fact]
     public async Task can_send_and_receive_without_storage()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var receiveTask = _receiver.Receive("test", cancellation.Token).FirstAsync(cancellation.Token);
 
         var destination = new Uri($"lq.tcp://localhost:{_receiver.Endpoint.Port}");

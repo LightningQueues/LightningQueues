@@ -44,7 +44,7 @@ public class ReceiverTests : IDisposable
     [Fact]
     public async ValueTask stops_listening_on_task_cancellation()
     {
-        var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var receivingTask = Task.Factory.StartNew(async () =>
         {
             var channel = Channel.CreateUnbounded<Message>();
@@ -64,7 +64,7 @@ public class ReceiverTests : IDisposable
     [Fact]
     public async Task can_handle_connect_then_disconnect()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var receivingTask = Task.Factory.StartNew(async () =>
         {
             var channel = Channel.CreateUnbounded<Message>();
@@ -82,7 +82,7 @@ public class ReceiverTests : IDisposable
     [Fact]
     public async Task can_handle_sending_three_bytes_then_disconnect()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var receivingTask = Task.Factory.StartNew(async () =>
         {
             var channel = Channel.CreateUnbounded<Message>();
@@ -101,7 +101,7 @@ public class ReceiverTests : IDisposable
     [Fact]
     public async Task accepts_concurrently_connected_clients()
     {
-        var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var receivingTask = Task.Factory.StartNew(async () =>
         {
             var channel = Channel.CreateUnbounded<Message>();
@@ -125,7 +125,7 @@ public class ReceiverTests : IDisposable
     public async Task receiving_a_valid_message()
     {
         var taskSource = new TaskCompletionSource<Message>();
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var expected = NewMessage<OutgoingMessage>("test");
         expected.Data = "hello"u8.ToArray();
         expected.Destination = new Uri($"lq.tcp://localhost:{_endpoint.Port}");

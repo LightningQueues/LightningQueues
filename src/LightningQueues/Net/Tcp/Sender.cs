@@ -35,55 +35,51 @@ public class Sender : IDisposable
         {
             try
             {
-                var allOutgoing = outgoing.ReadAllAsync(cancellationToken);
-                allOutgoing.ConfigureAwait(false);
-                await foreach (var sendTo in allOutgoing.Buffer(TimeSpan.FromMilliseconds(200), 50, cancellationToken))
+                var batch = await outgoing.ReadBatchAsync(50, TimeSpan.FromMilliseconds(200), cancellationToken)
+                    .ConfigureAwait(false);
+                using var source = new CancellationTokenSource(_sendTimeout);
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
+                foreach (var messageGroup in batch.GroupBy(x => x.Destination))
                 {
-                    var source = new CancellationTokenSource(_sendTimeout);
-                    var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
-                    var messagesGrouping = sendTo.GroupBy(x => x.Destination);
-                    foreach (var messageGroup in messagesGrouping)
+                    var uri = messageGroup.Key;
+                    var messages = messageGroup.ToList();
+                    try
                     {
-                        var uri = messageGroup.Key;
-                        var messages = messageGroup.ToList();
-                        try
+                        var client = new TcpClient();
+                        if (uri.IsLoopback || Dns.GetHostName() == uri.Host)
                         {
-                            var client = new TcpClient();
-                            if (uri.IsLoopback || Dns.GetHostName() == uri.Host)
-                            {
-                                await client.ConnectAsync(IPAddress.Loopback, uri.Port, linked.Token)
-                                    .ConfigureAwait(false);
-                            }
-                            else
-                            {
-                                await client.ConnectAsync(uri.Host, uri.Port, linked.Token).ConfigureAwait(false);
-                            }
-
-                            await _protocol.SendAsync(uri, client.GetStream(), messages, linked.Token)
+                            await client.ConnectAsync(IPAddress.Loopback, uri.Port, linked.Token)
                                 .ConfigureAwait(false);
                         }
-                        catch (QueueDoesNotExistException ex)
+                        else
                         {
-                            if (_logger.IsEnabled(LogLevel.Error))
-                                _logger.LogError(ex, "Queue does not exist at {Uri}", uri);
+                            await client.ConnectAsync(uri.Host, uri.Port, linked.Token).ConfigureAwait(false);
                         }
-                        catch (Exception ex)
+
+                        await _protocol.SendAsync(uri, client.GetStream(), messages, linked.Token)
+                            .ConfigureAwait(false);
+                    }
+                    catch (QueueDoesNotExistException ex)
+                    {
+                        if (_logger.IsEnabled(LogLevel.Error))
+                            _logger.LogError(ex, "Queue does not exist at {Uri}", uri);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (_logger.IsEnabled(LogLevel.Error))
+                            _logger.LogError(ex, "Failed to send messages to {Uri}", uri);
+                        var failed = new OutgoingMessageFailure
                         {
-                            if (_logger.IsEnabled(LogLevel.Error))
-                                _logger.LogError(ex, "Failed to send messages to {Uri}", uri);
-                            var failed = new OutgoingMessageFailure
-                            {
-                                Messages = messages
-                            };
-                            await _failedToSend.Writer.WriteAsync(failed, cancellationToken).ConfigureAwait(false);
-                        }
+                            Messages = messages
+                        };
+                        await _failedToSend.Writer.WriteAsync(failed, cancellationToken).ConfigureAwait(false);
                     }
                 }
             }
             catch (Exception ex)
             {
-                if(_logger.IsEnabled(LogLevel.Error))
-                   _logger.LogError(ex, "Error sending messages in channel loop");
+                if (_logger.IsEnabled(LogLevel.Error))
+                    _logger.LogError(ex, "Error sending messages in channel loop");
             }
         }
     }
@@ -94,6 +90,7 @@ public class Sender : IDisposable
             _logger.LogInformation("Disposing Sender");
         if (_cancellation.IsCancellationRequested) return;
         _cancellation.Cancel();
+        _cancellation.Dispose();
         GC.SuppressFinalize(this);
     }
 }

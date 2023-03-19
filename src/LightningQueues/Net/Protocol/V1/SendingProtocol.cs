@@ -29,8 +29,8 @@ public class SendingProtocol : ProtocolBase, ISendingProtocol
     public async ValueTask SendAsync(Uri destination, Stream stream,
         IEnumerable<OutgoingMessage> batch, CancellationToken token)
     {
-        var doneCancellation = new CancellationTokenSource();
-        var linkedCancel = CancellationTokenSource.CreateLinkedTokenSource(doneCancellation.Token, token);
+        using var doneCancellation = new CancellationTokenSource();
+        using var linkedCancel = CancellationTokenSource.CreateLinkedTokenSource(doneCancellation.Token, token);
         try
         {
             await SendAsyncImpl(destination, stream, batch, linkedCancel.Token).ConfigureAwait(false);
@@ -54,12 +54,10 @@ public class SendingProtocol : ProtocolBase, ISendingProtocol
         _logger.SenderSuccessfullyWroteMessageBatch();
         var pipe = new Pipe();
         var receiveTask = ReceiveIntoBuffer(pipe.Writer, stream, token);
-        receiveTask.ConfigureAwait(false);
         await ReadReceived(pipe.Reader, token).ConfigureAwait(false);
         _logger.SenderSuccessfullyReadReceived();
         var acknowledgeTask = WriteAcknowledgement(stream, token);
-        acknowledgeTask.ConfigureAwait(false);
-        await Task.WhenAny(acknowledgeTask.AsTask(), receiveTask.AsTask());
+        await Task.WhenAny(acknowledgeTask.AsTask(), receiveTask.AsTask()).ConfigureAwait(false);
         _logger.SenderSuccessfullyWroteAcknowledgement();
         _store.SuccessfullySent(messages);
         _logger.SenderStorageSuccessfullySent();

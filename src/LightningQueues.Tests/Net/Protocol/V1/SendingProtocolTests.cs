@@ -32,7 +32,7 @@ public class SendingProtocolTests : IDisposable
     [Fact]
     public async Task writing_single_message()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var expected = NewMessage<OutgoingMessage>();
         expected.Destination = new Uri("lq.tcp://fake:1234");
         using var ms = new MemoryStream();

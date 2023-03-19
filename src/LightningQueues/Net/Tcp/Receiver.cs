@@ -35,17 +35,17 @@ public class Receiver : IDisposable
         {
             try
             {
-                var socket = await _listener.AcceptSocketAsync(cancellationToken).ConfigureAwait(false);
+                using var socket = await _listener.AcceptSocketAsync(cancellationToken).ConfigureAwait(false);
                 await using var stream = new NetworkStream(socket, false);
-                var messages = _protocol.ReceiveMessagesAsync(stream, cancellationToken);
-                messages.ConfigureAwait(false);
-                var messageEnumerator = messages.GetAsyncEnumerator(cancellationToken);
+                var messages = _protocol.ReceiveMessagesAsync(stream, cancellationToken)
+                    .ConfigureAwait(false);
+                var messageEnumerator = messages.GetAsyncEnumerator();
                 var hasResult = true;
                 while (hasResult)
                 {
                     try
                     {
-                        hasResult = await messageEnumerator.MoveNextAsync().ConfigureAwait(false);
+                        hasResult = await messageEnumerator.MoveNextAsync();
                         var msg = hasResult ? messageEnumerator.Current : null;
                         if (msg != null)
                             await receivedChannel.WriteAsync(msg, cancellationToken).ConfigureAwait(false);

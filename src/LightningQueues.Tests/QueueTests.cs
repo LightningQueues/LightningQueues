@@ -25,7 +25,7 @@ public class QueueTests : IDisposable
     [Fact]
     public async ValueTask receive_at_a_later_time()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         _queue.ReceiveLater(new Message { Queue = "test", Id = MessageId.GenerateRandom() }, TimeSpan.FromSeconds(1));
         var receiveTask = _queue.Receive("test", cancellation.Token).FirstAsync(cancellation.Token);
         await Task.Delay(100, cancellation.Token);
@@ -38,7 +38,7 @@ public class QueueTests : IDisposable
     [Fact]
     public async ValueTask receive_at_a_specified_time()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var time = DateTimeOffset.Now.AddSeconds(1);
         _queue.ReceiveLater(new Message { Queue = "test", Id = MessageId.GenerateRandom() }, time);
         var receiveTask = _queue.Receive("test", cancellation.Token).FirstAsync(cancellation.Token);
@@ -52,7 +52,7 @@ public class QueueTests : IDisposable
     [Fact]
     public async ValueTask enqueue_a_message()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var expected = NewMessage<Message>("test");
         var receiveTask = _queue.Receive("test", cancellation.Token).FirstAsync(cancellation.Token);
         _queue.Enqueue(expected);
@@ -64,7 +64,7 @@ public class QueueTests : IDisposable
     [Fact]
     public async ValueTask moving_queues()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         _queue.CreateQueue("another");
         var expected = NewMessage<Message>("test");
         var anotherTask = _queue.Receive("another", cancellation.Token).FirstAsync(cancellation.Token);
@@ -81,7 +81,7 @@ public class QueueTests : IDisposable
     [Fact]
     public async Task send_message_to_self()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var message = NewMessage<OutgoingMessage>("test");
         message.Destination = new Uri($"lq.tcp://localhost:{_queue.Endpoint.Port}");
         _queue.Send(message);
@@ -109,7 +109,7 @@ public class QueueTests : IDisposable
     public void can_start_two_instances_for_IIS_stop_and_start()
     {
         //This shows that the port doesn't have an exclusive lock, and that lmdb itself can have multiple instances
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var path = _testDirectory.CreateNewDirectoryForTest();
         var store = new LmdbMessageStore(path);
         var queueConfiguration = new QueueConfiguration();

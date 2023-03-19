@@ -180,13 +180,14 @@ public class Queue : IDisposable
             _logger.LogInformation("Disposing queue");
         
         _cancelOnDispose.Cancel();
+        _cancelOnDispose.Dispose();
         Store.Dispose();
         try
         {
-            _receivingChannel.Writer.TryComplete();
-            _sendChannel.Writer.TryComplete();
             _sender.Dispose();
             _receiver.Dispose();
+            _receivingChannel.Writer.TryComplete();
+            _sendChannel.Writer.TryComplete();
         }
         catch (Exception e)
         {

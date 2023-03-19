@@ -32,7 +32,7 @@ public class ReceivingProtocolTests : IDisposable
     [Fact]
     public async ValueTask client_sending_negative_length_is_ignored()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         using var ms = new MemoryStream();
         var iterationContinued = false;
         ms.Write(BitConverter.GetBytes(-2), 0, 4);
@@ -49,7 +49,7 @@ public class ReceivingProtocolTests : IDisposable
     [Fact]
     public async ValueTask handling_disconnects_mid_protocol_gracefully()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         using var ms = new MemoryStream();
         ms.Write(BitConverter.GetBytes(5));
         ms.Write("Fake this shouldn't pass!!!!!"u8);
@@ -66,7 +66,7 @@ public class ReceivingProtocolTests : IDisposable
     [Fact]
     public async ValueTask handling_valid_length()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         await RunLengthTest(0, cancellation.Token);
         _logger.DebugMessages.Any(x => x.StartsWith("Received length")).ShouldBeTrue();
         cancellation.Cancel();
@@ -75,7 +75,7 @@ public class ReceivingProtocolTests : IDisposable
     [Fact]
     public async ValueTask sending_shorter_length_than_payload_length()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         await RunLengthTest(-2, cancellation.Token);
         _logger.DebugMessages.Any(x => x.StartsWith("Received length")).ShouldBeTrue();
         _logger.ErrorMessages.ShouldContain("Error finishing protocol acknowledgement");
@@ -85,7 +85,7 @@ public class ReceivingProtocolTests : IDisposable
     [Fact]
     public async ValueTask sending_longer_length_than_payload_length()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         await RunLengthTest(5, cancellation.Token);
         _logger.ErrorMessages.ShouldNotBeEmpty();
         cancellation.Cancel();
@@ -114,7 +114,7 @@ public class ReceivingProtocolTests : IDisposable
     [Fact]
     public async ValueTask sending_to_a_queue_that_doesnt_exist()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var message = new OutgoingMessage
         {
             Id = MessageId.GenerateRandom(),
@@ -137,7 +137,7 @@ public class ReceivingProtocolTests : IDisposable
     [Fact]
     public async ValueTask sending_data_that_is_cannot_be_deserialized()
     {
-        var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         using var ms = new MemoryStream();
         ms.Write(BitConverter.GetBytes(16), 0, 4);
         ms.Write(Guid.NewGuid().ToByteArray(), 0, 16);
@@ -154,7 +154,7 @@ public class ReceivingProtocolTests : IDisposable
     [Fact]
     public async ValueTask supports_ability_to_cancel_for_slow_clients()
     {
-        var cancelSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
+        using var cancelSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
         using var ms = new MemoryStream();
         var msgs = _protocol.ReceiveMessagesAsync(ms, cancelSource.Token);
         await Task.Delay(50, default);
