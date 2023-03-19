@@ -11,7 +11,7 @@ internal static class EnumerableEx
     internal static async IAsyncEnumerable<T> ToAsyncEnumerable<T>(this IEnumerable<T> items, 
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var enumerator = items.GetEnumerator();
+        using var enumerator = items.GetEnumerator();
         while (enumerator.MoveNext())
         {
             if(cancellationToken.IsCancellationRequested)
