@@ -15,6 +15,7 @@ public class LmdbMessageStore : IMessageStore
 {
     private const string OutgoingQueue = "outgoing";
     private readonly ReaderWriterLockSlim _lock;
+    private readonly LightningEnvironment _environment;
 
     public LmdbMessageStore(string path, EnvironmentConfiguration config) : this(new LightningEnvironment(path, config))
     {
@@ -27,20 +28,18 @@ public class LmdbMessageStore : IMessageStore
     public LmdbMessageStore(LightningEnvironment environment)
     {
         _lock = new ReaderWriterLockSlim();
-        Environment = environment;
-        if(!environment.IsOpened)
-            Environment.Open(EnvironmentOpenFlags.NoLock);
+        _environment = environment;
+        if(!_environment.IsOpened)
+            _environment.Open(EnvironmentOpenFlags.NoLock);
         CreateQueue(OutgoingQueue);
     }
-
-    public LightningEnvironment Environment { get; }
 
     public void StoreIncomingMessage(Message message)
     {
         try
         {
             _lock.EnterWriteLock();
-            using var tx = Environment.BeginTransaction();
+            using var tx = _environment.BeginTransaction();
             var db = OpenDatabase(message.Queue);
             StoreIncomingMessage(tx, db, message);
             tx.Commit();
@@ -56,7 +55,7 @@ public class LmdbMessageStore : IMessageStore
         try
         {
             _lock.EnterWriteLock();
-            using var tx = Environment.BeginTransaction();
+            using var tx = _environment.BeginTransaction();
             StoreIncomingMessages(tx, messages);
             tx.Commit().ThrowOnError();
         }
@@ -113,7 +112,7 @@ public class LmdbMessageStore : IMessageStore
         try
         {
             _lock.EnterWriteLock();
-            using var tx = Environment.BeginTransaction();
+            using var tx = _environment.BeginTransaction();
             foreach (var grouping in messages.GroupBy(x => x.Queue))
             {
                 RemoveMessagesFromStorage(tx, grouping.Key, grouping);
@@ -130,7 +129,7 @@ public class LmdbMessageStore : IMessageStore
     public ITransaction BeginTransaction()
     {
         _lock.EnterWriteLock();
-        return new LmdbTransaction(Environment.BeginTransaction(), _lock.ExitWriteLock);
+        return new LmdbTransaction(_environment.BeginTransaction(), _lock.ExitWriteLock);
     }
 
     public void StoreOutgoing(OutgoingMessage message)
@@ -138,7 +137,7 @@ public class LmdbMessageStore : IMessageStore
         try
         {
             _lock.EnterWriteLock();
-            using var tx = Environment.BeginTransaction();
+            using var tx = _environment.BeginTransaction();
             StoreOutgoing(tx, message);
             tx.Commit();
         }
@@ -153,7 +152,7 @@ public class LmdbMessageStore : IMessageStore
         try
         {
             _lock.EnterWriteLock();
-            using var tx = Environment.BeginTransaction();
+            using var tx = _environment.BeginTransaction();
             var result = FailedToSend(tx, message);
             tx.Commit().ThrowOnError();
             return result;
@@ -169,7 +168,7 @@ public class LmdbMessageStore : IMessageStore
         try
         {
             _lock.EnterWriteLock();
-            using var tx = Environment.BeginTransaction();
+            using var tx = _environment.BeginTransaction();
             SuccessfullySent(tx, messages);
             tx.Commit().ThrowOnError();
         }
@@ -186,7 +185,7 @@ public class LmdbMessageStore : IMessageStore
         try
         {
             _lock.EnterReadLock();
-            using var tx = Environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
+            using var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
             var db = OpenDatabase(queueName);
             var result = tx.Get(db, id).ThrowOnReadError();
             if (result.resultCode == MDBResultCode.NotFound)
@@ -211,7 +210,7 @@ public class LmdbMessageStore : IMessageStore
         try
         {
             _lock.EnterWriteLock();
-            using var tx = Environment.BeginTransaction();
+            using var tx = _environment.BeginTransaction();
             foreach (var databaseName in databases)
             {
                 var db = OpenDatabase(databaseName);
@@ -231,7 +230,7 @@ public class LmdbMessageStore : IMessageStore
         try
         {
             _lock.EnterReadLock();
-            using var tx = Environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
+            using var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
             using var db = tx.OpenDatabase();
             using var cursor = tx.CreateCursor(db);
             foreach (var (key, _) in cursor.AsEnumerable())
@@ -255,7 +254,7 @@ public class LmdbMessageStore : IMessageStore
         try
         {
             _lock.EnterReadLock();
-            using var tx = Environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
+            using var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
             var db = OpenDatabase(queueName);
             using var cursor = tx.CreateCursor(db);
             foreach (var (_, value) in cursor.AsEnumerable())
@@ -286,7 +285,7 @@ public class LmdbMessageStore : IMessageStore
         try
         {
             _lock.EnterReadLock();
-            using var tx = Environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
+            using var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
             var db = OpenDatabase(OutgoingQueue);
             using var cursor = tx.CreateCursor(db);
             foreach (var (_, value) in cursor.AsEnumerable())
@@ -359,7 +358,7 @@ public class LmdbMessageStore : IMessageStore
         try
         {
             _lock.EnterWriteLock();
-            using var tx = Environment.BeginTransaction();
+            using var tx = _environment.BeginTransaction();
             var enumerator = messages.GetEnumerator();
             while (enumerator.MoveNext())
             {
@@ -435,7 +434,7 @@ public class LmdbMessageStore : IMessageStore
         try
         {
             _lock.EnterWriteLock();
-            using var tx = Environment.BeginTransaction();
+            using var tx = _environment.BeginTransaction();
             var db = tx.OpenDatabase(queueName, new DatabaseConfiguration { Flags = DatabaseOpenFlags.Create });
             _databaseCache[queueName] = db;
             tx.Commit().ThrowOnError();
@@ -474,6 +473,6 @@ public class LmdbMessageStore : IMessageStore
                 database.Value.Dispose();
             }
         }
-        Environment.Dispose();
+        _environment.Dispose();
     }
 }
