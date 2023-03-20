@@ -57,7 +57,7 @@ public class LmdbMessageStore : IMessageStore
             _lock.EnterWriteLock();
             using var tx = _environment.BeginTransaction();
             StoreIncomingMessages(tx, messages);
-            tx.Commit().ThrowOnError();
+            ThrowIfError(tx.Commit());
         }
         finally
         {
@@ -97,11 +97,11 @@ public class LmdbMessageStore : IMessageStore
         {
             Span<byte> id = stackalloc byte[16];
             message.Id.MessageIdentifier.TryWriteBytes(id);
-            tx.Put(db, id, message.AsReadOnlyMemory().Span).ThrowOnError();
+            ThrowIfError(tx.Put(db, id, message.AsReadOnlyMemory().Span));
         }
-        catch (LightningException ex)
+        catch (StorageException ex)
         {
-            if (ex.StatusCode == (int)MDBResultCode.NotFound)
+            if (ex.ResultCode == MDBResultCode.NotFound)
                 throw new QueueDoesNotExistException(message.Queue, ex);
             throw;
         }
@@ -118,7 +118,7 @@ public class LmdbMessageStore : IMessageStore
                 RemoveMessagesFromStorage(tx, grouping.Key, grouping);
             }
 
-            tx.Commit().ThrowOnError();
+            ThrowIfError(tx.Commit());
         }
         finally
         {
@@ -154,7 +154,7 @@ public class LmdbMessageStore : IMessageStore
             _lock.EnterWriteLock();
             using var tx = _environment.BeginTransaction();
             var result = FailedToSend(tx, message);
-            tx.Commit().ThrowOnError();
+            ThrowIfError(tx.Commit());
             return result;
         }
         finally
@@ -170,7 +170,7 @@ public class LmdbMessageStore : IMessageStore
             _lock.EnterWriteLock();
             using var tx = _environment.BeginTransaction();
             SuccessfullySent(tx, messages);
-            tx.Commit().ThrowOnError();
+            ThrowIfError(tx.Commit());
         }
         finally
         {
@@ -187,7 +187,8 @@ public class LmdbMessageStore : IMessageStore
             _lock.EnterReadLock();
             using var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
             var db = OpenDatabase(queueName);
-            var result = tx.Get(db, id).ThrowOnReadError();
+            var result = tx.Get(db, id);
+            ThrowIfReadError(result.resultCode);
             if (result.resultCode == MDBResultCode.NotFound)
                 return null;
             var messageBuffer = result.value.AsSpan();
@@ -214,10 +215,10 @@ public class LmdbMessageStore : IMessageStore
             foreach (var databaseName in databases)
             {
                 var db = OpenDatabase(databaseName);
-                tx.TruncateDatabase(db).ThrowOnError();
+                ThrowIfError(tx.TruncateDatabase(db));
             }
 
-            tx.Commit().ThrowOnError();
+            ThrowIfError(tx.Commit());
         }
         finally
         {
@@ -344,7 +345,7 @@ public class LmdbMessageStore : IMessageStore
     {
         Span<byte> id = stackalloc byte[16];
         message.Id.MessageIdentifier.TryWriteBytes(id);
-        tx.Delete(db, id).ThrowOnError();
+        ThrowIfError(tx.Delete(db, id));
     }
 
     public void StoreOutgoing(ITransaction transaction, OutgoingMessage message)
@@ -359,7 +360,7 @@ public class LmdbMessageStore : IMessageStore
         {
             _lock.EnterWriteLock();
             using var tx = _environment.BeginTransaction();
-            var enumerator = messages.GetEnumerator();
+            using var enumerator = messages.GetEnumerator();
             while (enumerator.MoveNext())
             {
                 StoreOutgoing(tx, enumerator.Current);
@@ -377,7 +378,19 @@ public class LmdbMessageStore : IMessageStore
         Span<byte> id = stackalloc byte[16];
         message.Id.MessageIdentifier.TryWriteBytes(id);
         var db = OpenDatabase(OutgoingQueue);
-        tx.Put(db, id, message.AsReadOnlyMemory().Span).ThrowOnError();
+        ThrowIfError(tx.Put(db, id, message.AsReadOnlyMemory().Span));
+    }
+
+    private static void ThrowIfError(MDBResultCode resultCode)
+    {
+        if (resultCode != MDBResultCode.Success)
+            throw new StorageException("Error with LightningDB operation", resultCode);
+    }
+
+    private static void ThrowIfReadError(MDBResultCode resultCode)
+    {
+        if (resultCode != MDBResultCode.Success && resultCode != MDBResultCode.NotFound)
+            throw new StorageException("Error with LightningDB read operation", resultCode);
     }
 
     private int FailedToSend(LightningTransaction tx, OutgoingMessage message)
@@ -404,7 +417,7 @@ public class LmdbMessageStore : IMessageStore
         }
         else
         {
-            tx.Put(db, id, message.AsReadOnlyMemory().Span).ThrowOnError();
+            ThrowIfError(tx.Put(db, id, message.AsReadOnlyMemory().Span));
         }
         return attempts;
     }
@@ -417,8 +430,8 @@ public class LmdbMessageStore : IMessageStore
             message.Id.MessageIdentifier.TryWriteBytes(id);
             var original = OpenDatabase(message.Queue);
             var newDb = OpenDatabase(queueName);
-            tx.Delete(original, id).ThrowOnError();
-            tx.Put(newDb, id, message.AsReadOnlyMemory().Span).ThrowOnError();
+            ThrowIfError(tx.Delete(original, id));
+            ThrowIfError(tx.Put(newDb, id, message.AsReadOnlyMemory().Span));
         }
         catch (LightningException ex)
         {
@@ -437,7 +450,7 @@ public class LmdbMessageStore : IMessageStore
             using var tx = _environment.BeginTransaction();
             var db = tx.OpenDatabase(queueName, new DatabaseConfiguration { Flags = DatabaseOpenFlags.Create });
             _databaseCache[queueName] = db;
-            tx.Commit().ThrowOnError();
+            ThrowIfError(tx.Commit());
         }
         finally
         {
