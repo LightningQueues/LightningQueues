@@ -49,18 +49,18 @@ public class SendingProtocol : ProtocolBase, ISendingProtocol
         var messages = batch.ToList();
         writer.WriteOutgoingMessages(messages);
         await stream.WriteAsync(BitConverter.GetBytes(writer.WrittenMemory.Length), token).ConfigureAwait(false);
-        _logger.SenderWritingMessageBatch();
+        Logger.SenderWritingMessageBatch();
         await stream.WriteAsync(writer.WrittenMemory, token).ConfigureAwait(false);
-        _logger.SenderSuccessfullyWroteMessageBatch();
+        Logger.SenderSuccessfullyWroteMessageBatch();
         var pipe = new Pipe();
         var receiveTask = ReceiveIntoBuffer(pipe.Writer, stream, token);
         await ReadReceived(pipe.Reader, token).ConfigureAwait(false);
-        _logger.SenderSuccessfullyReadReceived();
+        Logger.SenderSuccessfullyReadReceived();
         var acknowledgeTask = WriteAcknowledgement(stream, token);
         await Task.WhenAny(acknowledgeTask.AsTask(), receiveTask.AsTask()).ConfigureAwait(false);
-        _logger.SenderSuccessfullyWroteAcknowledgement();
+        Logger.SenderSuccessfullyWroteAcknowledgement();
         _store.SuccessfullySent(messages);
-        _logger.SenderStorageSuccessfullySent();
+        Logger.SenderStorageSuccessfullySent();
     }
 
     private static async ValueTask ReadReceived(PipeReader reader, CancellationToken token)

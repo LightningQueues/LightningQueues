@@ -14,7 +14,6 @@ public class Receiver : IDisposable
     private readonly IReceivingProtocol _protocol;
     private readonly ILogger _logger;
     private bool _disposed;
-    private readonly object _lockObject;
         
     public Receiver(IPEndPoint endpoint, IReceivingProtocol protocol, ILogger logger)
     {
@@ -23,7 +22,6 @@ public class Receiver : IDisposable
         _logger = logger;
         _listener = new TcpListener(Endpoint);
         _listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-        _lockObject = new object();
     }
 
     public IPEndPoint Endpoint { get; }
@@ -66,10 +64,7 @@ public class Receiver : IDisposable
 
     private void StartListener()
     {
-        lock (_lockObject)
-        {
-            _listener.Start();
-        }
+        _listener.Start();
     }
 
     public void Dispose()
@@ -77,8 +72,7 @@ public class Receiver : IDisposable
         if (_disposed)
             return;
         
-        if(_logger.IsEnabled(LogLevel.Information))
-            _logger.LogInformation("Disposing TcpListener at {Port}", Endpoint.Port);
+        _logger.ReceiverDisposing();
         _disposed = true;
         _listener.Stop();
         GC.SuppressFinalize(this);

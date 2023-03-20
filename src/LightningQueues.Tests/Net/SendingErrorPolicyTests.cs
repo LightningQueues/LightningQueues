@@ -135,10 +135,7 @@ public class SendingErrorPolicyTests : IDisposable
         };
         var retryTask = Task.Factory.StartNew(async () =>
         {
-            await foreach (var msg in _errorPolicy.Retries.ReadAllAsync(cancellation.Token))
-            {
-                observed = msg;
-            }
+            observed = await _errorPolicy.Retries.ReadAllAsync(cancellation.Token).FirstAsync(cancellation.Token);
         }, cancellation.Token);
         _failureChannel.Writer.TryWrite(failure);
         await Task.Delay(TimeSpan.FromSeconds(1), cancellation.Token);

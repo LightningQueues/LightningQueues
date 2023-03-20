@@ -38,15 +38,19 @@ public class NoStorage : IMessageStore
     {
     }
 
-    public void StoreIncomingMessages(params Message[] messages)
+    public void StoreIncomingMessages(IEnumerable<Message> messages)
     {
     }
 
-    public void StoreIncomingMessages(ITransaction transaction, params Message[] messages)
+    public void StoreIncomingMessage(ITransaction transaction, Message message)
     {
     }
 
-    public void DeleteIncomingMessages(params Message[] messages)
+    public void StoreIncomingMessages(ITransaction transaction, IEnumerable<Message> messages)
+    {
+    }
+
+    public void DeleteIncomingMessages(IEnumerable<Message> messages)
     {
     }
 
@@ -73,12 +77,20 @@ public class NoStorage : IMessageStore
     {
     }
 
+    public void StoreOutgoing(IEnumerable<OutgoingMessage> messages)
+    {
+    }
+
+    public void StoreOutgoing(OutgoingMessage message)
+    {
+    }
+
     public int FailedToSend(OutgoingMessage message)
     {
         return message.SentAttempts;
     }
 
-    public void SuccessfullySent(IList<OutgoingMessage> messages)
+    public void SuccessfullySent(IEnumerable<OutgoingMessage> messages)
     {
     }
 

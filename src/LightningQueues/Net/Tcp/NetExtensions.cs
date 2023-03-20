@@ -15,12 +15,12 @@ public static class NetExtensions
         if (batchSize < 1) throw new ArgumentOutOfRangeException(nameof(batchSize));
         if (timeout < TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(timeout));
-        using var linkedCTS = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        linkedCTS.CancelAfter(timeout);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        linked.CancelAfter(timeout);
         List<T> buffer = new();
         while (true)
         {
-            var token = buffer.Count == 0 ? cancellationToken : linkedCTS.Token;
+            var token = buffer.Count == 0 ? cancellationToken : linked.Token;
             T item;
             try
             {

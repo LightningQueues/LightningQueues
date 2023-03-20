@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Channels;
@@ -74,7 +75,7 @@ public class Queue : IDisposable
             _logger.LogDebug("Starting LightningQueues");
         var errorPolicy = new SendingErrorPolicy(_logger, Store, _sender.FailedToSend());
         var errorTask = errorPolicy.StartRetries(token);
-        var persistedMessages = Store.PersistedOutgoingMessages();
+        var persistedMessages = Store.PersistedOutgoingMessages().ToList();
         var sendingTask = Task.Factory.StartNew(async () =>
         {
             await _sender.StartSendingAsync(_sendChannel.Reader, token).ConfigureAwait(false);
@@ -101,8 +102,7 @@ public class Queue : IDisposable
         else
             cancellationToken = _cancelOnDispose.Token;
         
-        if(_logger.IsEnabled(LogLevel.Debug))
-            _logger.LogDebug("Starting to receive for queue {QueueName}", queueName);
+        _logger.QueueStartReceiving(queueName);
         return Store.PersistedMessages(queueName).ToAsyncEnumerable(cancellationToken)
             .Concat(_receivingChannel.Reader.ReadAllAsync(cancellationToken)
                     .Where(x => x.Queue == queueName))
@@ -122,16 +122,14 @@ public class Queue : IDisposable
 
     public void Enqueue(Message message)
     {
-        if(_logger.IsEnabled(LogLevel.Debug))
-            _logger.LogDebug("Enqueueing message {MessageIdentifier} to {QueueName}", message.Id.MessageIdentifier, message.Queue);
-        Store.StoreIncomingMessages(message);
+        _logger.QueueEnqueue(message.Id, message.Queue);
+        Store.StoreIncomingMessage(message);
         ReceivingChannel.TryWrite(message);
     }
 
     public async void ReceiveLater(Message message, TimeSpan timeSpan)
     {
-        if(_logger.IsEnabled(LogLevel.Debug))
-            _logger.LogDebug("Delaying message {MessageIdentifier} until {DelayTime}", message.Id.MessageIdentifier, message.Queue);
+        _logger.QueueReceiveLater(message.Id, timeSpan);
         try
         {
             await Task.Delay(timeSpan);
@@ -139,23 +137,16 @@ public class Queue : IDisposable
         }
         catch (Exception ex)
         {
-            if(_logger.IsEnabled(LogLevel.Error))
-                _logger.LogError(ex, "Error with receiving later");
+            _logger.QueueErrorReceiveLater(message.Id, timeSpan, ex);
         }
     }
 
     public async void Send(params OutgoingMessage[] messages)
     {
-        if (_logger.IsEnabled(LogLevel.Error))
-            _logger.LogDebug("Sending {MessageCount} messages", messages.Length);
+        _logger.QueueSendBatch(messages.Length);
         try
         {
-            using var tx = Store.BeginTransaction();
-            foreach (var message in messages)
-            {
-                Store.StoreOutgoing(tx, message);
-            }
-            tx.Commit();
+            Store.StoreOutgoing(messages);
             foreach (var message in messages)
             {
                 await _sendChannel.Writer.WriteAsync(message, _cancelOnDispose.Token);
@@ -167,6 +158,20 @@ public class Queue : IDisposable
                 _logger.LogError(ex, "Error sending queue outgoing messages");
         }
     }
+    
+    public async void Send(OutgoingMessage message)
+    {
+        _logger.QueueSend(message.Id);
+        try
+        {
+            Store.StoreOutgoing(message);
+            await _sendChannel.Writer.WriteAsync(message, _cancelOnDispose.Token);
+        }
+        catch (Exception ex)
+        {
+            _logger.QueueSendError(message.Id, ex);
+        }
+    }
 
     public void ReceiveLater(Message message, DateTimeOffset time)
     {
@@ -175,8 +180,7 @@ public class Queue : IDisposable
 
     public void Dispose()
     {
-        if(_logger.IsEnabled(LogLevel.Information))
-            _logger.LogInformation("Disposing queue");
+        _logger.QueueDispose();
         
         _cancelOnDispose.Cancel();
         _cancelOnDispose.Dispose();
@@ -188,10 +192,9 @@ public class Queue : IDisposable
             _sendChannel.Writer.TryComplete();
             Store.Dispose();
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            if(_logger.IsEnabled(LogLevel.Error))
-                _logger.LogError(e, "Failed when shutting down queue");
+            _logger.QueueDisposeError(ex);
         }
         GC.SuppressFinalize(this);
     }

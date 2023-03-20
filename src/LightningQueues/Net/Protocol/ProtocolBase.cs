@@ -10,11 +10,11 @@ namespace LightningQueues.Net.Protocol;
 
 public abstract class ProtocolBase
 {
-    protected readonly ILogger _logger;
+    protected readonly ILogger Logger;
 
     protected ProtocolBase(ILogger logger)
     {
-        _logger = logger;
+        Logger = logger;
     }
     protected async ValueTask ReceiveIntoBuffer(PipeWriter writer, Stream stream, CancellationToken cancellationToken)
     {
@@ -45,7 +45,7 @@ public abstract class ProtocolBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error reading from stream");
+            Logger.LogError(ex, "Error reading from stream");
             if (!cancellationToken.IsCancellationRequested)
                 throw;
         }

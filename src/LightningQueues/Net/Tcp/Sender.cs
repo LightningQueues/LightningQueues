@@ -61,13 +61,11 @@ public class Sender : IDisposable
                     }
                     catch (QueueDoesNotExistException ex)
                     {
-                        if (_logger.IsEnabled(LogLevel.Error))
-                            _logger.LogError(ex, "Queue does not exist at {Uri}", uri);
+                        _logger.SenderQueueDoesNotExistError(uri, ex);
                     }
                     catch (Exception ex)
                     {
-                        if (_logger.IsEnabled(LogLevel.Error))
-                            _logger.LogError(ex, "Failed to send messages to {Uri}", uri);
+                        _logger.SenderSendingError(uri, ex);
                         var failed = new OutgoingMessageFailure
                         {
                             Messages = messages
@@ -78,19 +76,20 @@ public class Sender : IDisposable
             }
             catch (Exception ex)
             {
-                if (_logger.IsEnabled(LogLevel.Error))
-                    _logger.LogError(ex, "Error sending messages in channel loop");
+                _logger.SenderSendingLoopError(ex);
             }
         }
     }
 
     public void Dispose()
     {
-        if(_logger.IsEnabled(LogLevel.Information))
-            _logger.LogInformation("Disposing Sender");
-        if (_cancellation.IsCancellationRequested) return;
-        _cancellation.Cancel();
-        _cancellation.Dispose();
+        _logger.SenderDisposing();
+        using (_cancellation)
+        {
+            if (!_cancellation.IsCancellationRequested)
+                _cancellation.Cancel();
+        }
+
         GC.SuppressFinalize(this);
     }
 }

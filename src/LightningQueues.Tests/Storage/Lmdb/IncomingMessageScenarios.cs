@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Linq;
-using LightningDB;
-using LightningQueues.Serialization;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
@@ -27,11 +25,7 @@ public class IncomingMessageScenarios : IDisposable
     {
         var message = NewMessage<Message>();
         _store.CreateQueue(message.Queue);
-        using (var transaction = _store.BeginTransaction())
-        {
-            _store.StoreIncomingMessages(transaction, message);
-            transaction.Commit();
-        }
+        _store.StoreIncomingMessage(message);
         var msg = _store.GetMessage(message.Queue, message.Id);
         System.Text.Encoding.UTF8.GetString(msg.Data).ShouldBe("hello");
         msg.Headers.First().Value.ShouldBe("my_value");
@@ -43,8 +37,7 @@ public class IncomingMessageScenarios : IDisposable
         var message = NewMessage<Message>();
         Assert.Throws<QueueDoesNotExistException>(() =>
         {
-            using var tx = _store.BeginTransaction();
-            _store.StoreIncomingMessages(tx, message);
+            _store.StoreIncomingMessage(message);
         });
     }
 
@@ -55,7 +48,7 @@ public class IncomingMessageScenarios : IDisposable
         _store.CreateQueue(message.Queue);
         using (var transaction = _store.BeginTransaction())
         {
-            _store.StoreIncomingMessages(transaction, message);
+            _store.StoreIncomingMessage(transaction, message);
             _store.Dispose();
             //crash
         }
@@ -71,7 +64,7 @@ public class IncomingMessageScenarios : IDisposable
         var message = NewMessage<Message>();
         _store.CreateQueue(message.Queue);
         var transaction = _store.BeginTransaction();
-        _store.StoreIncomingMessages(transaction, message);
+        _store.StoreIncomingMessage(transaction, message);
         transaction.Dispose();
 
         var msg = _store.GetMessage(message.Queue, message.Id);

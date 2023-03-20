@@ -57,7 +57,7 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
         var length = await pipe.Reader.ReadInt32Async(true, cancellationToken).ConfigureAwait(false);
         if (length <= 0 || cancellationToken.IsCancellationRequested)
             yield break;
-        _logger.ReceiverReceivedLength(length);
+        Logger.ReceiverReceivedLength(length);
         var result = await pipe.Reader.ReadAtLeastAsync(length, cancellationToken).ConfigureAwait(false);
         if (cancellationToken.IsCancellationRequested)
             yield break;

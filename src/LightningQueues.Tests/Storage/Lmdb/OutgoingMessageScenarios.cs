@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using LightningDB;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
 using Xunit;

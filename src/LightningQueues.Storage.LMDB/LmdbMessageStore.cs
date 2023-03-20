@@ -51,7 +51,7 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    public void StoreIncomingMessages(params Message[] messages)
+    public void StoreIncomingMessages(IEnumerable<Message> messages)
     {
         try
         {
@@ -65,14 +65,21 @@ public class LmdbMessageStore : IMessageStore
             _lock.ExitWriteLock();
         }
     }
-    
-    public void StoreIncomingMessages(ITransaction transaction, params Message[] messages)
+
+    public void StoreIncomingMessage(ITransaction transaction, Message message)
+    {
+        var tx = ((LmdbTransaction) transaction).Transaction;
+        var db = OpenDatabase(message.Queue);
+        StoreIncomingMessage(tx, db, message);
+    }
+
+    public void StoreIncomingMessages(ITransaction transaction, IEnumerable<Message> messages)
     {
         var tx = ((LmdbTransaction) transaction).Transaction;
         StoreIncomingMessages(tx, messages);
     }
 
-    private void StoreIncomingMessages(LightningTransaction tx, params Message[] messages)
+    private void StoreIncomingMessages(LightningTransaction tx, IEnumerable<Message> messages)
     {
         foreach (var messagesByQueue in messages.GroupBy(x => x.Queue))
         {
@@ -101,7 +108,7 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    public void DeleteIncomingMessages(params Message[] messages)
+    public void DeleteIncomingMessages(IEnumerable<Message> messages)
     {
         try
         {
@@ -126,6 +133,21 @@ public class LmdbMessageStore : IMessageStore
         return new LmdbTransaction(Environment.BeginTransaction(), _lock.ExitWriteLock);
     }
 
+    public void StoreOutgoing(OutgoingMessage message)
+    {
+        try
+        {
+            _lock.EnterWriteLock();
+            using var tx = Environment.BeginTransaction();
+            StoreOutgoing(tx, message);
+            tx.Commit();
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
     public int FailedToSend(OutgoingMessage message)
     {
         try
@@ -142,7 +164,7 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    public void SuccessfullySent(IList<OutgoingMessage> messages)
+    public void SuccessfullySent(IEnumerable<OutgoingMessage> messages)
     {
         try
         {
@@ -292,7 +314,6 @@ public class LmdbMessageStore : IMessageStore
 
     public void MoveToQueue(ITransaction transaction, string queueName, Message message)
     {
-
         var tx = ((LmdbTransaction)transaction).Transaction;
         MoveToQueue(tx, queueName, message);
     }
@@ -331,6 +352,25 @@ public class LmdbMessageStore : IMessageStore
     {
         var tx = ((LmdbTransaction) transaction).Transaction;
         StoreOutgoing(tx, message);
+    }
+
+    public void StoreOutgoing(IEnumerable<OutgoingMessage> messages)
+    {
+        try
+        {
+            _lock.EnterWriteLock();
+            using var tx = Environment.BeginTransaction();
+            var enumerator = messages.GetEnumerator();
+            while (enumerator.MoveNext())
+            {
+                StoreOutgoing(tx, enumerator.Current);
+            }
+            tx.Commit();
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
     }
 
     private void StoreOutgoing(LightningTransaction tx, OutgoingMessage message)

@@ -45,7 +45,7 @@ public class LmdbMessageStoreTester : IDisposable
         outgoingMessage.SentAt = DateTime.Now;
         var tx = _store.BeginTransaction();
         _store.StoreOutgoing(tx, outgoingMessage);
-        _store.StoreIncomingMessages(tx, message);
+        _store.StoreIncomingMessage(tx, message);
         tx.Commit();
         tx.Dispose();
         _store.PersistedMessages("test").Count().ShouldBe(1);
@@ -65,7 +65,7 @@ public class LmdbMessageStoreTester : IDisposable
         outgoingMessage.SentAt = DateTime.Now;
         var tx = _store.BeginTransaction();
         _store.StoreOutgoing(tx, outgoingMessage);
-        _store.StoreIncomingMessages(tx, message);
+        _store.StoreIncomingMessage(tx, message);
         tx.Commit();
         _store.Dispose();
         using var store2 = new LmdbMessageStore(_path);
@@ -84,7 +84,7 @@ public class LmdbMessageStoreTester : IDisposable
         outgoingMessage.SentAt = DateTime.Now;
         var tx = _store.BeginTransaction();
         _store.StoreOutgoing(tx, outgoingMessage);
-        _store.StoreIncomingMessages(tx, message);
+        _store.StoreIncomingMessage(tx, message);
         tx.Commit();
         tx.Dispose();
         var message2 = _store.GetMessage(message.Queue, message.Id);
