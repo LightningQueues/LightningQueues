@@ -15,7 +15,7 @@ public class Message
     public MessageId Id { get; init; }
     public string Queue { get; set; }
     public DateTime SentAt { get; set; }
-    public IDictionary<string, string> Headers { get; set; }
+    public IDictionary<string, string> Headers { get; }
     public byte[] Data { get; set; }
     public string SubQueue { get; set; }
         

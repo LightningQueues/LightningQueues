@@ -1,5 +1,6 @@
 using Xunit;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -99,7 +100,7 @@ public class ReceivingProtocolTests : IDisposable
             Queue = "test"
         };
         
-        var bytes = new[] { message }.AsReadOnlyMemory();
+        var bytes = new List<OutgoingMessage>{ message }.AsReadOnlyMemory();
         using var ms = new MemoryStream();
         ms.Write(BitConverter.GetBytes(bytes.Length + differenceFromActualLength), 0, 4);
         ms.Write(bytes.Span);
@@ -120,7 +121,7 @@ public class ReceivingProtocolTests : IDisposable
             Data = "hello"u8.ToArray(),
             Queue = "test"
         };
-        var bytes = new[] { message }.AsReadOnlyMemory();
+        var bytes = new List<OutgoingMessage>{ message }.AsReadOnlyMemory();
         using var ms = new MemoryStream();
         ms.Write(BitConverter.GetBytes(bytes.Length), 0, 4);
         ms.Write(bytes.Span);

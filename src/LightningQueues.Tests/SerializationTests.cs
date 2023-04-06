@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.Linq;
 using DotNext.Buffers;
 using LightningQueues.Serialization;
@@ -15,7 +16,7 @@ public class SerializationTests
     {
         var msg = NewMessage<OutgoingMessage>();
         msg.Destination = new Uri("lq.tcp://fake:1234");
-        var msgs = new [] { msg };
+        var msgs = new List<OutgoingMessage> { msg };
         using var writer = new PooledBufferWriter<byte>();
         writer.WriteOutgoingMessages(msgs);
         var serialized = new ReadOnlySequence<byte>(writer.WrittenMemory);

@@ -16,7 +16,7 @@ public static class QueueBuilder
         var message = new T
         {
             Data = Encoding.UTF8.GetBytes(payload),
-            Headers = new Dictionary<string, string>
+            Headers =
             {
                 {"my_key", headerValue}
             },
