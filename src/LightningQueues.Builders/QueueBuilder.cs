@@ -11,15 +11,11 @@ namespace LightningQueues.Builders;
 
 public static class QueueBuilder
 {
-    public  static T NewMessage<T>(string queueName = "clever_queue_name", string payload = "hello", string headerValue = "my_value") where T : Message, new()
+    public  static T NewMessage<T>(string queueName = "clever_queue_name", string payload = "hello") where T : Message, new()
     {
         var message = new T
         {
             Data = Encoding.UTF8.GetBytes(payload),
-            Headers =
-            {
-                {"my_key", headerValue}
-            },
             Id = MessageId.GenerateRandom(),
             Queue = queueName,
             SentAt = DateTime.Now

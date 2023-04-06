@@ -97,7 +97,7 @@ public class LmdbMessageStore : IMessageStore
         {
             Span<byte> id = stackalloc byte[16];
             message.Id.MessageIdentifier.TryWriteBytes(id);
-            ThrowIfError(tx.Put(db, id, message.AsReadOnlyMemory().Span));
+            ThrowIfError(tx.Put(db, id, message.AsSpan()));
         }
         catch (StorageException ex)
         {
@@ -431,7 +431,7 @@ public class LmdbMessageStore : IMessageStore
             var original = OpenDatabase(message.Queue);
             var newDb = OpenDatabase(queueName);
             ThrowIfError(tx.Delete(original, id));
-            ThrowIfError(tx.Put(newDb, id, message.AsReadOnlyMemory().Span));
+            ThrowIfError(tx.Put(newDb, id, message.AsSpan()));
         }
         catch (LightningException ex)
         {

@@ -9,18 +9,24 @@ namespace LightningQueues.Serialization;
 
 public static class SerializationExtensions
 {
-    public static void WriteOutgoingMessages(this IBufferWriter<byte> writer, IList<OutgoingMessage> messages)
+    public static void WriteOutgoingMessages(this IBufferWriter<byte> writer, List<OutgoingMessage> messages)
     {
         writer.WriteInt32(messages.Count, true);
         foreach (var message in messages)
         {
+            if (message.Bytes.Length > 0)
+            {
+                writer.Write(message.Bytes);
+                continue;
+            }
             WriteMessage(writer, message);
-            writer.WriteString(message.Destination.ToString(), Encoding.UTF8, LengthFormat.Compressed);
+            writer.WriteString(message.Destination.OriginalString, Encoding.UTF8, LengthFormat.Compressed);
             writer.Write(message.DeliverBy.HasValue);
             if (message.DeliverBy.HasValue)
             {
                 writer.Write(message.DeliverBy.Value.ToBinary());
             }
+
             writer.Write(message.MaxAttempts.HasValue);
             if (message.MaxAttempts.HasValue)
             {
@@ -31,31 +37,24 @@ public static class SerializationExtensions
 
     private static void WriteMessage(IBufferWriter<byte> writer, Message message)
     {
-        if (message.Bytes.Length == 0)
-        {
-            Span<byte> id = stackalloc byte[16];
-            message.Id.SourceInstanceId.TryWriteBytes(id);
-            writer.Write(id);
-            message.Id.MessageIdentifier.TryWriteBytes(id);
-            writer.Write(id);
-            writer.WriteString(message.Queue.AsSpan(), Encoding.UTF8, LengthFormat.Compressed);
-            writer.WriteString((message.SubQueue ?? string.Empty).AsSpan(), Encoding.UTF8, LengthFormat.Compressed);
-            writer.Write(message.SentAt.ToBinary());
+        Span<byte> id = stackalloc byte[16];
+        message.Id.SourceInstanceId.TryWriteBytes(id);
+        writer.Write(id);
+        message.Id.MessageIdentifier.TryWriteBytes(id);
+        writer.Write(id);
+        writer.WriteString(message.Queue.AsSpan(), Encoding.UTF8, LengthFormat.Compressed);
+        writer.WriteString((message.SubQueue ?? string.Empty).AsSpan(), Encoding.UTF8, LengthFormat.Compressed);
+        writer.Write(message.SentAt.ToBinary());
 
-            writer.Write(message.Headers.Count);
-            foreach (var pair in message.Headers)
-            {
-                writer.WriteString(pair.Key.AsSpan(), Encoding.UTF8, LengthFormat.Compressed);
-                writer.WriteString(pair.Value.AsSpan(), Encoding.UTF8, LengthFormat.Compressed);
-            }
-
-            writer.Write(message.Data.Length);
-            writer.Write(message.Data.AsSpan());
-        }
-        else
+        writer.Write(message.Headers.Count);
+        foreach (var pair in message.Headers)
         {
-            writer.Write(message.Bytes);
+            writer.WriteString(pair.Key.AsSpan(), Encoding.UTF8, LengthFormat.Compressed);
+            writer.WriteString(pair.Value.AsSpan(), Encoding.UTF8, LengthFormat.Compressed);
         }
+
+        writer.Write(message.Data.Length);
+        writer.Write(message.Data.AsSpan());
     }
 
     public static OutgoingMessage ToOutgoingMessage(this ReadOnlySpan<byte> buffer)
@@ -149,26 +148,29 @@ public static class SerializationExtensions
         return msg;
     }
 
-    public static ReadOnlyMemory<byte> AsReadOnlyMemory(this IList<OutgoingMessage> messages)
+    public static ReadOnlyMemory<byte> AsReadOnlyMemory(this List<OutgoingMessage> messages)
     {
         using var writer = new PooledBufferWriter<byte>();
         writer.WriteOutgoingMessages(messages);
         return writer.WrittenMemory;
     }
-    
         
-    public static ReadOnlyMemory<byte> AsReadOnlyMemory(this Message message)
+    public static ReadOnlySpan<byte> AsSpan(this Message message)
     {
+        if (message.Bytes.Length > 0)
+        {
+            return message.Bytes.FirstSpan;
+        }
         using var writer = new PooledBufferWriter<byte>();
         WriteMessage(writer, message);
-        return writer.WrittenMemory;
+        return writer.WrittenMemory.Span;
     }
 
     public static ReadOnlyMemory<byte> AsReadOnlyMemory(this OutgoingMessage message)
     {
         using var writer = new PooledBufferWriter<byte>();
         WriteMessage(writer, message);
-        writer.WriteString(message.Destination.ToString(), Encoding.UTF8, LengthFormat.Compressed);
+        writer.WriteString(message.Destination.OriginalString, Encoding.UTF8, LengthFormat.Compressed);
         writer.Write(message.DeliverBy.HasValue);
         if (message.DeliverBy.HasValue)
         {
@@ -180,6 +182,8 @@ public static class SerializationExtensions
             writer.Write(message.MaxAttempts.Value);
         }
 
+        var messageBytes = new ReadOnlySequence<byte>(writer.WrittenMemory);
+        message.Bytes = messageBytes;
         return writer.WrittenMemory;
     }
 }

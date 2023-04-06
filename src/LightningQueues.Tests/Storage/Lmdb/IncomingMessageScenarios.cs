@@ -24,6 +24,7 @@ public class IncomingMessageScenarios : IDisposable
     public void happy_path_success()
     {
         var message = NewMessage<Message>();
+        message.Headers.Add("my_key", "my_value");
         _store.CreateQueue(message.Queue);
         _store.StoreIncomingMessage(message);
         var msg = _store.GetMessage(message.Queue, message.Id);
