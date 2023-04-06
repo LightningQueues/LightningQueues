@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 
 namespace LightningQueues;
 
@@ -16,30 +17,36 @@ public record MessageId
             MessageIdentifier = GenerateGuidComb()
         };
     }
-
+    private static readonly long BaseDateTicks = new DateTime(1900, 1, 1).Ticks;
     private static Guid GenerateGuidComb()
     {
-        var guidArray = Guid.NewGuid().ToByteArray();
-
-        var baseDate = new DateTime(1900, 1, 1);
+        var guid = Guid.NewGuid();
         var now = DateTime.Now;
+        Span<byte> guidArray = stackalloc byte[16];
+        guid.TryWriteBytes(guidArray);
 
-        // Get the days and milliseconds which will be used to build the byte string 
-        var days = new TimeSpan(now.Ticks - baseDate.Ticks);
-        var msecs = now.TimeOfDay;
+        // Get the days and milliseconds which will be used to build the byte string
+        var days = new TimeSpan(now.Ticks - BaseDateTicks).Days;
+        var msecs = now.TimeOfDay.TotalMilliseconds;
 
-        // Convert to a byte array 
-        // Note that SQL Server is accurate to 1/300th of a millisecond so we divide by 3.333333 
-        var daysArray = BitConverter.GetBytes(days.Days);
-        var msecsArray = BitConverter.GetBytes((long)(msecs.TotalMilliseconds / 3.333333));
+        // Convert to a byte array
+        Span<byte> daysArray = stackalloc byte[4];
+        MemoryMarshal.Write(daysArray, ref days);
 
-        // Reverse the bytes to match SQL Servers ordering 
-        Array.Reverse(daysArray);
-        Array.Reverse(msecsArray);
+        // Note that SQL Server is accurate to 1/300th of a millisecond so we divide by 3.333333
+        var msecsSql = (long)(msecs / 3.333333);
 
-        // Copy the bytes into the guid 
-        Array.Copy(daysArray, daysArray.Length - 2, guidArray, guidArray.Length - 6, 2);
-        Array.Copy(msecsArray, msecsArray.Length - 4, guidArray, guidArray.Length - 4, 4);
+        Span<byte> msecsArray = stackalloc byte[8];
+        MemoryMarshal.Write(msecsArray, ref msecsSql);
+
+        // Reverse the bytes to match SQL Servers ordering
+        // Copy the bytes into the guid
+        guidArray[15] = msecsArray[0];
+        guidArray[14] = msecsArray[1];
+        guidArray[13] = msecsArray[2];
+        guidArray[12] = msecsArray[3];
+        guidArray[11] = daysArray[0];
+        guidArray[10] = daysArray[1];
 
         return new Guid(guidArray);
     }
