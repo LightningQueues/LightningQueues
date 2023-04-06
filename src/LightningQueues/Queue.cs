@@ -101,11 +101,11 @@ public class Queue : IDisposable
                 .CreateLinkedTokenSource(cancellationToken, _cancelOnDispose.Token).Token;
         else
             cancellationToken = _cancelOnDispose.Token;
-        
+
         _logger.QueueStartReceiving(queueName);
-        return Store.PersistedMessages(queueName).ToAsyncEnumerable(cancellationToken)
-            .Concat(_receivingChannel.Reader.ReadAllAsync(cancellationToken)
-                    .Where(x => x.Queue == queueName))
+        return Store.PersistedMessages(queueName)
+            .Concat(_receivingChannel.Reader.ReadAllAsync(cancellationToken))
+            .Where(x => x.Queue == queueName)
             .Select(x => new MessageContext(x, this));
     }
 

@@ -1,57 +1,37 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace LightningQueues;
 
 internal static class EnumerableEx
 {
-    internal static async IAsyncEnumerable<T> ToAsyncEnumerable<T>(this IEnumerable<T> items, 
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        using var enumerator = items.GetEnumerator();
-        while (enumerator.MoveNext())
-        {
-            if(cancellationToken.IsCancellationRequested)
-                yield break;
-            yield return await ValueTask.FromResult(enumerator.Current);
-        }
-    }
-
     internal static async IAsyncEnumerable<T> Where<T>(this IAsyncEnumerable<T> items, Func<T, bool> filter)
     {
-        var enumerator = items.GetAsyncEnumerator();
-        while (await enumerator.MoveNextAsync())
+        await foreach (var item in items)
         {
-            var current = enumerator.Current;
-            if (filter(current))
-                yield return current;
+            if (filter(item))
+                yield return item;
         }
     }
     
-    internal static async IAsyncEnumerable<T> Concat<T>(this IAsyncEnumerable<T> items, IAsyncEnumerable<T> items2)
+    internal static async IAsyncEnumerable<T> Concat<T>(this IEnumerable<T> items, IAsyncEnumerable<T> items2)
     {
-        var itemsEnumerator = items.GetAsyncEnumerator();
-        while (await itemsEnumerator.MoveNextAsync())
+        foreach (var item in items)
         {
-            yield return itemsEnumerator.Current;
+            yield return item;
         }
 
-        var items2Enumerator = items2.GetAsyncEnumerator();
-        while (await items2Enumerator.MoveNextAsync())
+        await foreach (var item in items2)
         {
-            yield return items2Enumerator.Current;
+            yield return item;
         }
     }
     
     internal static async IAsyncEnumerable<TResult> Select<T, TResult>(this IAsyncEnumerable<T> items, Func<T, TResult> selector)
     {
-        var enumerator = items.GetAsyncEnumerator();
-        while (await enumerator.MoveNextAsync())
+        await foreach (var item in items)
         {
-            yield return selector(enumerator.Current);
+            yield return selector(item);
         }
     }
 }
