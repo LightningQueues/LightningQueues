@@ -1,15 +1,16 @@
 ﻿using System;
+using System.Threading;
 using LightningDB;
 
 namespace LightningQueues.Storage.LMDB;
 
 public class LmdbTransaction : ITransaction
 {
-    private readonly Action _complete;
+    private readonly ReaderWriterLockSlim _writeLock;
 
-    public LmdbTransaction(LightningTransaction tx, Action complete)
+    public LmdbTransaction(LightningTransaction tx, ReaderWriterLockSlim writeLock)
     {
-        _complete = complete;
+        _writeLock = writeLock;
         Transaction = tx;
     }
     
@@ -28,7 +29,7 @@ public class LmdbTransaction : ITransaction
         }
         finally
         {
-            _complete();
+            _writeLock.ExitWriteLock();
         }
     }
 }

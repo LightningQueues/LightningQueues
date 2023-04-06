@@ -129,7 +129,7 @@ public class LmdbMessageStore : IMessageStore
     public ITransaction BeginTransaction()
     {
         _lock.EnterWriteLock();
-        return new LmdbTransaction(_environment.BeginTransaction(), _lock.ExitWriteLock);
+        return new LmdbTransaction(_environment.BeginTransaction(), _lock);
     }
 
     public void StoreOutgoing(OutgoingMessage message)
