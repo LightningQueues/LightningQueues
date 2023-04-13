@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using LightningDB;
+using LightningQueues.Serialization;
 using Microsoft.Extensions.Logging;
 using LightningQueues.Storage;
 
@@ -27,6 +28,7 @@ public static class QueueBuilder
         IMessageStore store = null, bool secureTransport = false, TimeSpan? timeoutAfter = null)
     {
         logger ??= new RecordingLogger();
+        var serializer = new MessageSerializer();
         if (store == null)
         {
             var environment = new LightningEnvironment(path, new EnvironmentConfiguration
@@ -35,12 +37,13 @@ public static class QueueBuilder
                 MaxDatabases = 5
             });
             environment.Open(EnvironmentOpenFlags.NoLock);
-            store ??= new LmdbMessageStore(environment);
+            store ??= new LmdbMessageStore(environment, serializer);
         }
 
         var queueConfiguration = new QueueConfiguration();
         queueConfiguration.LogWith(logger)
             .AutomaticEndpoint()
+            .SerializeWith(serializer)
             .StoreMessagesWith(store);
         if (timeoutAfter.HasValue)
         {

@@ -4,6 +4,7 @@ using LightningQueues.Net;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Security;
 using LightningQueues.Net.Tcp;
+using LightningQueues.Serialization;
 using LightningQueues.Storage;
 using Microsoft.Extensions.Logging;
 
@@ -36,6 +37,7 @@ public class QueueConfiguration
     private IPEndPoint _endpoint;
     private IReceivingProtocol _receivingProtocol;
     private ISendingProtocol _sendingProtocol;
+    private IMessageSerializer _serializer;
     private ILogger _logger;
     private TimeSpan _timeoutBatchAfter;
 
@@ -44,6 +46,7 @@ public class QueueConfiguration
         _logger = new NoLoggingLogger();
         _sendingSecurity = new NoSecurity();
         _receivingSecurity = new NoSecurity();
+        _serializer = new MessageSerializer();
         _timeoutBatchAfter = TimeSpan.FromSeconds(5);
     }
 
@@ -75,6 +78,12 @@ public class QueueConfiguration
     public QueueConfiguration AutomaticEndpoint()
     {
         return ReceiveMessagesAt(new IPEndPoint(IPAddress.Loopback, PortFinder.FindPort()));
+    }
+
+    public QueueConfiguration SerializeWith(IMessageSerializer serializer)
+    {
+        _serializer = serializer;
+        return this;
     }
 
     public QueueConfiguration LogWith(ILogger logger)
@@ -109,8 +118,9 @@ public class QueueConfiguration
 
     private void InitializeDefaults()
     {
-        _sendingProtocol ??= new SendingProtocol(_store, _sendingSecurity, _logger);
-        _receivingProtocol ??= new ReceivingProtocol(_store, _receivingSecurity, 
+        var serializer = new MessageSerializer();
+        _sendingProtocol ??= new SendingProtocol(_store, _sendingSecurity, serializer, _logger);
+        _receivingProtocol ??= new ReceivingProtocol(_store, _receivingSecurity, serializer, 
             new Uri($"lq.tcp://{_endpoint}"), _logger);
     }
 }

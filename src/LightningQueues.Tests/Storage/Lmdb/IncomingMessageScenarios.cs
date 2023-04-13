@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using LightningQueues.Serialization;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
@@ -17,7 +18,7 @@ public class IncomingMessageScenarios : IDisposable
     public IncomingMessageScenarios(SharedTestDirectory testDirectory)
     {
         _queuePath = testDirectory.CreateNewDirectoryForTest();
-        _store = new LmdbMessageStore(_queuePath);
+        _store = new LmdbMessageStore(_queuePath, new MessageSerializer());
     }
 
     [Fact]
@@ -53,7 +54,7 @@ public class IncomingMessageScenarios : IDisposable
             _store.Dispose();
             //crash
         }
-        _store = new LmdbMessageStore(_queuePath);
+        _store = new LmdbMessageStore(_queuePath, new MessageSerializer());
         _store.CreateQueue(message.Queue);
         var msg = _store.GetMessage(message.Queue, message.Id);
         msg.ShouldBeNull();
@@ -76,9 +77,9 @@ public class IncomingMessageScenarios : IDisposable
     public void creating_multiple_stores()
     {
         _store.Dispose();
-        _store = new LmdbMessageStore(_queuePath);
+        _store = new LmdbMessageStore(_queuePath, new MessageSerializer());
         _store.Dispose();
-        _store = new LmdbMessageStore(_queuePath);
+        _store = new LmdbMessageStore(_queuePath, new MessageSerializer());
     }
 
     public void Dispose()

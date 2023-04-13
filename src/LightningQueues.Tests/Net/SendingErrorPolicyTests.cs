@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using LightningQueues.Builders;
 using Microsoft.Extensions.Logging;
 using LightningQueues.Net;
+using LightningQueues.Serialization;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using NSubstitute;
@@ -26,7 +27,7 @@ public class SendingErrorPolicyTests : IDisposable
     public SendingErrorPolicyTests(SharedTestDirectory testDirectory)
     {
         ILogger logger = new RecordingLogger();
-        _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
+        _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest(), new MessageSerializer());
         _failureChannel = Channel.CreateUnbounded<OutgoingMessageFailure>();
         _errorPolicy = new SendingErrorPolicy(logger, _store, _failureChannel);
     }
@@ -34,7 +35,7 @@ public class SendingErrorPolicyTests : IDisposable
     [Fact]
     public void max_attempts_is_reached()
     {
-        var message = NewMessage<OutgoingMessage>();
+        var message = NewMessage<Message>();
         message.MaxAttempts = 3;
         message.SentAttempts = 3;
         _errorPolicy.ShouldRetry(message).ShouldBeFalse();
@@ -43,7 +44,7 @@ public class SendingErrorPolicyTests : IDisposable
     [Fact]
     public void max_attempts_is_not_reached()
     {
-        var message = NewMessage<OutgoingMessage>();
+        var message = NewMessage<Message>();
         message.MaxAttempts = 20;
         message.SentAttempts = 5;
         _errorPolicy.ShouldRetry(message).ShouldBeTrue();
@@ -52,7 +53,7 @@ public class SendingErrorPolicyTests : IDisposable
     [Fact]
     public void deliver_by_has_expired()
     {
-        var message = NewMessage<OutgoingMessage>();
+        var message = NewMessage<Message>();
         message.DeliverBy = DateTime.Now.Subtract(TimeSpan.FromSeconds(1));
         message.SentAttempts = 5;
         _errorPolicy.ShouldRetry(message).ShouldBeFalse();
@@ -61,7 +62,7 @@ public class SendingErrorPolicyTests : IDisposable
     [Fact]
     public void deliver_by_has_not_expired()
     {
-        var message = NewMessage<OutgoingMessage>();
+        var message = NewMessage<Message>();
         message.DeliverBy = DateTime.Now.Add(TimeSpan.FromSeconds(1));
         message.SentAttempts = 5;
         _errorPolicy.ShouldRetry(message).ShouldBeTrue();
@@ -70,7 +71,7 @@ public class SendingErrorPolicyTests : IDisposable
     [Fact]
     public void has_neither_deliver_by_nor_max_attempts()
     {
-        var message = NewMessage<OutgoingMessage>();
+        var message = NewMessage<Message>();
         message.SentAttempts = 5;
         _errorPolicy.ShouldRetry(message).ShouldBeTrue();
     }
@@ -79,7 +80,7 @@ public class SendingErrorPolicyTests : IDisposable
     public async ValueTask message_is_observed_after_time()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var message = NewMessage<OutgoingMessage>();
+        var message = NewMessage<Message>();
         message.Destination = new Uri("lq.tcp://localhost:5150/blah");
         message.MaxAttempts = 2;
         var tx = _store.BeginTransaction();
@@ -100,7 +101,7 @@ public class SendingErrorPolicyTests : IDisposable
     public async ValueTask message_removed_from_storage_after_max()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var message = NewMessage<OutgoingMessage>();
+        var message = NewMessage<Message>();
         message.Destination = new Uri("lq.tcp://localhost:5150/blah");
         message.MaxAttempts = 1;
         var tx = _store.BeginTransaction();
@@ -123,7 +124,7 @@ public class SendingErrorPolicyTests : IDisposable
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         Message observed = null;
-        var message = NewMessage<OutgoingMessage>();
+        var message = NewMessage<Message>();
         message.Destination = new Uri("lq.tcp://localhost:5150/blah");
         message.MaxAttempts = 5;
         var tx = _store.BeginTransaction();
@@ -154,7 +155,7 @@ public class SendingErrorPolicyTests : IDisposable
     public async ValueTask errors_in_storage_dont_end_stream()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
-        var message = NewMessage<OutgoingMessage>();
+        var message = NewMessage<Message>();
         var store = Substitute.For<IMessageStore>();
         store.FailedToSend(Arg.Is(message)).Throws(new Exception("bam!"));
         var errorPolicy = new SendingErrorPolicy(new RecordingLogger(), store, _failureChannel);

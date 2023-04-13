@@ -25,8 +25,9 @@ public class ReceivingProtocolTests : IDisposable
     public ReceivingProtocolTests(SharedTestDirectory testDirectory)
     {
         _logger = new RecordingLogger();
-        _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
-        _protocol = new ReceivingProtocol(_store, new NoSecurity(), new Uri("lq.tcp://localhost"), _logger);
+        var serializer = new MessageSerializer();
+        _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest(), serializer);
+        _protocol = new ReceivingProtocol(_store, new NoSecurity(), serializer, new Uri("lq.tcp://localhost"), _logger);
     }
 
     [Fact]
@@ -93,17 +94,17 @@ public class ReceivingProtocolTests : IDisposable
 
     private async ValueTask RunLengthTest(int differenceFromActualLength, CancellationToken token)
     {
-        var message = new OutgoingMessage
+        var message = new Message
         {
             Id = MessageId.GenerateRandom(),
             Data = "hello"u8.ToArray(),
             Queue = "test"
         };
-        
-        var bytes = new List<OutgoingMessage>{ message }.AsReadOnlyMemory();
+        var serializer = new MessageSerializer();
+        var memory = serializer.ToMemory(new List<Message> { message });
         using var ms = new MemoryStream();
-        ms.Write(BitConverter.GetBytes(bytes.Length + differenceFromActualLength), 0, 4);
-        ms.Write(bytes.Span);
+        ms.Write(BitConverter.GetBytes(memory.Length + differenceFromActualLength), 0, 4);
+        ms.Write(memory.Span);
         ms.Position = 0;
         var msgs = _protocol.ReceiveMessagesAsync(ms, token);
         await foreach (var _ in msgs.WithCancellation(token))
@@ -115,16 +116,17 @@ public class ReceivingProtocolTests : IDisposable
     public async ValueTask sending_to_a_queue_that_doesnt_exist()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var message = new OutgoingMessage
+        var message = new Message
         {
             Id = MessageId.GenerateRandom(),
             Data = "hello"u8.ToArray(),
             Queue = "test"
         };
-        var bytes = new List<OutgoingMessage>{ message }.AsReadOnlyMemory();
+        var serializer = new MessageSerializer();
+        var memory = serializer.ToMemory(new List<Message>{ message });
         using var ms = new MemoryStream();
-        ms.Write(BitConverter.GetBytes(bytes.Length), 0, 4);
-        ms.Write(bytes.Span);
+        ms.Write(BitConverter.GetBytes(memory.Length), 0, 4);
+        ms.Write(memory.Span);
         ms.Position = 0;
         var msgs = _protocol.ReceiveMessagesAsync(ms, cancellation.Token);
         await foreach (var _ in msgs.WithCancellation(cancellation.Token))

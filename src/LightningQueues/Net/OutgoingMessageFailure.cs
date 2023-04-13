@@ -4,5 +4,5 @@ namespace LightningQueues.Net;
 
 public class OutgoingMessageFailure
 {
-    public IList<OutgoingMessage> Messages { get; init; }
+    public IList<Message> Messages { get; init; }
 }

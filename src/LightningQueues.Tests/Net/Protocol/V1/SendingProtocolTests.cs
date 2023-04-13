@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Buffers;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using DotNext.IO;
 using LightningQueues.Builders;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Security;
@@ -25,15 +25,16 @@ public class SendingProtocolTests : IDisposable
 
     public SendingProtocolTests(SharedTestDirectory testDirectory)
     {
-        _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
-        _sender = new SendingProtocol(_store, new NoSecurity(), new RecordingLogger());
+        var serializer = new MessageSerializer();
+        _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest(), serializer);
+        _sender = new SendingProtocol(_store, new NoSecurity(), serializer, new RecordingLogger());
     }
 
     [Fact]
     public async Task writing_single_message()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
-        var expected = NewMessage<OutgoingMessage>();
+        var expected = NewMessage<Message>();
         expected.Destination = new Uri("lq.tcp://fake:1234");
         using var ms = new MemoryStream();
         //not exercising full protocol
@@ -41,10 +42,8 @@ public class SendingProtocolTests : IDisposable
             await _sender.SendAsync(new Uri("lq.tcp://localhost:5050"),
                 ms, new[] { expected }, cancellation.Token));
         var bytes = new ReadOnlySequence<byte>(ms.ToArray());
-        var reader = new SequenceReader(bytes);
-        reader.ReadInt32(true); //ignore payload length
-        reader.ReadInt32(true); //ignore message count
-        var msg = reader.ReadOutgoingMessage();
+        var serializer = new MessageSerializer();
+        var msg = serializer.ToMessage(bytes.Slice(sizeof(int) * 2).FirstSpan);
         msg.Id.ShouldBe(expected.Id);
         cancellation.Cancel();
     }

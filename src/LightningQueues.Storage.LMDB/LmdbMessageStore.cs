@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +6,6 @@ using System.Text;
 using System.Threading;
 using LightningDB;
 using LightningQueues.Serialization;
-using DotNext.IO;
 
 namespace LightningQueues.Storage.LMDB;
 
@@ -16,19 +14,21 @@ public class LmdbMessageStore : IMessageStore
     private const string OutgoingQueue = "outgoing";
     private readonly ReaderWriterLockSlim _lock;
     private readonly LightningEnvironment _environment;
+    private readonly IMessageSerializer _serializer;
 
-    public LmdbMessageStore(string path, EnvironmentConfiguration config) : this(new LightningEnvironment(path, config))
+    public LmdbMessageStore(string path, EnvironmentConfiguration config, IMessageSerializer serializer) : this(new LightningEnvironment(path, config), serializer)
     {
     }
 
-    public LmdbMessageStore(string path) : this(path, new EnvironmentConfiguration {MapSize = 1024 * 1024 * 100, MaxDatabases = 5})
+    public LmdbMessageStore(string path, IMessageSerializer serializer) : this(path, new EnvironmentConfiguration {MapSize = 1024 * 1024 * 100, MaxDatabases = 5}, serializer)
     {
     }
 
-    public LmdbMessageStore(LightningEnvironment environment)
+    public LmdbMessageStore(LightningEnvironment environment, IMessageSerializer serializer)
     {
         _lock = new ReaderWriterLockSlim();
         _environment = environment;
+        _serializer = serializer;
         if(!_environment.IsOpened)
             _environment.Open(EnvironmentOpenFlags.NoLock);
         CreateQueue(OutgoingQueue);
@@ -91,13 +91,13 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    private static void StoreIncomingMessage(LightningTransaction tx, LightningDatabase db, Message message)
+    private void StoreIncomingMessage(LightningTransaction tx, LightningDatabase db, Message message)
     {
         try
         {
             Span<byte> id = stackalloc byte[16];
             message.Id.MessageIdentifier.TryWriteBytes(id);
-            ThrowIfError(tx.Put(db, id, message.AsSpan()));
+            ThrowIfError(tx.Put(db, id, _serializer.AsSpan(message)));
         }
         catch (StorageException ex)
         {
@@ -132,7 +132,7 @@ public class LmdbMessageStore : IMessageStore
         return new LmdbTransaction(_environment.BeginTransaction(), _lock);
     }
 
-    public void StoreOutgoing(OutgoingMessage message)
+    public void StoreOutgoing(Message message)
     {
         try
         {
@@ -147,7 +147,7 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    public int FailedToSend(OutgoingMessage message)
+    public int FailedToSend(Message message)
     {
         try
         {
@@ -163,7 +163,7 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    public void SuccessfullySent(IEnumerable<OutgoingMessage> messages)
+    public void SuccessfullySent(IEnumerable<Message> messages)
     {
         try
         {
@@ -192,7 +192,7 @@ public class LmdbMessageStore : IMessageStore
             if (result.resultCode == MDBResultCode.NotFound)
                 return null;
             var messageBuffer = result.value.AsSpan();
-            return messageBuffer.ToMessage<Message>();
+            return _serializer.ToMessage(messageBuffer);
         }
         finally
         {
@@ -245,7 +245,7 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    private void SuccessfullySent(LightningTransaction tx, IEnumerable<OutgoingMessage> messages)
+    private void SuccessfullySent(LightningTransaction tx, IEnumerable<Message> messages)
     {
         RemoveMessagesFromStorage(tx, OutgoingQueue, messages);
     }
@@ -261,18 +261,8 @@ public class LmdbMessageStore : IMessageStore
             foreach (var (_, value) in cursor.AsEnumerable())
             {
                 var valueSpan = value.AsSpan();
-                var bytes = ArrayPool<byte>.Shared.Rent(valueSpan.Length);
-                try
-                {
-                    valueSpan.CopyTo(bytes);
-                    var reader = new SequenceReader(new ReadOnlySequence<byte>(bytes));
-                    var msg = reader.ReadMessage<Message>();
-                    yield return msg;
-                }
-                finally
-                {
-                    ArrayPool<byte>.Shared.Return(bytes);
-                }
+                var msg = _serializer.ToMessage(valueSpan);
+                yield return msg;
             }
         }
         finally
@@ -281,7 +271,7 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    public IEnumerable<OutgoingMessage> PersistedOutgoingMessages()
+    public IEnumerable<Message> PersistedOutgoingMessages()
     {
         try
         {
@@ -292,18 +282,8 @@ public class LmdbMessageStore : IMessageStore
             foreach (var (_, value) in cursor.AsEnumerable())
             {
                 var valueSpan = value.AsSpan();
-                var bytes = ArrayPool<byte>.Shared.Rent(valueSpan.Length);
-                try
-                {
-                    valueSpan.CopyTo(bytes);
-                    var reader = new SequenceReader(new ReadOnlySequence<byte>(bytes));
-                    var msg = reader.ReadOutgoingMessage();
-                    yield return msg;
-                }
-                finally
-                {
-                    ArrayPool<byte>.Shared.Return(bytes);
-                }
+                var msg = _serializer.ToMessage(valueSpan);
+                yield return msg;
             }
         }
         finally
@@ -348,13 +328,13 @@ public class LmdbMessageStore : IMessageStore
         ThrowIfError(tx.Delete(db, id));
     }
 
-    public void StoreOutgoing(ITransaction transaction, OutgoingMessage message)
+    public void StoreOutgoing(ITransaction transaction, Message message)
     {
         var tx = ((LmdbTransaction) transaction).Transaction;
         StoreOutgoing(tx, message);
     }
 
-    public void StoreOutgoing(IEnumerable<OutgoingMessage> messages)
+    public void StoreOutgoing(IEnumerable<Message> messages)
     {
         try
         {
@@ -373,12 +353,12 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    private void StoreOutgoing(LightningTransaction tx, OutgoingMessage message)
+    private void StoreOutgoing(LightningTransaction tx, Message message)
     {
         Span<byte> id = stackalloc byte[16];
         message.Id.MessageIdentifier.TryWriteBytes(id);
         var db = OpenDatabase(OutgoingQueue);
-        ThrowIfError(tx.Put(db, id, message.AsReadOnlyMemory().Span));
+        ThrowIfError(tx.Put(db, id, _serializer.AsSpan(message)));
     }
 
     private static void ThrowIfError(MDBResultCode resultCode)
@@ -393,7 +373,7 @@ public class LmdbMessageStore : IMessageStore
             throw new StorageException("Error with LightningDB read operation", resultCode);
     }
 
-    private int FailedToSend(LightningTransaction tx, OutgoingMessage message)
+    private int FailedToSend(LightningTransaction tx, Message message)
     {
         Span<byte> id = stackalloc byte[16];
         message.Id.MessageIdentifier.TryWriteBytes(id);
@@ -401,7 +381,8 @@ public class LmdbMessageStore : IMessageStore
         var value = tx.Get(db, id);
         if (value.resultCode == MDBResultCode.NotFound)
             return int.MaxValue;
-        var msg = value.value.AsSpan().ToOutgoingMessage();
+        var valueBuffer = value.value.AsSpan();
+        var msg = _serializer.ToMessage(valueBuffer);
         var attempts = message.SentAttempts;
         if (attempts >= message.MaxAttempts)
         {
@@ -417,7 +398,7 @@ public class LmdbMessageStore : IMessageStore
         }
         else
         {
-            ThrowIfError(tx.Put(db, id, message.AsReadOnlyMemory().Span));
+            ThrowIfError(tx.Put(db, id, _serializer.AsSpan(msg)));
         }
         return attempts;
     }
@@ -431,7 +412,7 @@ public class LmdbMessageStore : IMessageStore
             var original = OpenDatabase(message.Queue);
             var newDb = OpenDatabase(queueName);
             ThrowIfError(tx.Delete(original, id));
-            ThrowIfError(tx.Put(newDb, id, message.AsSpan()));
+            ThrowIfError(tx.Put(newDb, id, _serializer.AsSpan(message)));
         }
         catch (LightningException ex)
         {

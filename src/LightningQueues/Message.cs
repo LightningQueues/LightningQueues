@@ -18,6 +18,19 @@ public class Message
     public IDictionary<string, string> Headers { get; }
     public byte[] Data { get; set; }
     public string SubQueue { get; set; }
+
+    private const string SentAttemptsHeaderKey = "sent-attempts";
+
+    public Uri Destination { get; set; }
+    public DateTime? DeliverBy { get; set; }
+    public int? MaxAttempts { get; set; }
+
+    public int SentAttempts
+    {
+        get => Headers.TryGetValue(SentAttemptsHeaderKey, out var value) 
+            ? int.Parse(value) : 0;
+        set => Headers[SentAttemptsHeaderKey] = value.ToString();
+    }
         
     internal ReadOnlySequence<byte> Bytes { get; set; }
 }

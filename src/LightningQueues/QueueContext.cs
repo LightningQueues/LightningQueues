@@ -40,7 +40,7 @@ internal class QueueContext : IQueueContext
         }
     }
 
-    public void Send(OutgoingMessage message)
+    public void Send(Message message)
     {
         _queueActions.Add(new SendAction(this, message));
     }
@@ -79,9 +79,9 @@ internal class QueueContext : IQueueContext
     private class SendAction : IQueueAction
     {
         private readonly QueueContext _context;
-        private readonly OutgoingMessage _message;
+        private readonly Message _message;
 
-        public SendAction(QueueContext context, OutgoingMessage message)
+        public SendAction(QueueContext context, Message message)
         {
             _context = context;
             _message = message;

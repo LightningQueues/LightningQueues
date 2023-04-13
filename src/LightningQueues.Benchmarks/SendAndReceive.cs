@@ -10,7 +10,7 @@ public class SendAndReceive
 {
     private Queue? _sender;
     private Queue? _receiver;
-    private OutgoingMessage[]? _messages;
+    private Message[]? _messages;
     private Task? _receivingTask;
     
     [Params(10, 100, 1000, 10000)]
@@ -25,7 +25,7 @@ public class SendAndReceive
     {
         var senderPath = Path.Combine(Path.GetTempPath(), "sender", Guid.NewGuid().ToString());
         var receiverPath = Path.Combine(Path.GetTempPath(), "receiver", Guid.NewGuid().ToString());
-        _messages = new OutgoingMessage[MessageCount];
+        _messages = new Message[MessageCount];
         _sender = NewQueue(path: senderPath, queueName: "sender", new RecordingLogger(LogLevel.None));
         _receiver = NewQueue(path: receiverPath, queueName: "receiver", new RecordingLogger(LogLevel.None));
         _receivingTask = Task.Factory.StartNew(async () =>
@@ -41,7 +41,7 @@ public class SendAndReceive
         var random = new Random();
         for (var i = 0; i < MessageCount; ++i)
         {
-            var msg = NewMessage<OutgoingMessage>("receiver");
+            var msg = NewMessage<Message>("receiver");
             msg.Destination = new Uri($"lq.tcp://{_receiver.Endpoint}");
             msg.Data = new byte[MessageDataSize];
             random.NextBytes(msg.Data);

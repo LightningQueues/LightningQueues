@@ -59,9 +59,9 @@ public class NoStorage : IMessageStore
         return Enumerable.Empty<Message>();
     }
 
-    public IEnumerable<OutgoingMessage> PersistedOutgoingMessages()
+    public IEnumerable<Message> PersistedOutgoingMessages()
     {
-        return Enumerable.Empty<OutgoingMessage>();
+        return Enumerable.Empty<Message>();
     }
 
     public void MoveToQueue(ITransaction transaction, string queueName, Message message)
@@ -73,24 +73,24 @@ public class NoStorage : IMessageStore
     {
     }
 
-    public void StoreOutgoing(ITransaction tx, OutgoingMessage message)
+    public void StoreOutgoing(ITransaction tx, Message message)
     {
     }
 
-    public void StoreOutgoing(IEnumerable<OutgoingMessage> messages)
+    public void StoreOutgoing(IEnumerable<Message> messages)
     {
     }
 
-    public void StoreOutgoing(OutgoingMessage message)
+    public void StoreOutgoing(Message message)
     {
     }
 
-    public int FailedToSend(OutgoingMessage message)
+    public int FailedToSend(Message message)
     {
         return message.SentAttempts;
     }
 
-    public void SuccessfullySent(IEnumerable<OutgoingMessage> messages)
+    public void SuccessfullySent(IEnumerable<Message> messages)
     {
     }
 

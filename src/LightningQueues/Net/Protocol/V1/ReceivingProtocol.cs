@@ -7,7 +7,6 @@ using System.Net;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using DotNext.IO;
 using Microsoft.Extensions.Logging;
 using LightningQueues.Net.Security;
 using LightningQueues.Serialization;
@@ -19,12 +18,15 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
 {
     private readonly IMessageStore _store;
     private readonly IStreamSecurity _security;
+    private readonly IMessageSerializer _serializer;
     private readonly Uri _receivingUri;
 
-    public ReceivingProtocol(IMessageStore store, IStreamSecurity security, Uri receivingUri, ILogger logger) : base(logger)
+    public ReceivingProtocol(IMessageStore store, IStreamSecurity security, IMessageSerializer serializer, Uri receivingUri, ILogger logger) 
+        : base(logger)
     {
         _store = store;
         _security = security;
+        _serializer = serializer;
         _receivingUri = receivingUri;
     }
 
@@ -61,8 +63,7 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
         var result = await pipe.Reader.ReadAtLeastAsync(length, cancellationToken).ConfigureAwait(false);
         if (cancellationToken.IsCancellationRequested)
             yield break;
-        var reader = new SequenceReader(result.Buffer);
-        var messages = ReadMessages(reader);
+        var messages = _serializer.ReadMessages(result.Buffer);
 
         using var enumerator = messages.GetEnumerator();
         var hasResult = true;
@@ -126,16 +127,6 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
         if (!SequenceEqual(ref sequence, Constants.AcknowledgedBuffer))
         {
             throw new ProtocolViolationException("Didn't receive expected acknowledgement");
-        }
-    }
-
-    private static IEnumerable<Message> ReadMessages(SequenceReader reader)
-    {
-        var numberOfMessages = reader.ReadInt32(true);
-        for (var i = 0; i < numberOfMessages; ++i)
-        {
-            var msg = reader.ReadMessage<Message>();
-            yield return msg;
         }
     }
 }

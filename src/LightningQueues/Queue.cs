@@ -16,7 +16,7 @@ public class Queue : IDisposable
 {
     private readonly Sender _sender;
     private readonly Receiver _receiver;
-    private readonly Channel<OutgoingMessage> _sendChannel;
+    private readonly Channel<Message> _sendChannel;
     private readonly Channel<Message> _receivingChannel;
     private readonly CancellationTokenSource _cancelOnDispose;
     private readonly ILogger _logger;
@@ -27,7 +27,7 @@ public class Queue : IDisposable
         _sender = sender;
         _cancelOnDispose = new CancellationTokenSource();
         Store = messageStore;
-        _sendChannel = Channel.CreateUnbounded<OutgoingMessage>(new UnboundedChannelOptions
+        _sendChannel = Channel.CreateUnbounded<Message>(new UnboundedChannelOptions
         {
             SingleWriter = false, SingleReader = false, AllowSynchronousContinuations = false
         });
@@ -41,7 +41,7 @@ public class Queue : IDisposable
 
     public IMessageStore Store { get; }
 
-    internal ChannelWriter<OutgoingMessage> SendingChannel => _sendChannel.Writer;
+    internal ChannelWriter<Message> SendingChannel => _sendChannel.Writer;
     internal ChannelWriter<Message> ReceivingChannel => _receivingChannel.Writer;
 
     public void CreateQueue(string queueName)
@@ -141,7 +141,7 @@ public class Queue : IDisposable
         }
     }
 
-    public async void Send(params OutgoingMessage[] messages)
+    public async void Send(params Message[] messages)
     {
         _logger.QueueSendBatch(messages.Length);
         try
@@ -159,7 +159,7 @@ public class Queue : IDisposable
         }
     }
     
-    public async void Send(OutgoingMessage message)
+    public async void Send(Message message)
     {
         _logger.QueueSend(message.Id);
         try

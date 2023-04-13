@@ -12,17 +12,17 @@ public class SendingErrorPolicy
     private readonly ILogger _logger;
     private readonly IMessageStore _store;
     private readonly Channel<OutgoingMessageFailure> _failedToConnect;
-    private readonly Channel<OutgoingMessage> _retries;
+    private readonly Channel<Message> _retries;
 
     public SendingErrorPolicy(ILogger logger, IMessageStore store, Channel<OutgoingMessageFailure> failedToConnect)
     {
         _logger = logger;
         _store = store;
         _failedToConnect = failedToConnect;
-        _retries = Channel.CreateUnbounded<OutgoingMessage>();
+        _retries = Channel.CreateUnbounded<Message>();
     }
 
-    public ChannelReader<OutgoingMessage> Retries => _retries.Reader;
+    public ChannelReader<Message> Retries => _retries.Reader;
 
     public async ValueTask StartRetries(CancellationToken cancellationToken)
     {
@@ -39,7 +39,7 @@ public class SendingErrorPolicy
         }
     }
 
-    public bool ShouldRetry(OutgoingMessage message)
+    public bool ShouldRetry(Message message)
     {
         var totalAttempts = message.MaxAttempts ?? 100;
         if(_logger.IsEnabled(LogLevel.Debug))
@@ -51,7 +51,7 @@ public class SendingErrorPolicy
                (!message.DeliverBy.HasValue || DateTime.Now < message.DeliverBy);
     }
 
-    private void IncrementAttempt(OutgoingMessage message)
+    private void IncrementAttempt(Message message)
     {
         try
         {

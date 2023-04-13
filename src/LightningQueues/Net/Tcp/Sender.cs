@@ -29,7 +29,7 @@ public class Sender : IDisposable
 
     public Channel<OutgoingMessageFailure> FailedToSend() => _failedToSend;
 
-    public async ValueTask StartSendingAsync(ChannelReader<OutgoingMessage> outgoing, CancellationToken cancellationToken)
+    public async ValueTask StartSendingAsync(ChannelReader<Message> outgoing, CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {

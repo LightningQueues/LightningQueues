@@ -26,7 +26,7 @@ public class NoStorageIntegrationTester : IDisposable
         var receiveTask = _receiver.Receive("test", cancellation.Token).FirstAsync(cancellation.Token);
 
         var destination = new Uri($"lq.tcp://localhost:{_receiver.Endpoint.Port}");
-        var message = NewMessage<OutgoingMessage>("test");
+        var message = NewMessage<Message>("test");
         message.Destination = destination;
         _sender.Send(message);
         await receiveTask;

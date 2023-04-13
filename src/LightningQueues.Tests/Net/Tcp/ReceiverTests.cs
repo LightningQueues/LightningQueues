@@ -9,6 +9,7 @@ using LightningQueues.Builders;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Security;
 using LightningQueues.Net.Tcp;
+using LightningQueues.Serialization;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
@@ -31,12 +32,13 @@ public class ReceiverTests : IDisposable
         var port = PortFinder.FindPort(); //to make it possible to run in parallel
         _endpoint = new IPEndPoint(IPAddress.Loopback, port);
         var logger = new RecordingLogger();
-        _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
+        var serializer = new MessageSerializer();
+        _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest(), serializer);
         _store.CreateQueue("test");
-        _sendingStore = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest());
+        _sendingStore = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest(), serializer);
         _sendingStore.CreateQueue("test");
-        _sender = new SendingProtocol(_sendingStore, new NoSecurity(), logger);
-        var protocol = new ReceivingProtocol(_store, new NoSecurity()
+        _sender = new SendingProtocol(_sendingStore, new NoSecurity(), serializer, logger);
+        var protocol = new ReceivingProtocol(_store, new NoSecurity(), serializer
             , new Uri($"lq.tcp://localhost:{_endpoint.Port}"), logger);
         _receiver = new Receiver(_endpoint, protocol, logger);
     }
@@ -126,7 +128,7 @@ public class ReceiverTests : IDisposable
     {
         var taskSource = new TaskCompletionSource<Message>();
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var expected = NewMessage<OutgoingMessage>("test");
+        var expected = NewMessage<Message>("test");
         expected.Data = "hello"u8.ToArray();
         expected.Destination = new Uri($"lq.tcp://localhost:{_endpoint.Port}");
         var tx = _sendingStore.BeginTransaction();

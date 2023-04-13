@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using LightningQueues.Serialization;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
 using Xunit;
@@ -16,7 +17,7 @@ public class LmdbMessageStoreTester : IDisposable
     public LmdbMessageStoreTester(SharedTestDirectory testDirectory)
     {
         _path = testDirectory.CreateNewDirectoryForTest();
-        _store = new LmdbMessageStore(_path);
+        _store = new LmdbMessageStore(_path, new MessageSerializer());
     }
 
     [Fact]
@@ -40,7 +41,7 @@ public class LmdbMessageStoreTester : IDisposable
     {
         _store.CreateQueue("test");
         var message = NewMessage<Message>("test");
-        var outgoingMessage = NewMessage<OutgoingMessage>();
+        var outgoingMessage = NewMessage<Message>();
         outgoingMessage.Destination = new Uri("lq.tcp://localhost:3030");
         outgoingMessage.SentAt = DateTime.Now;
         var tx = _store.BeginTransaction();
@@ -60,7 +61,7 @@ public class LmdbMessageStoreTester : IDisposable
     {
         _store.CreateQueue("test");
         var message = NewMessage<Message>("test");
-        var outgoingMessage = NewMessage<OutgoingMessage>();
+        var outgoingMessage = NewMessage<Message>();
         outgoingMessage.Destination = new Uri("lq.tcp://localhost:3030");
         outgoingMessage.SentAt = DateTime.Now;
         var tx = _store.BeginTransaction();
@@ -68,7 +69,7 @@ public class LmdbMessageStoreTester : IDisposable
         _store.StoreIncomingMessage(tx, message);
         tx.Commit();
         _store.Dispose();
-        using var store2 = new LmdbMessageStore(_path);
+        using var store2 = new LmdbMessageStore(_path, new MessageSerializer());
         store2.CreateQueue("test");
         store2.PersistedMessages("test").Count().ShouldBe(1);
         store2.PersistedOutgoingMessages().Count().ShouldBe(1);
@@ -79,7 +80,7 @@ public class LmdbMessageStoreTester : IDisposable
     {
         _store.CreateQueue("test");
         var message = NewMessage<Message>("test");
-        var outgoingMessage = NewMessage<OutgoingMessage>();
+        var outgoingMessage = NewMessage<Message>();
         outgoingMessage.Destination = new Uri("lq.tcp://localhost:3030");
         outgoingMessage.SentAt = DateTime.Now;
         var tx = _store.BeginTransaction();

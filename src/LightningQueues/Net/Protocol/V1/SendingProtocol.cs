@@ -7,7 +7,6 @@ using System.Net;
 using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using DotNext.Buffers;
 using LightningQueues.Net.Security;
 using LightningQueues.Serialization;
 using LightningQueues.Storage;
@@ -19,15 +18,17 @@ public class SendingProtocol : ProtocolBase, ISendingProtocol
 {
     private readonly IMessageStore _store;
     private readonly IStreamSecurity _security;
+    private readonly IMessageSerializer _serializer;
 
-    public SendingProtocol(IMessageStore store, IStreamSecurity security, ILogger logger) : base(logger)
+    public SendingProtocol(IMessageStore store, IStreamSecurity security, IMessageSerializer serializer, ILogger logger) : base(logger)
     {
         _store = store;
         _security = security;
+        _serializer = serializer;
     }
 
     public async ValueTask SendAsync(Uri destination, Stream stream,
-        IEnumerable<OutgoingMessage> batch, CancellationToken token)
+        IEnumerable<Message> batch, CancellationToken token)
     {
         using var doneCancellation = new CancellationTokenSource();
         using var linkedCancel = CancellationTokenSource.CreateLinkedTokenSource(doneCancellation.Token, token);
@@ -42,15 +43,14 @@ public class SendingProtocol : ProtocolBase, ISendingProtocol
     }
 
     private async ValueTask SendAsyncImpl(Uri destination, Stream stream,
-        IEnumerable<OutgoingMessage> batch, CancellationToken token)
+        IEnumerable<Message> batch, CancellationToken token)
     {
         stream = await _security.Apply(destination, stream).ConfigureAwait(false);
-        using var writer = new PooledBufferWriter<byte>();
         var messages = batch.ToList();
-        writer.WriteOutgoingMessages(messages);
-        await stream.WriteAsync(BitConverter.GetBytes(writer.WrittenMemory.Length), token).ConfigureAwait(false);
+        var memory = _serializer.ToMemory(messages);
+        await stream.WriteAsync(BitConverter.GetBytes(memory.Length), token).ConfigureAwait(false);
         Logger.SenderWritingMessageBatch();
-        await stream.WriteAsync(writer.WrittenMemory, token).ConfigureAwait(false);
+        await stream.WriteAsync(memory, token).ConfigureAwait(false);
         Logger.SenderSuccessfullyWroteMessageBatch();
         var pipe = new Pipe();
         var receiveTask = ReceiveIntoBuffer(pipe.Writer, stream, token);

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using LightningQueues.Serialization;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
 using Xunit;
@@ -15,16 +16,16 @@ public class OutgoingMessageScenarios : IDisposable
     public OutgoingMessageScenarios(SharedTestDirectory testDirectory)
     {
         var queuePath = testDirectory.CreateNewDirectoryForTest();
-        _store = new LmdbMessageStore(queuePath);
+        _store = new LmdbMessageStore(queuePath, new MessageSerializer());
     }
 
     [Fact]
     public void happy_path_messages_sent()
     {
         var destination = new Uri("lq.tcp://localhost:5050");
-        var message = NewMessage<OutgoingMessage>("test");
+        var message = NewMessage<Message>("test");
         message.Destination = destination;
-        var message2 = NewMessage<OutgoingMessage>("test");
+        var message2 = NewMessage<Message>("test");
         message2.Destination = destination;
         message2.DeliverBy = DateTime.Now.AddSeconds(5);
         message2.MaxAttempts = 3;
@@ -50,7 +51,7 @@ public class OutgoingMessageScenarios : IDisposable
     public void failed_to_send_with_max_attempts()
     {
         var destination = new Uri("lq.tcp://localhost:5050");
-        var message = NewMessage<OutgoingMessage>("test");
+        var message = NewMessage<Message>("test");
         message.MaxAttempts = 1;
         message.SentAttempts = 1;
         message.Destination = destination;
@@ -69,7 +70,7 @@ public class OutgoingMessageScenarios : IDisposable
     public void failed_to_send_with_deliver_by()
     {
         var destination = new Uri("lq.tcp://localhost:5050");
-        var message = NewMessage<OutgoingMessage>("test");
+        var message = NewMessage<Message>("test");
         message.DeliverBy = DateTime.Now;
         message.Destination = destination;
         var tx = _store.BeginTransaction();

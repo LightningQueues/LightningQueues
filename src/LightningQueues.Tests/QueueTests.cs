@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using LightningQueues.Builders;
+using LightningQueues.Serialization;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
 using Xunit;
@@ -82,7 +83,7 @@ public class QueueTests : IDisposable
     public async Task send_message_to_self()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var message = NewMessage<OutgoingMessage>("test");
+        var message = NewMessage<Message>("test");
         message.Destination = new Uri($"lq.tcp://localhost:{_queue.Endpoint.Port}");
         _queue.Send(message);
         var received = await _queue.Receive("test", cancellation.Token).FirstAsync(cancellation.Token);
@@ -96,7 +97,7 @@ public class QueueTests : IDisposable
     public async Task sending_to_bad_endpoint_no_retries_integration_test()
     {
         using var queue = NewQueue(_testDirectory.CreateNewDirectoryForTest(), timeoutAfter: TimeSpan.FromSeconds(1));
-        var message = NewMessage<OutgoingMessage>("test");
+        var message = NewMessage<Message>("test");
         message.MaxAttempts = 1;
         message.Destination = new Uri($"lq.tcp://boom:{queue.Endpoint.Port + 1}");
         queue.Send(message);
@@ -111,10 +112,12 @@ public class QueueTests : IDisposable
         //This shows that the port doesn't have an exclusive lock, and that lmdb itself can have multiple instances
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var path = _testDirectory.CreateNewDirectoryForTest();
-        var store = new LmdbMessageStore(path);
+        var serializer = new MessageSerializer();
+        var store = new LmdbMessageStore(path, serializer);
         var queueConfiguration = new QueueConfiguration();
         queueConfiguration.LogWith(new RecordingLogger());
         queueConfiguration.AutomaticEndpoint();
+        queueConfiguration.SerializeWith(serializer);
         queueConfiguration.StoreMessagesWith(store);
         using var queue = queueConfiguration.BuildQueue();
         using var queue2 = queueConfiguration.BuildQueue();
