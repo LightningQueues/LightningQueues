@@ -4,8 +4,8 @@
     <Description>LightningQueues</Description>
     <VersionPrefix>0.4.0</VersionPrefix>
     <Authors>Corey Kaylor</Authors>
-    <TargetFramework>net7.0</TargetFramework>
-    <LangVersion>11</LangVersion>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>13</LangVersion>
     <AssemblyName>LightningQueues</AssemblyName>
     <PackageId>LightningQueues</PackageId>
     <PackageTags>queue;lightning;messaging;store-and-forward;</PackageTags>

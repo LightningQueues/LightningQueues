@@ -24,7 +24,7 @@ public class QueueTests : IDisposable
     }
 
     [Fact]
-    public async ValueTask receive_at_a_later_time()
+    public async Task receive_at_a_later_time()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         _queue.ReceiveLater(new Message { Queue = "test", Id = MessageId.GenerateRandom() }, TimeSpan.FromSeconds(1));
@@ -37,7 +37,7 @@ public class QueueTests : IDisposable
     }
 
     [Fact]
-    public async ValueTask receive_at_a_specified_time()
+    public async Task receive_at_a_specified_time()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var time = DateTimeOffset.Now.AddSeconds(1);
@@ -51,7 +51,7 @@ public class QueueTests : IDisposable
     }
 
     [Fact]
-    public async ValueTask enqueue_a_message()
+    public async Task enqueue_a_message()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var expected = NewMessage<Message>("test");
@@ -63,7 +63,7 @@ public class QueueTests : IDisposable
     }
 
     [Fact]
-    public async ValueTask moving_queues()
+    public async Task moving_queues()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         _queue.CreateQueue("another");

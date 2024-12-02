@@ -77,7 +77,7 @@ public class SendingErrorPolicyTests : IDisposable
     }
 
     [Fact]
-    public async ValueTask message_is_observed_after_time()
+    public async Task message_is_observed_after_time()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var message = NewMessage<Message>();
@@ -98,7 +98,7 @@ public class SendingErrorPolicyTests : IDisposable
     }
 
     [Fact]
-    public async ValueTask message_removed_from_storage_after_max()
+    public async Task message_removed_from_storage_after_max()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var message = NewMessage<Message>();
@@ -120,7 +120,7 @@ public class SendingErrorPolicyTests : IDisposable
     }
 
     [Fact]
-    public async ValueTask time_increases_with_each_failure()
+    public async Task time_increases_with_each_failure()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         Message observed = null;
@@ -152,7 +152,7 @@ public class SendingErrorPolicyTests : IDisposable
     }
 
     [Fact]
-    public async ValueTask errors_in_storage_dont_end_stream()
+    public async Task errors_in_storage_dont_end_stream()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var message = NewMessage<Message>();

@@ -31,13 +31,13 @@ public record MessageId
 
         // Convert to a byte array
         Span<byte> daysArray = stackalloc byte[4];
-        MemoryMarshal.Write(daysArray, ref days);
+        MemoryMarshal.Write(daysArray, in days);
 
         // Note that SQL Server is accurate to 1/300th of a millisecond so we divide by 3.333333
         var msecsSql = (long)(msecs / 3.333333);
 
         Span<byte> msecsArray = stackalloc byte[8];
-        MemoryMarshal.Write(msecsArray, ref msecsSql);
+        MemoryMarshal.Write(msecsArray, in msecsSql);
 
         // Reverse the bytes to match SQL Servers ordering
         // Copy the bytes into the guid

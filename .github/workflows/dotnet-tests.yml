@@ -1,4 +1,4 @@
-name: .NET Core
+name: .NET Tests
 
 on:
   push:
@@ -15,12 +15,12 @@ jobs:
 
     steps:
     - name: Checkout LightningQueues
-      uses: actions/checkout@v3
-    - name: Setup .NET Core
-      uses: actions/setup-dotnet@v3
+      uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: |
-          7.0.x
+          9.0.x
     - name: Install dependencies
       working-directory: ${{ runner.workspace }}/LightningQueues
       run: dotnet restore

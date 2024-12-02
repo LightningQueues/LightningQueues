@@ -31,7 +31,7 @@ public class ReceivingProtocolTests : IDisposable
     }
 
     [Fact]
-    public async ValueTask client_sending_negative_length_is_ignored()
+    public async Task client_sending_negative_length_is_ignored()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         using var ms = new MemoryStream();
@@ -48,7 +48,7 @@ public class ReceivingProtocolTests : IDisposable
     }
 
     [Fact]
-    public async ValueTask handling_disconnects_mid_protocol_gracefully()
+    public async Task handling_disconnects_mid_protocol_gracefully()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         using var ms = new MemoryStream();
@@ -65,7 +65,7 @@ public class ReceivingProtocolTests : IDisposable
     }
 
     [Fact]
-    public async ValueTask handling_valid_length()
+    public async Task handling_valid_length()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         await RunLengthTest(0, cancellation.Token);
@@ -74,7 +74,7 @@ public class ReceivingProtocolTests : IDisposable
     }
 
     [Fact]
-    public async ValueTask sending_shorter_length_than_payload_length()
+    public async Task sending_shorter_length_than_payload_length()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         await RunLengthTest(-2, cancellation.Token);
@@ -84,7 +84,7 @@ public class ReceivingProtocolTests : IDisposable
     }
 
     [Fact]
-    public async ValueTask sending_longer_length_than_payload_length()
+    public async Task sending_longer_length_than_payload_length()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         await RunLengthTest(5, cancellation.Token);
@@ -92,7 +92,7 @@ public class ReceivingProtocolTests : IDisposable
         cancellation.Cancel();
     }
 
-    private async ValueTask RunLengthTest(int differenceFromActualLength, CancellationToken token)
+    private async Task RunLengthTest(int differenceFromActualLength, CancellationToken token)
     {
         var message = new Message
         {
@@ -113,7 +113,7 @@ public class ReceivingProtocolTests : IDisposable
     }
 
     [Fact]
-    public async ValueTask sending_to_a_queue_that_doesnt_exist()
+    public async Task sending_to_a_queue_that_doesnt_exist()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var message = new Message
@@ -137,7 +137,7 @@ public class ReceivingProtocolTests : IDisposable
     }
 
     [Fact]
-    public async ValueTask sending_data_that_is_cannot_be_deserialized()
+    public async Task sending_data_that_is_cannot_be_deserialized()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         using var ms = new MemoryStream();
@@ -154,7 +154,7 @@ public class ReceivingProtocolTests : IDisposable
     }
 
     [Fact]
-    public async ValueTask supports_ability_to_cancel_for_slow_clients()
+    public async Task supports_ability_to_cancel_for_slow_clients()
     {
         using var cancelSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
         using var ms = new MemoryStream();

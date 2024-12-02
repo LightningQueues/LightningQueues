@@ -44,7 +44,7 @@ public class ReceiverTests : IDisposable
     }
 
     [Fact]
-    public async ValueTask stops_listening_on_task_cancellation()
+    public async Task stops_listening_on_task_cancellation()
     {
         using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var receivingTask = Task.Factory.StartNew(async () =>
