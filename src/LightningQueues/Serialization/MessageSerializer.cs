@@ -56,8 +56,8 @@ public class MessageSerializer : IMessageSerializer
         writer.Write(id);
         writer.Encode(message.Queue, Encoding.UTF8, LengthFormat.Compressed);
         writer.Encode(message.SubQueue ?? string.Empty, Encoding.UTF8, LengthFormat.Compressed);
-        writer.Write(message.SentAt.ToBinary());
         writer.WriteLittleEndian(message.SentAt.ToBinary());
+        
 
         writer.WriteLittleEndian(message.Headers.Count);
         foreach (var pair in message.Headers)
@@ -130,12 +130,12 @@ public class MessageSerializer : IMessageSerializer
         msg.Data = reader.RemainingSequence.Slice(reader.Position, dataLength).ToArray();
         reader.Skip(dataLength);
         var uri = ReadCommonString(ref reader);
-        if(!string.IsNullOrEmpty(uri))
+        if (!string.IsNullOrEmpty(uri))
             msg.Destination = new Uri(uri);
         var hasDeliverBy = Convert.ToBoolean(reader.ReadLittleEndian<int>());
         if (hasDeliverBy)
         {
-            msg.DeliverBy = DateTime.FromBinary(reader.ReadLittleEndian<long>());
+            msg.DeliverBy = DateTime.FromBinary(reader.ReadLittleEndian<long>()).ToLocalTime();
         }
 
         var hasMaxAttempts = Convert.ToBoolean(reader.ReadLittleEndian<int>());
@@ -143,6 +143,7 @@ public class MessageSerializer : IMessageSerializer
         {
             msg.MaxAttempts = reader.ReadLittleEndian<int>();
         }
+
         var end = reader.Position;
         msg.Bytes = rawSequence.Slice(start, end);
         return msg;

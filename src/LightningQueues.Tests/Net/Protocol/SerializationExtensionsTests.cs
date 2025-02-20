@@ -16,7 +16,7 @@ public class SerializationExtensionsTests
             Data = "hello"u8.ToArray(),
             Id = MessageId.GenerateRandom(),
             Queue = "queue",
-            Destination = new Uri("lq.tcp://fake:1234")
+            Destination = new Uri("lq.tcp://fake:1234"),
         };
         var messageBytes = serializer.AsSpan(expected);
         var actual = serializer.ToMessage(messageBytes);
@@ -24,5 +24,7 @@ public class SerializationExtensionsTests
         actual.Queue.ShouldBe(expected.Queue);
         actual.Data.ShouldBe(expected.Data);
         actual.Id.ShouldBe(expected.Id);
+        actual.Destination.ShouldBe(expected.Destination);
+        actual.SentAt.ShouldBe(expected.SentAt);
     }
 }
