@@ -30,8 +30,7 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
         _receivingUri = receivingUri;
     }
 
-    public async IAsyncEnumerable<Message> ReceiveMessagesAsync(Stream stream,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<Message> ReceiveMessagesAsync(Stream stream, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         using var doneCancellation = new CancellationTokenSource();
         var linkedCancel = CancellationTokenSource.CreateLinkedTokenSource(doneCancellation.Token, cancellationToken);
@@ -44,7 +43,7 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
         }
         finally
         {
-            doneCancellation.Cancel();
+            await doneCancellation.CancelAsync();
         }
     }
 
@@ -56,14 +55,23 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
         var receivingTask = ReceiveIntoBuffer(pipe.Writer, stream, cancellationToken);
         if (cancellationToken.IsCancellationRequested)
             yield break;
-        var length = await pipe.Reader.ReadInt32Async(true, cancellationToken).ConfigureAwait(false);
+        var length = await pipe.Reader.ReadLittleEndianAsync<int>(cancellationToken).ConfigureAwait(false);
         if (length <= 0 || cancellationToken.IsCancellationRequested)
             yield break;
         Logger.ReceiverReceivedLength(length);
         var result = await pipe.Reader.ReadAtLeastAsync(length, cancellationToken).ConfigureAwait(false);
         if (cancellationToken.IsCancellationRequested)
             yield break;
-        var messages = _serializer.ReadMessages(result.Buffer);
+        IEnumerable<Message> messages = null;
+        try
+        {
+            messages = _serializer.ReadMessages(result.Buffer);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to read messages");
+            yield break;
+        }
 
         using var enumerator = messages.GetEnumerator();
         var hasResult = true;
@@ -76,7 +84,7 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
                 continue;
             try
             {
-                _store.StoreIncomingMessage(msg);
+                _store.StoreIncoming(msg);
             }
             catch (QueueDoesNotExistException)
             {

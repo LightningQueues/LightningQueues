@@ -61,7 +61,7 @@ public class ReceivingProtocolTests : IDisposable
         {
         }
         _logger.ErrorMessages.ShouldNotBeEmpty();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public class ReceivingProtocolTests : IDisposable
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         await RunLengthTest(0, cancellation.Token);
         _logger.DebugMessages.Any(x => x.StartsWith("Received length")).ShouldBeTrue();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
     }
 
     [Fact]
@@ -80,16 +80,15 @@ public class ReceivingProtocolTests : IDisposable
         await RunLengthTest(-2, cancellation.Token);
         _logger.DebugMessages.Any(x => x.StartsWith("Received length")).ShouldBeTrue();
         _logger.ErrorMessages.ShouldContain("Error finishing protocol acknowledgement");
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
     }
 
     [Fact]
     public async Task sending_longer_length_than_payload_length()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
-        await RunLengthTest(5, cancellation.Token);
-        _logger.ErrorMessages.ShouldNotBeEmpty();
-        cancellation.Cancel();
+        await Assert.ThrowsAsync<QueueDoesNotExistException>(async () => await RunLengthTest(5, cancellation.Token));
+        await cancellation.CancelAsync();
     }
 
     private async Task RunLengthTest(int differenceFromActualLength, CancellationToken token)
@@ -133,7 +132,7 @@ public class ReceivingProtocolTests : IDisposable
         {
         }
         _logger.InfoMessages.ShouldContain($"Queue {message.Queue} not found for {message.Id}");
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
     }
 
     [Fact]
@@ -150,7 +149,7 @@ public class ReceivingProtocolTests : IDisposable
         {
         }
         _logger.ErrorMessages.Any(x => x.StartsWith("Error reading messages")).ShouldBeTrue();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
     }
 
     [Fact]

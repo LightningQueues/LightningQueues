@@ -27,7 +27,7 @@ public class IncomingMessageScenarios : IDisposable
         var message = NewMessage<Message>();
         message.Headers.Add("my_key", "my_value");
         _store.CreateQueue(message.Queue);
-        _store.StoreIncomingMessage(message);
+        _store.StoreIncoming(message);
         var msg = _store.GetMessage(message.Queue, message.Id);
         System.Text.Encoding.UTF8.GetString(msg.Data).ShouldBe("hello");
         msg.Headers.First().Value.ShouldBe("my_value");
@@ -39,7 +39,7 @@ public class IncomingMessageScenarios : IDisposable
         var message = NewMessage<Message>();
         Assert.Throws<QueueDoesNotExistException>(() =>
         {
-            _store.StoreIncomingMessage(message);
+            _store.StoreIncoming(message);
         });
     }
 
@@ -50,7 +50,7 @@ public class IncomingMessageScenarios : IDisposable
         _store.CreateQueue(message.Queue);
         using (var transaction = _store.BeginTransaction())
         {
-            _store.StoreIncomingMessage(transaction, message);
+            _store.StoreIncoming(transaction, message);
             _store.Dispose();
             //crash
         }
@@ -66,7 +66,7 @@ public class IncomingMessageScenarios : IDisposable
         var message = NewMessage<Message>();
         _store.CreateQueue(message.Queue);
         var transaction = _store.BeginTransaction();
-        _store.StoreIncomingMessage(transaction, message);
+        _store.StoreIncoming(transaction, message);
         transaction.Dispose();
 
         var msg = _store.GetMessage(message.Queue, message.Id);

@@ -119,7 +119,7 @@ public class ReceiverTests : IDisposable
             .WriteAsync(new byte[] { 1, 4, 6 }.AsMemory(0, 3), cancellationTokenSource.Token);
         await client1.GetStream()
             .WriteAsync(new byte[] { 1, 4, 6 }.AsMemory(0, 3), cancellationTokenSource.Token);
-        cancellationTokenSource.Cancel();
+        await cancellationTokenSource.CancelAsync();
         await receivingTask;
     }
 

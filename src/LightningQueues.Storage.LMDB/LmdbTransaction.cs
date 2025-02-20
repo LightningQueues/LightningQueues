@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices.ComTypes;
 using System.Threading;
 using LightningDB;
 
@@ -18,6 +19,8 @@ public class LmdbTransaction : ITransaction
 
     void ITransaction.Commit()
     {
+        if (!Transaction.Environment.IsOpened)
+            return;
         Transaction.Commit().ThrowOnError();
     }
 
@@ -25,6 +28,8 @@ public class LmdbTransaction : ITransaction
     {
         try
         {
+            if (!Transaction.Environment.IsOpened)
+                return;
             Transaction?.Dispose();
         }
         finally

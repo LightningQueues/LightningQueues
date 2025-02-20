@@ -46,14 +46,14 @@ public class LmdbMessageStoreTester : IDisposable
         outgoingMessage.SentAt = DateTime.Now;
         var tx = _store.BeginTransaction();
         _store.StoreOutgoing(tx, outgoingMessage);
-        _store.StoreIncomingMessage(tx, message);
+        _store.StoreIncoming(tx, message);
         tx.Commit();
         tx.Dispose();
-        _store.PersistedMessages("test").Count().ShouldBe(1);
-        _store.PersistedOutgoingMessages().Count().ShouldBe(1);
+        _store.PersistedIncoming("test").Count().ShouldBe(1);
+        _store.PersistedOutgoing().Count().ShouldBe(1);
         _store.ClearAllStorage();
-        _store.PersistedMessages("test").Count().ShouldBe(0);
-        _store.PersistedOutgoingMessages().Count().ShouldBe(0);
+        _store.PersistedIncoming("test").Count().ShouldBe(0);
+        _store.PersistedOutgoing().Count().ShouldBe(0);
     }
 
     [Fact]
@@ -64,15 +64,17 @@ public class LmdbMessageStoreTester : IDisposable
         var outgoingMessage = NewMessage<Message>();
         outgoingMessage.Destination = new Uri("lq.tcp://localhost:3030");
         outgoingMessage.SentAt = DateTime.Now;
-        var tx = _store.BeginTransaction();
-        _store.StoreOutgoing(tx, outgoingMessage);
-        _store.StoreIncomingMessage(tx, message);
-        tx.Commit();
+        using (var tx = _store.BeginTransaction())
+        {
+            _store.StoreOutgoing(tx, outgoingMessage);
+            _store.StoreIncoming(tx, message);
+            tx.Commit();
+        }
         _store.Dispose();
         using var store2 = new LmdbMessageStore(_path, new MessageSerializer());
         store2.CreateQueue("test");
-        store2.PersistedMessages("test").Count().ShouldBe(1);
-        store2.PersistedOutgoingMessages().Count().ShouldBe(1);
+        store2.PersistedIncoming("test").Count().ShouldBe(1);
+        store2.PersistedOutgoing().Count().ShouldBe(1);
     }
 
     [Fact]
@@ -83,11 +85,13 @@ public class LmdbMessageStoreTester : IDisposable
         var outgoingMessage = NewMessage<Message>();
         outgoingMessage.Destination = new Uri("lq.tcp://localhost:3030");
         outgoingMessage.SentAt = DateTime.Now;
-        var tx = _store.BeginTransaction();
-        _store.StoreOutgoing(tx, outgoingMessage);
-        _store.StoreIncomingMessage(tx, message);
-        tx.Commit();
-        tx.Dispose();
+        using (var tx = _store.BeginTransaction())
+        {
+            _store.StoreOutgoing(tx, outgoingMessage);
+            _store.StoreIncoming(tx, message);
+            tx.Commit();
+        }
+
         var message2 = _store.GetMessage(message.Queue, message.Id);
         var outgoing2 = _store.GetMessage("outgoing", outgoingMessage.Id);
         message2.ShouldNotBeNull();

@@ -10,7 +10,7 @@ using static LightningQueues.Builders.QueueBuilder;
 namespace LightningQueues.Tests;
 
 [Collection("SharedTestDirectory")]
-public class IntegrationTests : IDisposable
+public class IntegrationTests : IAsyncDisposable
 {
     private readonly Queue _receiver;
     private readonly Queue _sender;
@@ -39,13 +39,13 @@ public class IntegrationTests : IDisposable
         received.Message.Queue.ShouldBe(message.Queue);
         received.Message.Data.ShouldBe(message.Data);
         _senderLogger.ErrorMessages.Any(x => x.Contains("Queue does not exist")).ShouldBeTrue();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        _sender.Dispose();
-        _receiver.Dispose();
+        await _sender.DisposeAsync();
+        await _receiver.DisposeAsync();
         GC.SuppressFinalize(this);
     }
 }

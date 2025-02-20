@@ -111,7 +111,7 @@ internal class QueueContext : IQueueContext
 
         public void Execute()
         {
-            _context._queue.Store.StoreIncomingMessage(_context._transaction, _message);
+            _context._queue.Store.StoreIncoming(_context._transaction, _message);
         }
 
         public void Success()

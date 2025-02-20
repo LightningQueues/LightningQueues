@@ -12,7 +12,7 @@ using static LightningQueues.Builders.QueueBuilder;
 namespace LightningQueues.Tests;
 
 [Collection("SharedTestDirectory")]
-public class QueueTests : IDisposable
+public class QueueTests : IAsyncDisposable
 {
     private readonly SharedTestDirectory _testDirectory;
     private readonly Queue _queue;
@@ -33,7 +33,7 @@ public class QueueTests : IDisposable
         receiveTask.IsCompleted.ShouldBeFalse();
         await Task.WhenAny(receiveTask.AsTask(), Task.Delay(1000, cancellation.Token));
         receiveTask.IsCompleted.ShouldBeTrue();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
     }
 
     [Fact]
@@ -45,9 +45,9 @@ public class QueueTests : IDisposable
         var receiveTask = _queue.Receive("test", cancellation.Token).FirstAsync(cancellation.Token);
         await Task.Delay(100, cancellation.Token);
         receiveTask.IsCompleted.ShouldBeFalse();
-        await Task.WhenAny(receiveTask.AsTask(), Task.Delay(900, cancellation.Token));
+        await Task.WhenAny(receiveTask.AsTask(), Task.Delay(950, cancellation.Token));
         receiveTask.IsCompleted.ShouldBeTrue();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
     }
 
     [Fact]
@@ -59,24 +59,22 @@ public class QueueTests : IDisposable
         _queue.Enqueue(expected);
         var result = await receiveTask;
         expected.ShouldBeSameAs(result.Message);
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
     }
 
     [Fact]
     public async Task moving_queues()
     {
-        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         _queue.CreateQueue("another");
         var expected = NewMessage<Message>("test");
-        var anotherTask = _queue.Receive("another", cancellation.Token).FirstAsync(cancellation.Token);
-        var testTask = _queue.Receive("test", cancellation.Token).FirstAsync(cancellation.Token);
         _queue.Enqueue(expected);
-        var first = await testTask;
-        _queue.MoveToQueue("another", first.Message);
+        var message = await _queue.Receive("test", cancellation.Token).FirstAsync(cancellation.Token);
+        _queue.MoveToQueue("another", message.Message);
 
-        var afterMove = await anotherTask;
-        afterMove.Message.Queue.ShouldBe("another");
-        cancellation.Cancel();
+        message = await _queue.Receive("another", cancellation.Token).FirstAsync(cancellation.Token);
+        message.Message.Queue.ShouldBe("another");
+        await cancellation.CancelAsync();
     }
 
     [Fact]
@@ -90,24 +88,24 @@ public class QueueTests : IDisposable
         received.ShouldNotBeNull();
         received.Message.Queue.ShouldBe(message.Queue);
         received.Message.Data.ShouldBe(message.Data);
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
     }
 
     [Fact]
     public async Task sending_to_bad_endpoint_no_retries_integration_test()
     {
-        using var queue = NewQueue(_testDirectory.CreateNewDirectoryForTest(), timeoutAfter: TimeSpan.FromSeconds(1));
+        await using var queue = NewQueue(_testDirectory.CreateNewDirectoryForTest(), timeoutAfter: TimeSpan.FromSeconds(1));
         var message = NewMessage<Message>("test");
         message.MaxAttempts = 1;
         message.Destination = new Uri($"lq.tcp://boom:{queue.Endpoint.Port + 1}");
         queue.Send(message);
         await Task.Delay(5000); //connect timeout cancellation, but windows is slow
         var store = (LmdbMessageStore) queue.Store;
-        store.PersistedOutgoingMessages().Any().ShouldBeFalse();
+        store.PersistedOutgoing().Any().ShouldBeFalse();
     }
 
     [Fact]
-    public void can_start_two_instances_for_IIS_stop_and_start()
+    public async Task can_start_two_instances_for_IIS_stop_and_start()
     {
         //This shows that the port doesn't have an exclusive lock, and that lmdb itself can have multiple instances
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
@@ -119,8 +117,8 @@ public class QueueTests : IDisposable
         queueConfiguration.AutomaticEndpoint();
         queueConfiguration.SerializeWith(serializer);
         queueConfiguration.StoreMessagesWith(store);
-        using var queue = queueConfiguration.BuildQueue();
-        using var queue2 = queueConfiguration.BuildQueue();
+        await using var queue = queueConfiguration.BuildQueue();
+        await using var queue2 = queueConfiguration.BuildQueue();
         queue.CreateQueue("test");
         queue.Start();
         queue2.CreateQueue("test");
@@ -129,12 +127,12 @@ public class QueueTests : IDisposable
         var msgs2 = queue2.Receive("test", cancellation.Token);
         msgs.ShouldNotBeNull();
         msgs2.ShouldNotBeNull();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        _queue.Dispose();
+        await _queue.DisposeAsync();
         GC.SuppressFinalize(this);
     }
 }

@@ -34,29 +34,13 @@ public class LmdbMessageStore : IMessageStore
         CreateQueue(OutgoingQueue);
     }
 
-    public void StoreIncomingMessage(Message message)
+    public void StoreIncoming(params IEnumerable<Message> messages)
     {
         try
         {
             _lock.EnterWriteLock();
             using var tx = _environment.BeginTransaction();
-            var db = OpenDatabase(message.Queue);
-            StoreIncomingMessage(tx, db, message);
-            tx.Commit();
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
-    }
-
-    public void StoreIncomingMessages(IEnumerable<Message> messages)
-    {
-        try
-        {
-            _lock.EnterWriteLock();
-            using var tx = _environment.BeginTransaction();
-            StoreIncomingMessages(tx, messages);
+            StoreIncoming(tx, messages);
             ThrowIfError(tx.Commit());
         }
         finally
@@ -65,20 +49,13 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    public void StoreIncomingMessage(ITransaction transaction, Message message)
+    public void StoreIncoming(ITransaction transaction, params IEnumerable<Message> messages)
     {
         var tx = ((LmdbTransaction) transaction).Transaction;
-        var db = OpenDatabase(message.Queue);
-        StoreIncomingMessage(tx, db, message);
+        StoreIncoming(tx, messages);
     }
 
-    public void StoreIncomingMessages(ITransaction transaction, IEnumerable<Message> messages)
-    {
-        var tx = ((LmdbTransaction) transaction).Transaction;
-        StoreIncomingMessages(tx, messages);
-    }
-
-    private void StoreIncomingMessages(LightningTransaction tx, IEnumerable<Message> messages)
+    private void StoreIncoming(LightningTransaction tx, params IEnumerable<Message> messages)
     {
         foreach (var messagesByQueue in messages.GroupBy(x => x.Queue))
         {
@@ -107,7 +84,7 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    public void DeleteIncomingMessages(IEnumerable<Message> messages)
+    public void DeleteIncoming(IEnumerable<Message> messages)
     {
         try
         {
@@ -132,21 +109,6 @@ public class LmdbMessageStore : IMessageStore
         return new LmdbTransaction(_environment.BeginTransaction(), _lock);
     }
 
-    public void StoreOutgoing(Message message)
-    {
-        try
-        {
-            _lock.EnterWriteLock();
-            using var tx = _environment.BeginTransaction();
-            StoreOutgoing(tx, message);
-            tx.Commit();
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
-    }
-
     public int FailedToSend(Message message)
     {
         try
@@ -163,7 +125,7 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    public void SuccessfullySent(IEnumerable<Message> messages)
+    public void SuccessfullySent(params IEnumerable<Message> messages)
     {
         try
         {
@@ -245,12 +207,12 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    private void SuccessfullySent(LightningTransaction tx, IEnumerable<Message> messages)
+    private void SuccessfullySent(LightningTransaction tx, params IEnumerable<Message> messages)
     {
         RemoveMessagesFromStorage(tx, OutgoingQueue, messages);
     }
         
-    public IEnumerable<Message> PersistedMessages(string queueName)
+    public IEnumerable<Message> PersistedIncoming(string queueName)
     {
         try
         {
@@ -271,7 +233,7 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    public IEnumerable<Message> PersistedOutgoingMessages()
+    public IEnumerable<Message> PersistedOutgoing()
     {
         try
         {
@@ -310,7 +272,7 @@ public class LmdbMessageStore : IMessageStore
         RemoveMessageFromStorage(tx, db, message);
     }
 
-    private void RemoveMessagesFromStorage<TMessage>(LightningTransaction tx, string queueName, IEnumerable<TMessage> messages)
+    private void RemoveMessagesFromStorage<TMessage>(LightningTransaction tx, string queueName, params IEnumerable<TMessage> messages)
         where TMessage : Message
     {
         var db = OpenDatabase(queueName);

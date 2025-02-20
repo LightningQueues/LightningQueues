@@ -12,7 +12,7 @@ using LightningQueues.Storage;
 
 namespace LightningQueues;
 
-public class Queue : IDisposable
+public class Queue : IAsyncDisposable
 {
     private readonly Sender _sender;
     private readonly Receiver _receiver;
@@ -20,6 +20,8 @@ public class Queue : IDisposable
     private readonly Channel<Message> _receivingChannel;
     private readonly CancellationTokenSource _cancelOnDispose;
     private readonly ILogger _logger;
+    private Task _sendingTask;
+    private Task _receivingTask;
 
     public Queue(Receiver receiver, Sender sender, IMessageStore messageStore, ILogger logger)
     {
@@ -49,13 +51,12 @@ public class Queue : IDisposable
         Store.CreateQueue(queueName);
     }
 
-    public async void Start()
+    public void Start()
     {
         try
         {
-            var sending = StartSendingAsync(_cancelOnDispose.Token);
-            var receiving = StartReceivingAsync(_cancelOnDispose.Token);
-            await Task.WhenAll(sending, receiving);
+            _sendingTask = StartSendingAsync(_cancelOnDispose.Token);
+            _receivingTask = StartReceivingAsync(_cancelOnDispose.Token);
         }
         catch (Exception ex)
         {
@@ -75,7 +76,7 @@ public class Queue : IDisposable
             _logger.LogDebug("Starting LightningQueues");
         var errorPolicy = new SendingErrorPolicy(_logger, Store, _sender.FailedToSend());
         var errorTask = errorPolicy.StartRetries(token);
-        var persistedMessages = Store.PersistedOutgoingMessages().ToList();
+        var persistedMessages = Store.PersistedOutgoing().ToList();
         var sendingTask = Task.Factory.StartNew(async () =>
         {
             await _sender.StartSendingAsync(_sendChannel.Reader, token).ConfigureAwait(false);
@@ -86,7 +87,7 @@ public class Queue : IDisposable
         }
 
         var outgoingRetries = errorPolicy.Retries.ReadAllAsync(token);
-        await foreach (var message in outgoingRetries.WithCancellation(token))
+        await foreach (var message in outgoingRetries)
         {
             await _sendChannel.Writer.WriteAsync(message, token);
         }
@@ -103,7 +104,7 @@ public class Queue : IDisposable
             cancellationToken = _cancelOnDispose.Token;
 
         _logger.QueueStartReceiving(queueName);
-        return Store.PersistedMessages(queueName)
+        return Store.PersistedIncoming(queueName)
             .Concat(_receivingChannel.Reader.ReadAllAsync(cancellationToken))
             .Where(x => x.Queue == queueName)
             .Select(x => new MessageContext(x, this));
@@ -123,25 +124,23 @@ public class Queue : IDisposable
     public void Enqueue(Message message)
     {
         _logger.QueueEnqueue(message.Id, message.Queue);
-        Store.StoreIncomingMessage(message);
+        Store.StoreIncoming(message);
         ReceivingChannel.TryWrite(message);
     }
 
-    public async void ReceiveLater(Message message, TimeSpan timeSpan)
+    public void ReceiveLater(Message message, TimeSpan timeSpan)
     {
         _logger.QueueReceiveLater(message.Id, timeSpan);
-        try
-        {
-            await Task.Delay(timeSpan);
-            await ReceivingChannel.WriteAsync(message, _cancelOnDispose.Token);
-        }
-        catch (Exception ex)
-        {
-            _logger.QueueErrorReceiveLater(message.Id, timeSpan, ex);
-        }
+        Task.Delay(timeSpan)
+            .ContinueWith(_ =>
+            {
+                if (!ReceivingChannel.TryWrite(message))
+                    _logger.QueueErrorReceiveLater(message.Id, timeSpan, null);
+
+            });
     }
 
-    public async void Send(params Message[] messages)
+    public void Send(params Message[] messages)
     {
         _logger.QueueSendBatch(messages.Length);
         try
@@ -149,7 +148,8 @@ public class Queue : IDisposable
             Store.StoreOutgoing(messages);
             foreach (var message in messages)
             {
-                await _sendChannel.Writer.WriteAsync(message, _cancelOnDispose.Token);
+                if (!_sendChannel.Writer.TryWrite(message))
+                    throw new Exception("Failed to send message");//throw better error
             }
         }
         catch (Exception ex)
@@ -159,13 +159,14 @@ public class Queue : IDisposable
         }
     }
     
-    public async void Send(Message message)
+    public void Send(Message message)
     {
         _logger.QueueSend(message.Id);
         try
         {
             Store.StoreOutgoing(message);
-            await _sendChannel.Writer.WriteAsync(message, _cancelOnDispose.Token);
+            if (!_sendChannel.Writer.TryWrite(message))
+                throw new Exception("Failed to send message");//throw better error
         }
         catch (Exception ex)
         {
@@ -178,14 +179,15 @@ public class Queue : IDisposable
         ReceiveLater(message, time - DateTimeOffset.Now);
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         _logger.QueueDispose();
-        
-        _cancelOnDispose.Cancel();
-        _cancelOnDispose.Dispose();
+
         try
         {
+            await _cancelOnDispose.CancelAsync();
+            _cancelOnDispose.Dispose();
+            await Task.WhenAll(_receivingTask, _sendingTask);
             _sender.Dispose();
             _receiver.Dispose();
             _receivingChannel.Writer.TryComplete();
@@ -196,6 +198,7 @@ public class Queue : IDisposable
         {
             _logger.QueueDisposeError(ex);
         }
+
         GC.SuppressFinalize(this);
     }
 }

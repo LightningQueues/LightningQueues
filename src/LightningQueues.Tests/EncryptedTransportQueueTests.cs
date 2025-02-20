@@ -9,7 +9,7 @@ using static LightningQueues.Builders.QueueBuilder;
 namespace LightningQueues.Tests;
 
 [Collection("SharedTestDirectory")]
-public class EncryptedTransportQueueTests : IDisposable
+public class EncryptedTransportQueueTests : IAsyncDisposable
 {
     private readonly Queue _queue;
         
@@ -31,12 +31,12 @@ public class EncryptedTransportQueueTests : IDisposable
         received.ShouldNotBeNull();
         received.Message.Queue.ShouldBe(message.Queue);
         received.Message.Data.ShouldBe(message.Data);
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        _queue.Dispose();
+        await _queue.DisposeAsync();
         GC.SuppressFinalize(this);
     }
 }

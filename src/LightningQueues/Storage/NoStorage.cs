@@ -38,7 +38,7 @@ public class NoStorage : IMessageStore
     {
     }
 
-    public void StoreIncomingMessages(IEnumerable<Message> messages)
+    public void StoreIncoming(IEnumerable<Message> messages)
     {
     }
 
@@ -46,20 +46,20 @@ public class NoStorage : IMessageStore
     {
     }
 
-    public void StoreIncomingMessages(ITransaction transaction, IEnumerable<Message> messages)
+    public void StoreIncoming(ITransaction transaction, IEnumerable<Message> messages)
     {
     }
 
-    public void DeleteIncomingMessages(IEnumerable<Message> messages)
+    public void DeleteIncoming(IEnumerable<Message> messages)
     {
     }
 
-    public IEnumerable<Message> PersistedMessages(string queueName)
+    public IEnumerable<Message> PersistedIncoming(string queueName)
     {
         return Enumerable.Empty<Message>();
     }
 
-    public IEnumerable<Message> PersistedOutgoingMessages()
+    public IEnumerable<Message> PersistedOutgoing()
     {
         return Enumerable.Empty<Message>();
     }

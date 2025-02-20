@@ -8,7 +8,7 @@ using static LightningQueues.Builders.QueueBuilder;
 
 namespace LightningQueues.Tests.Storage;
 
-public class NoStorageIntegrationTester : IDisposable
+public class NoStorageIntegrationTester : IAsyncDisposable
 {
     private readonly Queue _sender;
     private readonly Queue _receiver;
@@ -30,13 +30,13 @@ public class NoStorageIntegrationTester : IDisposable
         message.Destination = destination;
         _sender.Send(message);
         await receiveTask;
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        _sender.Dispose();
-        _receiver.Dispose();
+        await _sender.DisposeAsync();
+        await _receiver.DisposeAsync();
         GC.SuppressFinalize(this);
     }
 }

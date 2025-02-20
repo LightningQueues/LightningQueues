@@ -1,14 +1,12 @@
-using System.Buffers;
+using System;
+using System.Collections.Generic;
 
 namespace LightningQueues.Serialization;
 
-internal class CommonString
+public class MemStringEqualityComparer : IEqualityComparer<ReadOnlyMemory<char>>
 {
-    public CommonString(string value, ReadOnlySequence<byte> bytes)
-    {
-        Value = value;
-        Bytes = bytes;
-    }
-    public readonly string Value; 
-    public readonly ReadOnlySequence<byte> Bytes;
+    public int GetHashCode( ReadOnlyMemory<char> obj ) =>
+        string.GetHashCode( obj.Span, StringComparison.CurrentCulture );
+    public bool Equals(ReadOnlyMemory<char> x, ReadOnlyMemory<char> y) =>
+        x.Span.Equals(y.Span, StringComparison.CurrentCulture );
 }

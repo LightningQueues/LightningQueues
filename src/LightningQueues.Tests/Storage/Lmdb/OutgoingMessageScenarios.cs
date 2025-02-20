@@ -37,7 +37,7 @@ public class OutgoingMessageScenarios : IDisposable
         tx.Dispose();
         _store.SuccessfullySent(new [] {message});//todo fix
 
-        var result = _store.PersistedOutgoingMessages().First();
+        var result = _store.PersistedOutgoing().First();
         result.Id.ShouldBe(message2.Id);
         result.Queue.ShouldBe(message2.Queue);
         result.Data.ShouldBe(message2.Data);
