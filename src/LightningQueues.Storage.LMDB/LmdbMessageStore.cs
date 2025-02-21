@@ -26,7 +26,7 @@ public class LmdbMessageStore : IMessageStore
 
     public LmdbMessageStore(LightningEnvironment environment, IMessageSerializer serializer)
     {
-        _lock = new ReaderWriterLockSlim();
+        _lock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
         _environment = environment;
         _serializer = serializer;
         if(!_environment.IsOpened)

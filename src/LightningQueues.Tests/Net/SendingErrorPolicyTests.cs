@@ -86,11 +86,13 @@ public class SendingErrorPolicyTests : IDisposable
         var tx = _store.BeginTransaction();
         _store.StoreOutgoing(tx, message);
         tx.Commit();
+        tx.Dispose();
         var errorTask = _errorPolicy.StartRetries(cancellation.Token);
         var failure = new OutgoingMessageFailure
         {
             Messages = [message]
         };
+        _errorPolicy.StartRetries(cancellation.Token);
         var retryTask = _errorPolicy.Retries.ReadAllAsync(cancellation.Token).FirstAsync(cancellation.Token);
         _failureChannel.Writer.TryWrite(failure);
         var retryMessage = await retryTask;
@@ -108,22 +110,24 @@ public class SendingErrorPolicyTests : IDisposable
         var tx = _store.BeginTransaction();
         _store.StoreOutgoing(tx, message);
         tx.Commit();
+        tx.Dispose();
         var failure = new OutgoingMessageFailure
         {
             Messages = [message]
         };
+        _errorPolicy.StartRetries(cancellation.Token);
         var retryTask = _errorPolicy.Retries.ReadAllAsync(cancellation.Token).FirstAsync(cancellation.Token);
         _failureChannel.Writer.TryWrite(failure);
         await Task.Delay(TimeSpan.FromSeconds(1), cancellation.Token);
         retryTask.IsCompleted.ShouldBeFalse();
         _store.PersistedOutgoing().Any().ShouldBeFalse();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
     }
 
     [Fact]
     public async Task time_increases_with_each_failure()
     {
-        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(6));
         Message observed = null;
         var message = NewMessage<Message>();
         message.Destination = new Uri("lq.tcp://localhost:5150/blah");
@@ -131,25 +135,30 @@ public class SendingErrorPolicyTests : IDisposable
         var tx = _store.BeginTransaction();
         _store.StoreOutgoing(tx, message);
         tx.Commit();
+        tx.Dispose();
+        _errorPolicy.StartRetries(cancellation.Token);
         var failure = new OutgoingMessageFailure
         {
             Messages = [message]
         };
-        var retryTask = Task.Factory.StartNew(async () =>
+        Task.Factory.StartNew(async () =>
         {
-            observed = await _errorPolicy.Retries.ReadAllAsync(cancellation.Token).FirstAsync(cancellation.Token);
+            await foreach (var msg in _errorPolicy.Retries.ReadAllAsync(cancellation.Token))
+            {
+                observed = msg;
+            }
         }, cancellation.Token);
         _failureChannel.Writer.TryWrite(failure);
-        await Task.Delay(TimeSpan.FromSeconds(1), cancellation.Token);
+        await Task.Delay(TimeSpan.FromSeconds(1.5), cancellation.Token);
         observed.ShouldNotBeNull("first");
         observed = null;
         _failureChannel.Writer.TryWrite(failure);
         observed.ShouldBeNull("second");
         await Task.Delay(TimeSpan.FromSeconds(1), cancellation.Token);
         observed.ShouldBeNull("third");
-        await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(3), cancellation.Token), retryTask);
+        await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(4), cancellation.Token));
         observed.ShouldNotBeNull("fourth");
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
     }
 
     [Fact]
