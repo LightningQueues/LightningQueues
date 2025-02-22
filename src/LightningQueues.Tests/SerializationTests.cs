@@ -3,7 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using LightningQueues.Serialization;
 using Xunit;
-using static LightningQueues.Builders.QueueBuilder;
+using static LightningQueues.Helpers.QueueBuilder;
 
 namespace LightningQueues.Tests;
 

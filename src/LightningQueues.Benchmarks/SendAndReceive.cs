@@ -1,7 +1,7 @@
 using BenchmarkDotNet.Attributes;
-using LightningQueues.Builders;
+using LightningQueues.Logging;
 using Microsoft.Extensions.Logging;
-using static LightningQueues.Builders.QueueBuilder;
+using static LightningQueues.Helpers.QueueBuilder;
 
 namespace LightningQueues.Benchmarks;
 

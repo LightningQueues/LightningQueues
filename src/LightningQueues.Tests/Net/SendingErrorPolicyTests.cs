@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using LightningQueues.Builders;
+using LightningQueues.Logging;
 using Microsoft.Extensions.Logging;
 using LightningQueues.Net;
 using LightningQueues.Serialization;
@@ -13,7 +13,7 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Shouldly;
 using Xunit;
-using static LightningQueues.Builders.QueueBuilder;
+using static LightningQueues.Helpers.QueueBuilder;
 
 namespace LightningQueues.Tests.Net;
 

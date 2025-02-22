@@ -16,6 +16,7 @@
     <PackageReference Include="DotNext.IO" Version="5.18.2" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.2" />
     <PackageReference Include="System.IO.Pipelines" Version="9.0.2" />
+    <PackageReference Include="LightningDB" Version="0.17.1" />
   </ItemGroup>
 
 </Project>

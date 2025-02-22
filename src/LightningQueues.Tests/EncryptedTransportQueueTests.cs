@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Shouldly;
 using Xunit;
-using static LightningQueues.Builders.QueueBuilder;
+using static LightningQueues.Helpers.QueueBuilder;
 
 namespace LightningQueues.Tests;
 

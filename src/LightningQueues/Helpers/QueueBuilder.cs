@@ -1,14 +1,19 @@
-﻿using LightningQueues.Storage.LMDB;
+﻿using System;
 using System.Net;
+using System.Net.Security;
+using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using LightningDB;
+using LightningQueues.Logging;
+using LightningQueues.Net.Security;
 using LightningQueues.Serialization;
-using Microsoft.Extensions.Logging;
 using LightningQueues.Storage;
+using LightningQueues.Storage.LMDB;
+using Microsoft.Extensions.Logging;
 
-namespace LightningQueues.Builders;
+namespace LightningQueues.Helpers;
 
 public static class QueueBuilder
 {
@@ -52,8 +57,20 @@ public static class QueueBuilder
         if (secureTransport)
         {
             var certificate = CreateCertificate();
-            queueConfiguration.SecureTransportWith(new ClientTLSSecurity(certificate), 
-                new ServerTLSSecurity(certificate));
+            queueConfiguration.SecureTransportWith(new TlsStreamSecurity(async (uri, stream) =>
+                {
+                    //client side with no validation of server certificate
+                    var sslStream = new SslStream(stream, true, (_, _, _, _) => true, null);
+                    await sslStream.AuthenticateAsClientAsync(uri.Host);
+                    return sslStream;
+                }),
+                new TlsStreamSecurity(async (_, stream) =>
+                {
+                    var sslStream = new SslStream(stream, false);
+                    await sslStream.AuthenticateAsServerAsync(certificate, false,
+                        checkCertificateRevocation: false, enabledSslProtocols: SslProtocols.Tls12);
+                    return sslStream;
+                }));
         }
         var queue = queueConfiguration.BuildQueue();
         queue.CreateQueue(queueName);

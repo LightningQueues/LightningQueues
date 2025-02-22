@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using LightningQueues.Builders;
+using LightningQueues.Logging;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Security;
 using LightningQueues.Net.Tcp;
@@ -14,7 +14,7 @@ using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
 using Xunit;
-using static LightningQueues.Builders.QueueBuilder;
+using static LightningQueues.Helpers.QueueBuilder;
 
 namespace LightningQueues.Tests.Net.Tcp;
 
