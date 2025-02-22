@@ -1,6 +1,7 @@
 LightningQueues - Fast persistent queues for .NET
 =====================================================
-![.NET (Win, Mac, Linux)](https://github.com/LightningQueues/LightningQueues/workflows/.NET%20Tests/badge.svg)
+![.NET Tests](https://github.com/LightningQueues/LightningQueues/workflows/.NET%20Tests/badge.svg)
+[![NuGet version](https://img.shields.io/nuget/v/LightningQueues.svg)](https://www.nuget.org/packages/LightningQueues/)
 
 A fast store and forward message queue for .NET
 
