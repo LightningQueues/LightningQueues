@@ -44,11 +44,13 @@ public class LmdbMessageStoreTester : IDisposable
         var outgoingMessage = NewMessage<Message>();
         outgoingMessage.Destination = new Uri("lq.tcp://localhost:3030");
         outgoingMessage.SentAt = DateTime.Now;
-        var tx = _store.BeginTransaction();
-        _store.StoreOutgoing(tx, outgoingMessage);
-        _store.StoreIncoming(tx, message);
-        tx.Commit();
-        tx.Dispose();
+        using (var tx = _store.BeginTransaction())
+        {
+            _store.StoreOutgoing(tx, outgoingMessage);
+            _store.StoreIncoming(tx, message);
+            tx.Commit();
+        }
+
         _store.PersistedIncoming("test").Count().ShouldBe(1);
         _store.PersistedOutgoing().Count().ShouldBe(1);
         _store.ClearAllStorage();

@@ -12,7 +12,7 @@ using static LightningQueues.Helpers.QueueBuilder;
 namespace LightningQueues.Tests;
 
 [Collection("SharedTestDirectory")]
-public class QueueTests : IAsyncDisposable
+public class QueueTests : IDisposable
 {
     private readonly SharedTestDirectory _testDirectory;
     private readonly Queue _queue;
@@ -94,7 +94,7 @@ public class QueueTests : IAsyncDisposable
     [Fact]
     public async Task sending_to_bad_endpoint_no_retries_integration_test()
     {
-        await using var queue = NewQueue(_testDirectory.CreateNewDirectoryForTest(), timeoutAfter: TimeSpan.FromSeconds(1));
+        using var queue = NewQueue(_testDirectory.CreateNewDirectoryForTest(), timeoutAfter: TimeSpan.FromSeconds(1));
         var message = NewMessage<Message>("test");
         message.MaxAttempts = 1;
         message.Destination = new Uri($"lq.tcp://boom:{queue.Endpoint.Port + 1}");
@@ -111,14 +111,14 @@ public class QueueTests : IAsyncDisposable
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var path = _testDirectory.CreateNewDirectoryForTest();
         var serializer = new MessageSerializer();
-        var store = new LmdbMessageStore(path, serializer);
+        using var store = new LmdbMessageStore(path, serializer);
         var queueConfiguration = new QueueConfiguration();
         queueConfiguration.LogWith(new RecordingLogger());
         queueConfiguration.AutomaticEndpoint();
         queueConfiguration.SerializeWith(serializer);
         queueConfiguration.StoreMessagesWith(store);
-        await using var queue = queueConfiguration.BuildQueue();
-        await using var queue2 = queueConfiguration.BuildQueue();
+        using var queue = queueConfiguration.BuildQueue();
+        using var queue2 = queueConfiguration.BuildQueue();
         queue.CreateQueue("test");
         queue.Start();
         queue2.CreateQueue("test");
@@ -130,9 +130,9 @@ public class QueueTests : IAsyncDisposable
         await cancellation.CancelAsync();
     }
 
-    public async ValueTask DisposeAsync()
+    public void Dispose()
     {
-        await _queue.DisposeAsync();
+        _queue.Dispose();
         GC.SuppressFinalize(this);
     }
 }

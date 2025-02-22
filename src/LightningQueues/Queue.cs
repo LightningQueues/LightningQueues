@@ -5,6 +5,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using DotNext;
 using Microsoft.Extensions.Logging;
 using LightningQueues.Net;
 using LightningQueues.Net.Tcp;
@@ -12,7 +13,7 @@ using LightningQueues.Storage;
 
 namespace LightningQueues;
 
-public class Queue : IAsyncDisposable
+public class Queue : IDisposable
 {
     private readonly Sender _sender;
     private readonly Receiver _receiver;
@@ -179,26 +180,27 @@ public class Queue : IAsyncDisposable
         ReceiveLater(message, time - DateTimeOffset.Now);
     }
 
-    public async ValueTask DisposeAsync()
+    public void Dispose()
     {
         _logger.QueueDispose();
 
         try
         {
-            await _cancelOnDispose.CancelAsync();
-            _cancelOnDispose.Dispose();
-            await Task.WhenAll(_receivingTask, _sendingTask);
-            _sender.Dispose();
-            _receiver.Dispose();
-            _receivingChannel.Writer.TryComplete();
-            _sendChannel.Writer.TryComplete();
-            Store.Dispose();
+            using (Store)
+            using (_receiver)
+            using (_sender)
+            using (_cancelOnDispose)
+            {
+                _cancelOnDispose.Cancel();
+                Task.WaitAll(_receivingTask, _sendingTask);
+                _receivingChannel.Writer.TryComplete();
+                _sendChannel.Writer.TryComplete();
+            }
         }
         catch (Exception ex)
         {
             _logger.QueueDisposeError(ex);
         }
-
         GC.SuppressFinalize(this);
     }
 }

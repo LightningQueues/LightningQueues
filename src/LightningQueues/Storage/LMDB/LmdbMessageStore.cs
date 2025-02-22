@@ -422,13 +422,16 @@ public class LmdbMessageStore : IMessageStore
 
     private void Dispose(bool disposing)
     {
-        if (disposing)
-        {
+        using (_environment)
             foreach (var database in _databaseCache)
             {
-                database.Value.Dispose();
+                try
+                {
+                    database.Value.Dispose();
+                }
+                catch (Exception)
+                {
+                }
             }
-        }
-        _environment.Dispose();
     }
 }

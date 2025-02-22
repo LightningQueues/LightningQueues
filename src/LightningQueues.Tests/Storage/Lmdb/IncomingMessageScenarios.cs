@@ -13,7 +13,7 @@ namespace LightningQueues.Tests.Storage.Lmdb;
 public class IncomingMessageScenarios : IDisposable
 {
     private readonly string _queuePath;
-    private LmdbMessageStore _store;
+    private readonly LmdbMessageStore _store;
 
     public IncomingMessageScenarios(SharedTestDirectory testDirectory)
     {
@@ -54,9 +54,9 @@ public class IncomingMessageScenarios : IDisposable
             _store.Dispose();
             //crash
         }
-        _store = new LmdbMessageStore(_queuePath, new MessageSerializer());
-        _store.CreateQueue(message.Queue);
-        var msg = _store.GetMessage(message.Queue, message.Id);
+        using var store = new LmdbMessageStore(_queuePath, new MessageSerializer());
+        store.CreateQueue(message.Queue);
+        var msg = store.GetMessage(message.Queue, message.Id);
         msg.ShouldBeNull();
     }
 
@@ -65,10 +65,10 @@ public class IncomingMessageScenarios : IDisposable
     {
         var message = NewMessage<Message>();
         _store.CreateQueue(message.Queue);
-        var transaction = _store.BeginTransaction();
-        _store.StoreIncoming(transaction, message);
-        transaction.Dispose();
-
+        using (var transaction = _store.BeginTransaction())
+        {
+            _store.StoreIncoming(transaction, message);
+        }
         var msg = _store.GetMessage(message.Queue, message.Id);
         msg.ShouldBeNull();
     }
@@ -77,9 +77,9 @@ public class IncomingMessageScenarios : IDisposable
     public void creating_multiple_stores()
     {
         _store.Dispose();
-        _store = new LmdbMessageStore(_queuePath, new MessageSerializer());
-        _store.Dispose();
-        _store = new LmdbMessageStore(_queuePath, new MessageSerializer());
+        var store = new LmdbMessageStore(_queuePath, new MessageSerializer());
+        store.Dispose();
+        using var store2 = new LmdbMessageStore(_queuePath, new MessageSerializer());
     }
 
     public void Dispose()

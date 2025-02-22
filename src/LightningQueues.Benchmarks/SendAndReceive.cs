@@ -50,12 +50,14 @@ public class SendAndReceive
     }
 
     [GlobalCleanup]
-    public async ValueTask GlobalCleanup()
+    public void GlobalCleanup()
     {
         if (_sender != null && _receiver != null)
         {
-            await _sender.DisposeAsync();
-            await _receiver.DisposeAsync();
+            using(_sender)
+            using (_receiver)
+            {
+            }
         }
     }
 

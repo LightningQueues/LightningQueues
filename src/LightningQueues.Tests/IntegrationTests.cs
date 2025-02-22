@@ -10,7 +10,7 @@ using static LightningQueues.Helpers.QueueBuilder;
 namespace LightningQueues.Tests;
 
 [Collection("SharedTestDirectory")]
-public class IntegrationTests : IAsyncDisposable
+public class IntegrationTests : IDisposable
 {
     private readonly Queue _receiver;
     private readonly Queue _sender;
@@ -42,10 +42,10 @@ public class IntegrationTests : IAsyncDisposable
         await cancellation.CancelAsync();
     }
 
-    public async ValueTask DisposeAsync()
+    public void Dispose()
     {
-        await _sender.DisposeAsync();
-        await _receiver.DisposeAsync();
-        GC.SuppressFinalize(this);
+        using (_sender)
+        using (_receiver)
+            GC.SuppressFinalize(this);
     }
 }

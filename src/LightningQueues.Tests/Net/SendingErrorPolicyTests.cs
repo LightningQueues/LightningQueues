@@ -83,10 +83,11 @@ public class SendingErrorPolicyTests : IDisposable
         var message = NewMessage<Message>();
         message.Destination = new Uri("lq.tcp://localhost:5150/blah");
         message.MaxAttempts = 2;
-        var tx = _store.BeginTransaction();
-        _store.StoreOutgoing(tx, message);
-        tx.Commit();
-        tx.Dispose();
+        using (var tx = _store.BeginTransaction())
+        {
+            _store.StoreOutgoing(tx, message);
+            tx.Commit();
+        }
         var errorTask = _errorPolicy.StartRetries(cancellation.Token);
         var failure = new OutgoingMessageFailure
         {
@@ -107,10 +108,11 @@ public class SendingErrorPolicyTests : IDisposable
         var message = NewMessage<Message>();
         message.Destination = new Uri("lq.tcp://localhost:5150/blah");
         message.MaxAttempts = 1;
-        var tx = _store.BeginTransaction();
-        _store.StoreOutgoing(tx, message);
-        tx.Commit();
-        tx.Dispose();
+        using (var tx = _store.BeginTransaction())
+        {
+            _store.StoreOutgoing(tx, message);
+            tx.Commit();
+        }
         var failure = new OutgoingMessageFailure
         {
             Messages = [message]
@@ -132,10 +134,12 @@ public class SendingErrorPolicyTests : IDisposable
         var message = NewMessage<Message>();
         message.Destination = new Uri("lq.tcp://localhost:5150/blah");
         message.MaxAttempts = 5;
-        var tx = _store.BeginTransaction();
-        _store.StoreOutgoing(tx, message);
-        tx.Commit();
-        tx.Dispose();
+        using (var tx = _store.BeginTransaction())
+        {
+            _store.StoreOutgoing(tx, message);
+            tx.Commit();
+        }
+
         _errorPolicy.StartRetries(cancellation.Token);
         var failure = new OutgoingMessageFailure
         {

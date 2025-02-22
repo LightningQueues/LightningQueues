@@ -131,10 +131,11 @@ public class ReceiverTests : IDisposable
         var expected = NewMessage<Message>("test");
         expected.Data = "hello"u8.ToArray();
         expected.Destination = new Uri($"lq.tcp://localhost:{_endpoint.Port}");
-        var tx = _sendingStore.BeginTransaction();
-        _sendingStore.StoreOutgoing(tx, expected);
-        tx.Commit();
-        tx.Dispose();
+        using (var tx = _sendingStore.BeginTransaction())
+        {
+            _sendingStore.StoreOutgoing(tx, expected);
+            tx.Commit();
+        }
         var messages = new[] { expected };
         var receivingTask = Task.Factory.StartNew(async () =>
         {
@@ -163,9 +164,9 @@ public class ReceiverTests : IDisposable
 
     public void Dispose()
     {
-        _receiver.Dispose();
-        _store.Dispose();
-        _sendingStore.Dispose();
-        GC.SuppressFinalize(this);
+        using(_receiver)
+        using(_store)
+        using(_sendingStore)
+            GC.SuppressFinalize(this);
     }
 }

@@ -30,11 +30,13 @@ public class OutgoingMessageScenarios : IDisposable
         message2.DeliverBy = DateTime.Now.AddSeconds(5);
         message2.MaxAttempts = 3;
         message2.Headers.Add("header", "header_value");
-        var tx = _store.BeginTransaction();
-        _store.StoreOutgoing(tx, message);
-        _store.StoreOutgoing(tx, message2);
-        tx.Commit();
-        tx.Dispose();
+        using (var tx = _store.BeginTransaction())
+        {
+            _store.StoreOutgoing(tx, message);
+            _store.StoreOutgoing(tx, message2);
+            tx.Commit();
+        }
+
         _store.SuccessfullySent(new [] {message});//todo fix
 
         var result = _store.PersistedOutgoing().First();
@@ -55,10 +57,11 @@ public class OutgoingMessageScenarios : IDisposable
         message.MaxAttempts = 1;
         message.SentAttempts = 1;
         message.Destination = destination;
-        var tx = _store.BeginTransaction();
-        _store.StoreOutgoing(tx, message);
-        tx.Commit();
-        tx.Dispose();
+        using (var tx = _store.BeginTransaction())
+        {
+            _store.StoreOutgoing(tx, message);
+            tx.Commit();
+        }
 
         _store.FailedToSend(message);
 
@@ -73,10 +76,11 @@ public class OutgoingMessageScenarios : IDisposable
         var message = NewMessage<Message>("test");
         message.DeliverBy = DateTime.Now;
         message.Destination = destination;
-        var tx = _store.BeginTransaction();
-        _store.StoreOutgoing(tx, message);
-        tx.Commit();
-        tx.Dispose();
+        using (var tx = _store.BeginTransaction())
+        {
+            _store.StoreOutgoing(tx, message);
+            tx.Commit();
+        }
 
         _store.FailedToSend(message);
 
