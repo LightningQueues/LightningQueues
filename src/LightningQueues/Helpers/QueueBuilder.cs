@@ -90,26 +90,27 @@ public static class QueueBuilder
         const string certPass = "really_secure";
 
         var distinguishedName = new X500DistinguishedName($"CN={certificateName}");
-
+    
         using var rsa = RSA.Create(4096);
         var request = new CertificateRequest(distinguishedName, rsa, HashAlgorithmName.SHA256,
             RSASignaturePadding.Pkcs1);
-
+    
         request.CertificateExtensions.Add(
             new X509KeyUsageExtension(
                 X509KeyUsageFlags.DataEncipherment | X509KeyUsageFlags.KeyEncipherment |
                 X509KeyUsageFlags.DigitalSignature, false));
-
+    
         request.CertificateExtensions.Add(
             new X509EnhancedKeyUsageExtension(
                 new OidCollection {new("1.3.6.1.5.5.7.3.1")}, false));
-
+    
         request.CertificateExtensions.Add(sanBuilder.Build());
-
+    
         var certificate = request.CreateSelfSigned(new DateTimeOffset(DateTime.UtcNow.AddDays(-1)),
             new DateTimeOffset(DateTime.UtcNow.AddDays(3650)));
-
-        return new X509Certificate2(certificate.Export(X509ContentType.Pfx, certPass), certPass,
-            X509KeyStorageFlags.MachineKeySet);
+    
+        return X509CertificateLoader.LoadPkcs12(certificate.Export(X509ContentType.Pfx, certPass), certPass);
     }
+    
+    
 }
