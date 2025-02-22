@@ -28,43 +28,40 @@ public class Receiver : IDisposable
 
     public async ValueTask StartReceivingAsync(ChannelWriter<Message> receivedChannel, CancellationToken cancellationToken = default)
     {
-        StartListener();
-        while (!cancellationToken.IsCancellationRequested && !_disposed)
+        _listener.Start();
+        try
         {
-            try
+            while (!cancellationToken.IsCancellationRequested && !_disposed)
             {
-                using var socket = await _listener.AcceptSocketAsync(cancellationToken).ConfigureAwait(false);
-                await using var stream = new NetworkStream(socket, false);
-                var messages = _protocol.ReceiveMessagesAsync(stream, cancellationToken)
-                    .ConfigureAwait(false);
-                var messageEnumerator = messages.GetAsyncEnumerator();
-                var hasResult = true;
-                while (hasResult)
+                try
                 {
+                    using var socket = await _listener.AcceptSocketAsync(cancellationToken).ConfigureAwait(false);
+                    await using var stream = new NetworkStream(socket, false);
                     try
                     {
-                        hasResult = await messageEnumerator.MoveNextAsync();
-                        var msg = hasResult ? messageEnumerator.Current : null;
-                        if (msg != null)
+                        var messages = await _protocol.ReceiveMessagesAsync(stream, cancellationToken)
+                            .ConfigureAwait(false);
+                        foreach (var msg in messages)
+                        {
                             await receivedChannel.WriteAsync(msg, cancellationToken).ConfigureAwait(false);
+                        }
                     }
                     catch (Exception ex)
                     {
                         _logger.ReceiverErrorReadingMessages(socket.RemoteEndPoint, ex);
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                if(_logger.IsEnabled(LogLevel.Error))
-                    _logger.LogError(ex, "Error accepting socket");
+                catch (Exception ex)
+                {
+                    if (_logger.IsEnabled(LogLevel.Error))
+                        _logger.LogError(ex, "Error accepting socket");
+                }
             }
         }
-    }
-
-    private void StartListener()
-    {
-        _listener.Start();
+        finally
+        {
+            _listener.Stop();
+        }
     }
 
     public void Dispose()
@@ -74,7 +71,8 @@ public class Receiver : IDisposable
         
         _logger.ReceiverDisposing();
         _disposed = true;
-        _listener.Stop();
+        if(_listener.Server.IsBound)
+            _listener.Stop();
         GC.SuppressFinalize(this);
     }
 }

@@ -1,10 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace LightningQueues.Net;
 
 public interface IReceivingProtocol
 {
-    IAsyncEnumerable<Message> ReceiveMessagesAsync(Stream stream, CancellationToken cancellationToken);
+    Task<IList<Message>> ReceiveMessagesAsync(Stream stream, CancellationToken cancellationToken);
 }

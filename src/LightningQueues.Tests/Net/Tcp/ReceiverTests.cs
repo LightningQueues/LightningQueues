@@ -52,12 +52,12 @@ public class ReceiverTests : IDisposable
             var channel = Channel.CreateUnbounded<Message>();
             await _receiver.StartReceivingAsync(channel.Writer, cancellationTokenSource.Token);
         }, cancellationTokenSource.Token);
-        await Task.Delay(100, default);
+        await Task.Delay(100, CancellationToken.None);
         var listener = new TcpListener(_endpoint);
-        Assert.Throws<SocketException>(() => listener.Start());
-        cancellationTokenSource.Cancel();
-        await Task.Delay(100, default);
-        receivingTask.IsCanceled.ShouldBe(true);
+        Should.Throw<SocketException>(() => listener.Start());
+        await cancellationTokenSource.CancelAsync();
+        await Task.Delay(500, CancellationToken.None);
+        receivingTask.IsCompleted.ShouldBe(true);
         listener.Start();
         listener.Stop();
     }

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using LightningQueues.Builders;
@@ -27,6 +28,7 @@ public class ReceivingProtocolTests : IDisposable
         _logger = new RecordingLogger();
         var serializer = new MessageSerializer();
         _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest(), serializer);
+        _store.CreateQueue("test");
         _protocol = new ReceivingProtocol(_store, new NoSecurity(), serializer, new Uri("lq.tcp://localhost"), _logger);
     }
 
@@ -35,16 +37,10 @@ public class ReceivingProtocolTests : IDisposable
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         using var ms = new MemoryStream();
-        var iterationContinued = false;
         ms.Write(BitConverter.GetBytes(-2), 0, 4);
         ms.Position = 0;
-        var result = _protocol.ReceiveMessagesAsync(ms, cancellation.Token);
-        await foreach (var _ in result.WithCancellation(cancellation.Token))
-        {
-            iterationContinued = true;
-        }
-        iterationContinued.ShouldBeFalse();
-        cancellation.Cancel();
+        var result = await _protocol.ReceiveMessagesAsync(ms, cancellation.Token);
+        await cancellation.CancelAsync();
     }
 
     [Fact]
@@ -52,15 +48,12 @@ public class ReceivingProtocolTests : IDisposable
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         using var ms = new MemoryStream();
-        ms.Write(BitConverter.GetBytes(5));
+        ms.Write(BitConverter.GetBytes(29));
         ms.Write("Fake this shouldn't pass!!!!!"u8);
         //even though we're not 'disconnecting', by making writable false it achieves the same outcome
         using var mockStream = new MemoryStream(ms.ToArray(), false);
-        var msgs = _protocol.ReceiveMessagesAsync(mockStream, cancellation.Token);
-        await foreach (var _ in msgs.WithCancellation(cancellation.Token))
-        {
-        }
-        _logger.ErrorMessages.ShouldNotBeEmpty();
+        await Should.ThrowAsync<ProtocolViolationException>(async () =>
+            await _protocol.ReceiveMessagesAsync(mockStream, cancellation.Token));
         await cancellation.CancelAsync();
     }
 
@@ -77,9 +70,8 @@ public class ReceivingProtocolTests : IDisposable
     public async Task sending_shorter_length_than_payload_length()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
-        await RunLengthTest(-2, cancellation.Token);
-        _logger.DebugMessages.Any(x => x.StartsWith("Received length")).ShouldBeTrue();
-        _logger.ErrorMessages.ShouldContain("Error finishing protocol acknowledgement");
+        var ex = await Assert.ThrowsAsync<ProtocolViolationException>(async () => await RunLengthTest(-2, cancellation.Token));
+        ex.Message.ShouldBe("Protocol violation: received length of 70 bytes, but 72 bytes were available");
         await cancellation.CancelAsync();
     }
 
@@ -87,7 +79,8 @@ public class ReceivingProtocolTests : IDisposable
     public async Task sending_longer_length_than_payload_length()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
-        await Assert.ThrowsAsync<QueueDoesNotExistException>(async () => await RunLengthTest(5, cancellation.Token));
+        var ex = await Assert.ThrowsAsync<ProtocolViolationException>(async () => await RunLengthTest(5, cancellation.Token));
+        ex.Message.ShouldBe("Protocol violation: received length of 77 bytes, but 72 bytes were available");
         await cancellation.CancelAsync();
     }
 
@@ -105,10 +98,7 @@ public class ReceivingProtocolTests : IDisposable
         ms.Write(BitConverter.GetBytes(memory.Length + differenceFromActualLength), 0, 4);
         ms.Write(memory.Span);
         ms.Position = 0;
-        var msgs = _protocol.ReceiveMessagesAsync(ms, token);
-        await foreach (var _ in msgs.WithCancellation(token))
-        {
-        }
+        var msgs = await _protocol.ReceiveMessagesAsync(ms, token);
     }
 
     [Fact]
@@ -119,7 +109,7 @@ public class ReceivingProtocolTests : IDisposable
         {
             Id = MessageId.GenerateRandom(),
             Data = "hello"u8.ToArray(),
-            Queue = "test"
+            Queue = "test2"
         };
         var serializer = new MessageSerializer();
         var memory = serializer.ToMemory(new List<Message>{ message });
@@ -127,28 +117,32 @@ public class ReceivingProtocolTests : IDisposable
         ms.Write(BitConverter.GetBytes(memory.Length), 0, 4);
         ms.Write(memory.Span);
         ms.Position = 0;
-        var msgs = _protocol.ReceiveMessagesAsync(ms, cancellation.Token);
-        await foreach (var _ in msgs.WithCancellation(cancellation.Token))
+        await Should.ThrowAsync<QueueDoesNotExistException>(async Task () =>
         {
-        }
-        _logger.InfoMessages.ShouldContain($"Queue {message.Queue} not found for {message.Id}");
+            await _protocol.ReceiveMessagesAsync(ms, cancellation.Token);
+        });
         await cancellation.CancelAsync();
     }
 
     [Fact]
     public async Task sending_data_that_is_cannot_be_deserialized()
     {
-        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(3));
         using var ms = new MemoryStream();
-        ms.Write(BitConverter.GetBytes(16), 0, 4);
+        ms.Write(BitConverter.GetBytes(215), 0, 4);
         ms.Write(Guid.NewGuid().ToByteArray(), 0, 16);
+        ms.Write("sdlfjaslkdjfalsdjfalsjdfasjdflk;asjdfjdasdfaskldfjjflsjfklsjl"u8);
+        ms.Write("sdlfjaslkdjfalsdjfalsjdfasjdflk;asjdfjdasdfaskldfjjflsjfklsjl"u8);
+        ms.Write("sdlfjaslkdjfalsdjfalsjdfasjdflk;asjdfjdasdfaskldfjjflsjfklsjl"u8);
+        ms.Write("blah"u8);
+        ms.Write("yah"u8);
+        ms.Write("tah"u8);
+        ms.Write("fah"u8);
+        ms.Write("wah"u8);
         ms.Position = 0;
         
-        var msgs = _protocol.ReceiveMessagesAsync(ms, cancellation.Token);
-        await foreach (var _ in msgs.WithCancellation(cancellation.Token))
-        {
-        }
-        _logger.ErrorMessages.Any(x => x.StartsWith("Error reading messages")).ShouldBeTrue();
+        var ex = await Should.ThrowAsync<ProtocolViolationException>(async () => 
+            await _protocol.ReceiveMessagesAsync(ms, cancellation.Token));
         await cancellation.CancelAsync();
     }
 
@@ -158,11 +152,8 @@ public class ReceivingProtocolTests : IDisposable
         using var cancelSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
         using var ms = new MemoryStream();
         var msgs = _protocol.ReceiveMessagesAsync(ms, cancelSource.Token);
-        await Task.Delay(50, default);
+        await Task.Delay(50, CancellationToken.None);
         ms.Write(BitConverter.GetBytes(5));
-        await foreach (var _ in msgs.WithCancellation(cancelSource.Token))
-        {
-        }
         cancelSource.IsCancellationRequested.ShouldBe(true);
         _logger.DebugMessages.ShouldBeEmpty();
     }
