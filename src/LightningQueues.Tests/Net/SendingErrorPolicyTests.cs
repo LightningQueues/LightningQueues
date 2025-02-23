@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using LightningQueues.Logging;
-using Microsoft.Extensions.Logging;
 using LightningQueues.Net;
 using LightningQueues.Serialization;
 using LightningQueues.Storage;
@@ -16,166 +15,179 @@ using Xunit;
 
 namespace LightningQueues.Tests.Net;
 
-[Collection("SharedTestDirectory")]
-public class SendingErrorPolicyTests : TestBase, IDisposable
+public class SendingErrorPolicyTests : TestBase
 {
-    private readonly SendingErrorPolicy _errorPolicy;
-    private readonly LmdbMessageStore _store;
-    private readonly Channel<OutgoingMessageFailure> _failureChannel;
-
-    public SendingErrorPolicyTests(SharedTestDirectory testDirectory)
-    {
-        ILogger logger = new RecordingLogger();
-        _store = new LmdbMessageStore(testDirectory.CreateNewDirectoryForTest(), new MessageSerializer());
-        _failureChannel = Channel.CreateUnbounded<OutgoingMessageFailure>();
-        _errorPolicy = new SendingErrorPolicy(logger, _store, _failureChannel);
-    }
-
     [Fact]
     public void max_attempts_is_reached()
     {
-        var message = NewMessage();
-        message.MaxAttempts = 3;
-        message.SentAttempts = 3;
-        _errorPolicy.ShouldRetry(message).ShouldBeFalse();
+        ErrorPolicyScenario((policy, _, _) =>
+        {
+            var message = NewMessage();
+            message.MaxAttempts = 3;
+            message.SentAttempts = 3;
+            policy.ShouldRetry(message).ShouldBeFalse();
+        });
     }
 
     [Fact]
     public void max_attempts_is_not_reached()
     {
-        var message = NewMessage();
-        message.MaxAttempts = 20;
-        message.SentAttempts = 5;
-        _errorPolicy.ShouldRetry(message).ShouldBeTrue();
+        ErrorPolicyScenario((policy, _, _) =>
+        {
+            var message = NewMessage();
+            message.MaxAttempts = 20;
+            message.SentAttempts = 5;
+            policy.ShouldRetry(message).ShouldBeTrue();
+        });
     }
 
     [Fact]
     public void deliver_by_has_expired()
     {
-        var message = NewMessage();
-        message.DeliverBy = DateTime.Now.Subtract(TimeSpan.FromSeconds(1));
-        message.SentAttempts = 5;
-        _errorPolicy.ShouldRetry(message).ShouldBeFalse();
+        ErrorPolicyScenario((policy, _, _) =>
+        {
+            var message = NewMessage();
+            message.DeliverBy = DateTime.Now.Subtract(TimeSpan.FromSeconds(1));
+            message.SentAttempts = 5;
+            policy.ShouldRetry(message).ShouldBeFalse();
+        });
     }
 
     [Fact]
     public void deliver_by_has_not_expired()
     {
-        var message = NewMessage();
-        message.DeliverBy = DateTime.Now.Add(TimeSpan.FromSeconds(1));
-        message.SentAttempts = 5;
-        _errorPolicy.ShouldRetry(message).ShouldBeTrue();
+        ErrorPolicyScenario((policy, _, _) =>
+        {
+            var message = NewMessage();
+            message.DeliverBy = DateTime.Now.Add(TimeSpan.FromSeconds(1));
+            message.SentAttempts = 5;
+            policy.ShouldRetry(message).ShouldBeTrue();
+        });
     }
 
     [Fact]
     public void has_neither_deliver_by_nor_max_attempts()
     {
-        var message = NewMessage();
-        message.SentAttempts = 5;
-        _errorPolicy.ShouldRetry(message).ShouldBeTrue();
+        ErrorPolicyScenario((policy, _, _) =>
+        {
+            var message = NewMessage();
+            message.SentAttempts = 5;
+            policy.ShouldRetry(message).ShouldBeTrue();
+        });
     }
 
     [Fact]
-    public async Task message_is_observed_after_time()
+    public Task message_is_observed_after_time()
     {
-        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        var message = NewMessage();
-        message.Destination = new Uri("lq.tcp://localhost:5150/blah");
-        message.MaxAttempts = 2;
-        using (var tx = _store.BeginTransaction())
+        return ErrorPolicyScenario(async (policy, store, failures, cancellation) =>
         {
-            _store.StoreOutgoing(tx, message);
-            tx.Commit();
-        }
-        var errorTask = _errorPolicy.StartRetries(cancellation.Token);
-        var failure = new OutgoingMessageFailure
-        {
-            Messages = [message]
-        };
-        var retryTask = _errorPolicy.Retries.ReadAllAsync(cancellation.Token).FirstAsync(cancellation.Token);
-        _failureChannel.Writer.TryWrite(failure);
-        var retryMessage = await retryTask;
-        retryMessage.Id.ShouldBe(message.Id);
-        await cancellation.CancelAsync();
-        await Task.Delay(50, CancellationToken.None);
-        errorTask.IsCanceled.ShouldBeTrue();
-    }
-
-    [Fact]
-    public async Task message_removed_from_storage_after_max()
-    {
-        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var message = NewMessage();
-        message.Destination = new Uri("lq.tcp://localhost:5150/blah");
-        message.MaxAttempts = 1;
-        using (var tx = _store.BeginTransaction())
-        {
-            _store.StoreOutgoing(tx, message);
-            tx.Commit();
-        }
-        var failure = new OutgoingMessageFailure
-        {
-            Messages = [message]
-        };
-        var errorTask = _errorPolicy.StartRetries(cancellation.Token);
-        var retryTask = _errorPolicy.Retries.ReadAllAsync(cancellation.Token).FirstAsync(cancellation.Token);
-        _failureChannel.Writer.TryWrite(failure);
-        await Task.Delay(TimeSpan.FromSeconds(1), cancellation.Token);
-        retryTask.IsCompleted.ShouldBeFalse();
-        _store.PersistedOutgoing().Any().ShouldBeFalse();
-        await cancellation.CancelAsync();
-        await Task.Delay(50, CancellationToken.None);
-        errorTask.IsCanceled.ShouldBeTrue();
-    }
-
-    [Fact]
-    public async Task time_increases_with_each_failure()
-    {
-        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(6));
-        Message observed = null;
-        var message = NewMessage();
-        message.Destination = new Uri("lq.tcp://localhost:5150/blah");
-        message.MaxAttempts = 5;
-        using (var tx = _store.BeginTransaction())
-        {
-            _store.StoreOutgoing(tx, message);
-            tx.Commit();
-        }
-
-        var errorTask = _errorPolicy.StartRetries(cancellation.Token);
-        var failure = new OutgoingMessageFailure
-        {
-            Messages = [message]
-        };
-        var retriesTask = Task.Factory.StartNew(async () =>
-        {
-            await foreach (var msg in _errorPolicy.Retries.ReadAllAsync(cancellation.Token))
+            var message = NewMessage();
+            message.Destination = new Uri("lq.tcp://localhost:5150/blah");
+            message.MaxAttempts = 2;
+            using (var tx = store.BeginTransaction())
             {
-                observed = msg;
+                store.StoreOutgoing(tx, message);
+                tx.Commit();
             }
-        }, cancellation.Token);
-        _failureChannel.Writer.TryWrite(failure);
-        await Task.Delay(TimeSpan.FromSeconds(1.5), cancellation.Token);
-        observed.ShouldNotBeNull("first");
-        observed = null;
-        _failureChannel.Writer.TryWrite(failure);
-        observed.ShouldBeNull("second");
-        await Task.Delay(TimeSpan.FromSeconds(1), cancellation.Token);
-        observed.ShouldBeNull("third");
-        await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(4), cancellation.Token));
-        observed.ShouldNotBeNull("fourth");
-        await cancellation.CancelAsync();
-        await Task.WhenAny(errorTask.AsTask(), retriesTask);
+
+            var errorTask = policy.StartRetries(cancellation.Token);
+            var failure = new OutgoingMessageFailure
+            {
+                Messages = [message]
+            };
+            var retryTask = policy.Retries.ReadAllAsync(cancellation.Token)
+                .FirstAsync(cancellation.Token);
+            failures.Writer.TryWrite(failure);
+            var retryMessage = await retryTask;
+            retryMessage.Id.ShouldBe(message.Id);
+            await cancellation.CancelAsync();
+            await Task.Delay(50, CancellationToken.None);
+            errorTask.IsCanceled.ShouldBeTrue();
+        });
+    }
+
+    [Fact]
+    public Task message_removed_from_storage_after_max()
+    {
+        return ErrorPolicyScenario(async (policy, store, failures, cancellation) =>
+        {
+            var message = NewMessage();
+            message.Destination = new Uri("lq.tcp://localhost:5150/blah");
+            message.MaxAttempts = 1;
+            using (var tx = store.BeginTransaction())
+            {
+                store.StoreOutgoing(tx, message);
+                tx.Commit();
+            }
+
+            var failure = new OutgoingMessageFailure
+            {
+                Messages = [message]
+            };
+            var errorTask = policy.StartRetries(cancellation.Token);
+            var retryTask = policy.Retries.ReadAllAsync(cancellation.Token).FirstAsync(cancellation.Token);
+            failures.Writer.TryWrite(failure);
+            await Task.Delay(TimeSpan.FromSeconds(1), cancellation.Token);
+            retryTask.IsCompleted.ShouldBeFalse();
+            store.PersistedOutgoing().Any().ShouldBeFalse();
+            await cancellation.CancelAsync();
+            await Task.Delay(50, CancellationToken.None);
+            errorTask.IsCanceled.ShouldBeTrue();
+        });
+    }
+
+    [Fact]
+    public Task time_increases_with_each_failure()
+    {
+        return ErrorPolicyScenario(async (policy, store, failures, _) =>
+        {
+            using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(6));
+            Message observed = null;
+            var message = NewMessage();
+            message.Destination = new Uri("lq.tcp://localhost:5150/blah");
+            message.MaxAttempts = 5;
+            using (var tx = store.BeginTransaction())
+            {
+                store.StoreOutgoing(tx, message);
+                tx.Commit();
+            }
+
+            var errorTask = policy.StartRetries(cancellation.Token);
+            var failure = new OutgoingMessageFailure
+            {
+                Messages = [message]
+            };
+            var retriesTask = Task.Factory.StartNew(async () =>
+            {
+                await foreach (var msg in policy.Retries.ReadAllAsync(cancellation.Token))
+                {
+                    observed = msg;
+                }
+            }, cancellation.Token);
+            failures.Writer.TryWrite(failure);
+            await Task.Delay(TimeSpan.FromSeconds(1.5), cancellation.Token);
+            observed.ShouldNotBeNull("first");
+            observed = null;
+            failures.Writer.TryWrite(failure);
+            observed.ShouldBeNull("second");
+            await Task.Delay(TimeSpan.FromSeconds(1), cancellation.Token);
+            observed.ShouldBeNull("third");
+            await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(4), cancellation.Token));
+            observed.ShouldNotBeNull("fourth");
+            await cancellation.CancelAsync();
+            await Task.WhenAny(errorTask.AsTask(), retriesTask);
+        });
     }
 
     [Fact]
     public async Task errors_in_storage_dont_end_stream()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        var failures = Channel.CreateUnbounded<OutgoingMessageFailure>();
         var message = NewMessage();
         var store = Substitute.For<IMessageStore>();
         store.FailedToSend(Arg.Is(message)).Throws(new Exception("bam!"));
-        var errorPolicy = new SendingErrorPolicy(new RecordingLogger(), store, _failureChannel);
+        var errorPolicy = new SendingErrorPolicy(new RecordingLogger(), store, failures);
         var ended = false;
         var failure = new OutgoingMessageFailure
         {
@@ -188,15 +200,30 @@ public class SendingErrorPolicyTests : TestBase, IDisposable
             }
             ended = true;
         }, cancellation.Token);
-        _failureChannel.Writer.TryWrite(failure);
+        failures.Writer.TryWrite(failure);
         await Task.WhenAny(retryTask, Task.Delay(TimeSpan.FromSeconds(1), cancellation.Token));
         ended.ShouldBeFalse();
         await cancellation.CancelAsync();
     }
 
-    public void Dispose()
+    private void ErrorPolicyScenario(Action<SendingErrorPolicy, IMessageStore, Channel<OutgoingMessageFailure>> scenario)
     {
-        _store.Dispose();
-        GC.SuppressFinalize(this);
+        var logger = new RecordingLogger();
+        using var store = new LmdbMessageStore(TempPath(), new MessageSerializer());
+        var failures = Channel.CreateUnbounded<OutgoingMessageFailure>();
+        var errorPolicy = new SendingErrorPolicy(logger, store, failures);
+        scenario(errorPolicy, store, failures);
+    }
+
+    private async Task ErrorPolicyScenario(
+        Func<SendingErrorPolicy, IMessageStore, Channel<OutgoingMessageFailure>, CancellationTokenSource, Task> scenario)
+    {
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var logger = new RecordingLogger();
+        using var store = new LmdbMessageStore(TempPath(), new MessageSerializer());
+        var failures = Channel.CreateUnbounded<OutgoingMessageFailure>();
+        var errorPolicy = new SendingErrorPolicy(logger, store, failures);
+        await scenario(errorPolicy, store, failures, cancellation);
+        await cancellation.CancelAsync();
     }
 }
