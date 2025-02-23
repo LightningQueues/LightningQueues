@@ -14,12 +14,11 @@ using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
 using Xunit;
-using static LightningQueues.Helpers.QueueBuilder;
 
 namespace LightningQueues.Tests.Net.Tcp;
 
 [Collection("SharedTestDirectory")]
-public class ReceiverTests : IDisposable
+public class ReceiverTests : TestBase, IDisposable
 {
     private readonly IMessageStore _store;
     private readonly IMessageStore _sendingStore;
@@ -97,7 +96,7 @@ public class ReceiverTests : IDisposable
             await client.GetStream().WriteAsync((new byte[] { 1, 4, 6 }).AsMemory(0, 3), cancellation.Token);
         }
         receivingTask.IsFaulted.ShouldBeFalse();
-        cancellation.Cancel();
+        await cancellation.CancelAsync();
     }
 
     [Fact]
@@ -128,7 +127,7 @@ public class ReceiverTests : IDisposable
     {
         var taskSource = new TaskCompletionSource<Message>();
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        var expected = NewMessage<Message>("test");
+        var expected = NewMessage("test");
         expected.Data = "hello"u8.ToArray();
         expected.Destination = new Uri($"lq.tcp://localhost:{_endpoint.Port}");
         using (var tx = _sendingStore.BeginTransaction())

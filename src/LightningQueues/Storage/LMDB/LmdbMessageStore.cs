@@ -12,9 +12,10 @@ namespace LightningQueues.Storage.LMDB;
 public class LmdbMessageStore : IMessageStore
 {
     private const string OutgoingQueue = "outgoing";
-    private readonly ReaderWriterLockSlim _lock;
+    private readonly Lock _lock;
     private readonly LightningEnvironment _environment;
     private readonly IMessageSerializer _serializer;
+    private bool _disposed;
 
     public LmdbMessageStore(string path, EnvironmentConfiguration config, IMessageSerializer serializer) : this(new LightningEnvironment(path, config), serializer)
     {
@@ -26,7 +27,7 @@ public class LmdbMessageStore : IMessageStore
 
     public LmdbMessageStore(LightningEnvironment environment, IMessageSerializer serializer)
     {
-        _lock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+        _lock = new Lock();
         _environment = environment;
         _serializer = serializer;
         if(!_environment.IsOpened)
@@ -36,22 +37,17 @@ public class LmdbMessageStore : IMessageStore
 
     public void StoreIncoming(params IEnumerable<Message> messages)
     {
-        try
+        lock (_lock)
         {
-            _lock.EnterWriteLock();
             using var tx = _environment.BeginTransaction();
             StoreIncoming(tx, messages);
             ThrowIfError(tx.Commit());
         }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
     }
 
-    public void StoreIncoming(ITransaction transaction, params IEnumerable<Message> messages)
+    public void StoreIncoming(LmdbTransaction transaction, params IEnumerable<Message> messages)
     {
-        var tx = ((LmdbTransaction) transaction).Transaction;
+        var tx = transaction.Transaction;
         StoreIncoming(tx, messages);
     }
 
@@ -86,57 +82,41 @@ public class LmdbMessageStore : IMessageStore
 
     public void DeleteIncoming(IEnumerable<Message> messages)
     {
-        try
+        lock (_lock)
         {
-            _lock.EnterWriteLock();
             using var tx = _environment.BeginTransaction();
             foreach (var grouping in messages.GroupBy(x => x.Queue))
             {
                 RemoveMessagesFromStorage(tx, grouping.Key, grouping);
             }
-
             ThrowIfError(tx.Commit());
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
         }
     }
 
-    public ITransaction BeginTransaction()
+    public LmdbTransaction BeginTransaction()
     {
-        _lock.EnterWriteLock();
-        return new LmdbTransaction(_environment.BeginTransaction(), _lock);
+        var scope = _lock.EnterScope();
+        return new LmdbTransaction(_environment.BeginTransaction(), scope);
     }
 
     public int FailedToSend(Message message)
     {
-        try
+        lock (_lock)
         {
-            _lock.EnterWriteLock();
             using var tx = _environment.BeginTransaction();
             var result = FailedToSend(tx, message);
             ThrowIfError(tx.Commit());
             return result;
         }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
     }
 
     public void SuccessfullySent(params IEnumerable<Message> messages)
     {
-        try
+        lock (_lock)
         {
-            _lock.EnterWriteLock();
             using var tx = _environment.BeginTransaction();
             SuccessfullySent(tx, messages);
             ThrowIfError(tx.Commit());
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
         }
     }
 
@@ -144,9 +124,8 @@ public class LmdbMessageStore : IMessageStore
     {
         Span<byte> id = stackalloc byte[16];
         messageId.MessageIdentifier.TryWriteBytes(id);
-        try
+        lock (_lock)
         {
-            _lock.EnterReadLock();
             using var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
             var db = OpenDatabase(queueName);
             var result = tx.Get(db, id);
@@ -155,10 +134,6 @@ public class LmdbMessageStore : IMessageStore
                 return null;
             var messageBuffer = result.value.AsSpan();
             return _serializer.ToMessage(messageBuffer);
-        }
-        finally
-        {
-            _lock.ExitReadLock();
         }
     }
 
@@ -170,9 +145,8 @@ public class LmdbMessageStore : IMessageStore
     public void ClearAllStorage()
     {
         var databases = GetAllQueuesImpl().ToArray();
-        try
+        lock (_lock)
         {
-            _lock.EnterWriteLock();
             using var tx = _environment.BeginTransaction();
             foreach (var databaseName in databases)
             {
@@ -182,41 +156,34 @@ public class LmdbMessageStore : IMessageStore
 
             ThrowIfError(tx.Commit());
         }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
     }
 
     private IEnumerable<string> GetAllQueuesImpl()
     {
-        try
+        var list = new List<string>();
+        lock (_lock)
         {
-            _lock.EnterReadLock();
             using var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
             using var db = tx.OpenDatabase();
             using var cursor = tx.CreateCursor(db);
             foreach (var (key, _) in cursor.AsEnumerable())
             {
-                yield return Encoding.UTF8.GetString(key.CopyToNewArray());
+                list.Add(Encoding.UTF8.GetString(key.CopyToNewArray()));
             }
         }
-        finally
-        {
-            _lock.ExitReadLock();
-        }
+        return list;
     }
 
     private void SuccessfullySent(LightningTransaction tx, params IEnumerable<Message> messages)
     {
         RemoveMessagesFromStorage(tx, OutgoingQueue, messages);
     }
-        
+
     public IEnumerable<Message> PersistedIncoming(string queueName)
     {
-        try
+        var list = new List<Message>();
+        lock (_lock)
         {
-            _lock.EnterReadLock();
             using var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
             var db = OpenDatabase(queueName);
             using var cursor = tx.CreateCursor(db);
@@ -224,20 +191,17 @@ public class LmdbMessageStore : IMessageStore
             {
                 var valueSpan = value.AsSpan();
                 var msg = _serializer.ToMessage(valueSpan);
-                yield return msg;
+                list.Add(msg);
             }
         }
-        finally
-        {
-            _lock.ExitReadLock();
-        }
+        return list;
     }
 
     public IEnumerable<Message> PersistedOutgoing()
     {
-        try
+        var list = new List<Message>();
+        lock (_lock)
         {
-            _lock.EnterReadLock();
             using var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
             var db = OpenDatabase(OutgoingQueue);
             using var cursor = tx.CreateCursor(db);
@@ -245,24 +209,21 @@ public class LmdbMessageStore : IMessageStore
             {
                 var valueSpan = value.AsSpan();
                 var msg = _serializer.ToMessage(valueSpan);
-                yield return msg;
+                list.Add(msg);
             }
         }
-        finally
-        {
-            _lock.ExitReadLock();
-        }
+        return list;
     }
 
-    public void MoveToQueue(ITransaction transaction, string queueName, Message message)
+    public void MoveToQueue(LmdbTransaction transaction, string queueName, Message message)
     {
-        var tx = ((LmdbTransaction)transaction).Transaction;
+        var tx = transaction.Transaction;
         MoveToQueue(tx, queueName, message);
     }
 
-    public void SuccessfullyReceived(ITransaction transaction, Message message)
+    public void SuccessfullyReceived(LmdbTransaction transaction, Message message)
     {
-        var tx = ((LmdbTransaction) transaction).Transaction;
+        var tx = transaction.Transaction;
         SuccessfullyReceived(tx, message);
     }
 
@@ -290,28 +251,24 @@ public class LmdbMessageStore : IMessageStore
         ThrowIfError(tx.Delete(db, id));
     }
 
-    public void StoreOutgoing(ITransaction transaction, Message message)
+    public void StoreOutgoing(LmdbTransaction transaction, Message message)
     {
-        var tx = ((LmdbTransaction) transaction).Transaction;
+        var tx = transaction.Transaction;
         StoreOutgoing(tx, message);
     }
 
     public void StoreOutgoing(IEnumerable<Message> messages)
     {
-        try
+        lock (_lock)
         {
-            _lock.EnterWriteLock();
             using var tx = _environment.BeginTransaction();
             using var enumerator = messages.GetEnumerator();
             while (enumerator.MoveNext())
             {
                 StoreOutgoing(tx, enumerator.Current);
             }
+
             tx.Commit();
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
         }
     }
 
@@ -387,17 +344,12 @@ public class LmdbMessageStore : IMessageStore
 
     public void CreateQueue(string queueName)
     {
-        try
+        lock (_lock)
         {
-            _lock.EnterWriteLock();
             using var tx = _environment.BeginTransaction();
             var db = tx.OpenDatabase(queueName, new DatabaseConfiguration { Flags = DatabaseOpenFlags.Create });
             _databaseCache[queueName] = db;
             ThrowIfError(tx.Commit());
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
         }
     }
 
@@ -411,8 +363,11 @@ public class LmdbMessageStore : IMessageStore
     
     public void Dispose()
     {
-        Dispose(true);
         GC.SuppressFinalize(this);
+        lock (_lock)
+        {
+            Dispose(true);
+        }
     }
 
     ~LmdbMessageStore()
@@ -422,7 +377,13 @@ public class LmdbMessageStore : IMessageStore
 
     private void Dispose(bool disposing)
     {
+        if (_disposed)
+            return;
+        _disposed = true;
         using (_environment)
+        {
+            if (!disposing)
+                return;
             foreach (var database in _databaseCache)
             {
                 try
@@ -433,5 +394,6 @@ public class LmdbMessageStore : IMessageStore
                 {
                 }
             }
+        }
     }
 }

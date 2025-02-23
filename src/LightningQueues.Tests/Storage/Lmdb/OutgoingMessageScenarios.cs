@@ -9,7 +9,7 @@ using static LightningQueues.Helpers.QueueBuilder;
 namespace LightningQueues.Tests.Storage.Lmdb;
 
 [Collection("SharedTestDirectory")]
-public class OutgoingMessageScenarios : IDisposable
+public class OutgoingMessageScenarios : TestBase, IDisposable
 {
     private readonly LmdbMessageStore _store;
 
@@ -23,9 +23,9 @@ public class OutgoingMessageScenarios : IDisposable
     public void happy_path_messages_sent()
     {
         var destination = new Uri("lq.tcp://localhost:5050");
-        var message = NewMessage<Message>("test");
+        var message = NewMessage("test");
         message.Destination = destination;
-        var message2 = NewMessage<Message>("test");
+        var message2 = NewMessage("test");
         message2.Destination = destination;
         message2.DeliverBy = DateTime.Now.AddSeconds(5);
         message2.MaxAttempts = 3;
@@ -53,7 +53,7 @@ public class OutgoingMessageScenarios : IDisposable
     public void failed_to_send_with_max_attempts()
     {
         var destination = new Uri("lq.tcp://localhost:5050");
-        var message = NewMessage<Message>("test");
+        var message = NewMessage("test");
         message.MaxAttempts = 1;
         message.SentAttempts = 1;
         message.Destination = destination;
@@ -73,7 +73,7 @@ public class OutgoingMessageScenarios : IDisposable
     public void failed_to_send_with_deliver_by()
     {
         var destination = new Uri("lq.tcp://localhost:5050");
-        var message = NewMessage<Message>("test");
+        var message = NewMessage("test");
         message.DeliverBy = DateTime.Now;
         message.Destination = destination;
         using (var tx = _store.BeginTransaction())

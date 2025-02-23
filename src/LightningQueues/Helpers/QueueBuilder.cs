@@ -17,17 +17,7 @@ namespace LightningQueues.Helpers;
 
 public static class QueueBuilder
 {
-    public  static T NewMessage<T>(string queueName = "clever_queue_name", string payload = "hello") where T : Message, new()
-    {
-        var message = new T
-        {
-            Data = Encoding.UTF8.GetBytes(payload),
-            Id = MessageId.GenerateRandom(),
-            Queue = queueName,
-            SentAt = DateTime.Now
-        };
-        return message;
-    }
+    
 
     public static Queue NewQueue(string path = null, string queueName = "test", ILogger logger = null, 
         IMessageStore store = null, bool secureTransport = false, TimeSpan? timeoutAfter = null)
@@ -111,6 +101,4 @@ public static class QueueBuilder
     
         return X509CertificateLoader.LoadPkcs12(certificate.Export(X509ContentType.Pfx, certPass), certPass);
     }
-    
-    
 }

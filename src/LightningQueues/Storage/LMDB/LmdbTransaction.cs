@@ -1,23 +1,21 @@
-﻿using System;
-using System.Runtime.InteropServices.ComTypes;
-using System.Threading;
+﻿using System.Threading;
 using LightningDB;
 
 namespace LightningQueues.Storage.LMDB;
 
-public class LmdbTransaction : ITransaction
+public ref struct LmdbTransaction
 {
-    private readonly ReaderWriterLockSlim _writeLock;
+    private readonly Lock.Scope _scope;
 
-    public LmdbTransaction(LightningTransaction tx, ReaderWriterLockSlim writeLock)
+    public LmdbTransaction(LightningTransaction tx, Lock.Scope scope)
     {
-        _writeLock = writeLock;
         Transaction = tx;
+        _scope = scope;
     }
     
     public LightningTransaction Transaction { get; }
 
-    void ITransaction.Commit()
+    public void Commit()
     {
         if (!Transaction.Environment.IsOpened)
             return;
@@ -26,15 +24,9 @@ public class LmdbTransaction : ITransaction
 
     public void Dispose()
     {
-        try
+        using (_scope)
+        using(Transaction)
         {
-            if (!Transaction.Environment.IsOpened)
-                return;
-            Transaction?.Dispose();
-        }
-        finally
-        {
-            _writeLock.ExitWriteLock();
         }
     }
 }

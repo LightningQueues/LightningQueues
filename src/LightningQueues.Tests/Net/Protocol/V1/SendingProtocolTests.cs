@@ -12,12 +12,11 @@ using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
 using Xunit;
-using static LightningQueues.Helpers.QueueBuilder;
 
 namespace LightningQueues.Tests.Net.Protocol.V1;
 
 [Collection("SharedTestDirectory")]
-public class SendingProtocolTests : IDisposable
+public class SendingProtocolTests : TestBase, IDisposable
 {
     private readonly SendingProtocol _sender;
     private readonly IMessageStore _store;
@@ -33,7 +32,7 @@ public class SendingProtocolTests : IDisposable
     public async Task writing_single_message()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
-        var expected = NewMessage<Message>();
+        var expected = NewMessage();
         expected.Destination = new Uri("lq.tcp://fake:1234");
         using var ms = new MemoryStream();
         //not exercising full protocol

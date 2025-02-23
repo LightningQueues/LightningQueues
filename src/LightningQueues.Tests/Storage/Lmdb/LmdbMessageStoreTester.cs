@@ -9,7 +9,7 @@ using static LightningQueues.Helpers.QueueBuilder;
 namespace LightningQueues.Tests.Storage.Lmdb;
 
 [Collection("SharedTestDirectory")]
-public class LmdbMessageStoreTester : IDisposable
+public class LmdbMessageStoreTester : TestBase, IDisposable
 {
     private readonly LmdbMessageStore _store;
     private readonly string _path;
@@ -40,8 +40,8 @@ public class LmdbMessageStoreTester : IDisposable
     public void clear_all_history_with_persistent_data()
     {
         _store.CreateQueue("test");
-        var message = NewMessage<Message>("test");
-        var outgoingMessage = NewMessage<Message>();
+        var message = NewMessage("test");
+        var outgoingMessage = NewMessage();
         outgoingMessage.Destination = new Uri("lq.tcp://localhost:3030");
         outgoingMessage.SentAt = DateTime.Now;
         using (var tx = _store.BeginTransaction())
@@ -62,8 +62,8 @@ public class LmdbMessageStoreTester : IDisposable
     public void store_can_read_previously_stored_items()
     {
         _store.CreateQueue("test");
-        var message = NewMessage<Message>("test");
-        var outgoingMessage = NewMessage<Message>();
+        var message = NewMessage("test");
+        var outgoingMessage = NewMessage();
         outgoingMessage.Destination = new Uri("lq.tcp://localhost:3030");
         outgoingMessage.SentAt = DateTime.Now;
         using (var tx = _store.BeginTransaction())
@@ -83,8 +83,8 @@ public class LmdbMessageStoreTester : IDisposable
     public void retrieve_message_by_id()
     {
         _store.CreateQueue("test");
-        var message = NewMessage<Message>("test");
-        var outgoingMessage = NewMessage<Message>();
+        var message = NewMessage("test");
+        var outgoingMessage = NewMessage();
         outgoingMessage.Destination = new Uri("lq.tcp://localhost:3030");
         outgoingMessage.SentAt = DateTime.Now;
         using (var tx = _store.BeginTransaction())
@@ -102,7 +102,7 @@ public class LmdbMessageStoreTester : IDisposable
 
     public void Dispose()
     {
-        _store.Dispose();
         GC.SuppressFinalize(this);
+        _store.Dispose();
     }
 }

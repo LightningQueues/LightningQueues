@@ -1,3 +1,4 @@
+using System.Text;
 using BenchmarkDotNet.Attributes;
 using LightningQueues.Logging;
 using Microsoft.Extensions.Logging;
@@ -41,7 +42,12 @@ public class SendAndReceive
         var random = new Random();
         for (var i = 0; i < MessageCount; ++i)
         {
-            var msg = NewMessage<Message>("receiver");
+            var msg = new Message
+            {
+                Data = "hello"u8.ToArray(),
+                Id = MessageId.GenerateRandom(),
+                Queue = "receiver",
+            }; 
             msg.Destination = new Uri($"lq.tcp://{_receiver.Endpoint}");
             msg.Data = new byte[MessageDataSize];
             random.NextBytes(msg.Data);

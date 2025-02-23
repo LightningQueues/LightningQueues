@@ -6,6 +6,7 @@ using LightningQueues.Net.Security;
 using LightningQueues.Net.Tcp;
 using LightningQueues.Serialization;
 using LightningQueues.Storage;
+using LightningQueues.Storage.LMDB;
 using Microsoft.Extensions.Logging;
 
 namespace LightningQueues;
@@ -40,18 +41,12 @@ public class QueueConfiguration
     private IMessageSerializer _serializer;
     private ILogger _logger;
     private TimeSpan _timeoutBatchAfter;
-
-    public QueueConfiguration()
-    {
-        _logger = new NoLoggingLogger();
-        _sendingSecurity = new NoSecurity();
-        _receivingSecurity = new NoSecurity();
-        _serializer = new MessageSerializer();
-        _timeoutBatchAfter = TimeSpan.FromSeconds(5);
-    }
+    
+    public IMessageSerializer Serializer => _serializer;
 
     public QueueConfiguration StoreMessagesWith(IMessageStore store)
     {
+        _store?.Dispose();
         _store = store;
         return this;
     }
@@ -96,6 +91,17 @@ public class QueueConfiguration
     {
         _receivingSecurity = receiving;
         _sendingSecurity = sending;
+        return this;
+    }
+
+    public QueueConfiguration WithDefaults()
+    {
+        SerializeWith(new MessageSerializer());
+        //StoreMessagesWith(new NoStorage());
+        LogWith(new NoLoggingLogger());
+        SecureTransportWith(new NoSecurity(), new NoSecurity());
+        TimeoutNetworkBatchAfter(TimeSpan.FromSeconds(5));
+        AutomaticEndpoint();
         return this;
     }
 

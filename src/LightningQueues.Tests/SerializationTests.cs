@@ -7,13 +7,13 @@ using static LightningQueues.Helpers.QueueBuilder;
 
 namespace LightningQueues.Tests;
 
-public class SerializationTests
+public class SerializationTests : TestBase
 {
     [Fact]
     public void can_serialize_and_deserialize_message_as_span()
     {
         var serializer = new MessageSerializer();
-        var msg = NewMessage<Message>();
+        var msg = NewMessage();
         msg.Destination = new Uri("lq.tcp://fake:1234");
         var msgs = new List<Message> { msg };
         var memory = serializer.ToMemory(msgs);
@@ -22,6 +22,5 @@ public class SerializationTests
         Assert.Equal(msg.Id, deserialized.Id);
         Assert.Equal(msg.Data, deserialized.Data);
     }
-    
 }
 

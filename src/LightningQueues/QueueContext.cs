@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using LightningQueues.Storage;
+using LightningQueues.Storage.LMDB;
 
 namespace LightningQueues;
 
@@ -9,7 +10,6 @@ internal class QueueContext : IQueueContext
     private readonly Queue _queue;
     private readonly Message _message;
     private readonly List<IQueueAction> _queueActions;
-    private ITransaction _transaction;
 
     internal QueueContext(Queue queue, Message message)
     {
@@ -20,19 +20,12 @@ internal class QueueContext : IQueueContext
 
     public void CommitChanges()
     {
-        try
+        using var transaction = _queue.Store.BeginTransaction();
+        foreach (var action in _queueActions)
         {
-            _transaction = _queue.Store.BeginTransaction();
-            foreach (var action in _queueActions)
-            {
-                action.Execute();
-            }
-            _transaction.Commit();
+            action.Execute(transaction);
         }
-        finally
-        {
-            _transaction.Dispose();
-        }
+        transaction.Commit();
 
         foreach (var action in _queueActions)
         {
@@ -72,7 +65,7 @@ internal class QueueContext : IQueueContext
 
     private interface IQueueAction
     {
-        void Execute();
+        void Execute(LmdbTransaction transaction);
         void Success();
     }
 
@@ -87,9 +80,9 @@ internal class QueueContext : IQueueContext
             _message = message;
         }
 
-        public void Execute()
+        public void Execute(LmdbTransaction transaction)
         {
-            _context._queue.Store.StoreOutgoing(_context._transaction, _message);
+            _context._queue.Store.StoreOutgoing(transaction, _message);
         }
 
         public void Success()
@@ -109,9 +102,9 @@ internal class QueueContext : IQueueContext
             _message = message;
         }
 
-        public void Execute()
+        public void Execute(LmdbTransaction transaction)
         {
-            _context._queue.Store.StoreIncoming(_context._transaction, _message);
+            _context._queue.Store.StoreIncoming(transaction, _message);
         }
 
         public void Success()
@@ -131,9 +124,9 @@ internal class QueueContext : IQueueContext
             _queueName = queueName;
         }
 
-        public void Execute()
+        public void Execute(LmdbTransaction transaction)
         {
-            _context._queue.Store.MoveToQueue(_context._transaction, _queueName, _context._message);
+            _context._queue.Store.MoveToQueue(transaction, _queueName, _context._message);
         }
 
         public void Success()
@@ -153,9 +146,9 @@ internal class QueueContext : IQueueContext
             _context = context;
         }
 
-        public void Execute()
+        public void Execute(LmdbTransaction transaction)
         {
-            _context._queue.Store.SuccessfullyReceived(_context._transaction, _context._message);
+            _context._queue.Store.SuccessfullyReceived(transaction, _context._message);
         }
 
         public void Success()
@@ -174,7 +167,7 @@ internal class QueueContext : IQueueContext
             _timeSpan = timeSpan;
         }
 
-        public void Execute()
+        public void Execute(LmdbTransaction transaction)
         {
         }
 
@@ -196,7 +189,7 @@ internal class QueueContext : IQueueContext
         }
 
 
-        public void Execute()
+        public void Execute(LmdbTransaction transaction)
         {
         }
 

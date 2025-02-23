@@ -5,12 +5,11 @@ using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
 using Xunit;
-using static LightningQueues.Helpers.QueueBuilder;
 
 namespace LightningQueues.Tests.Storage.Lmdb;
 
 [Collection("SharedTestDirectory")]
-public class IncomingMessageScenarios : IDisposable
+public class IncomingMessageScenarios : TestBase, IDisposable
 {
     private readonly string _queuePath;
     private readonly LmdbMessageStore _store;
@@ -24,7 +23,7 @@ public class IncomingMessageScenarios : IDisposable
     [Fact]
     public void happy_path_success()
     {
-        var message = NewMessage<Message>();
+        var message = NewMessage();
         message.Headers.Add("my_key", "my_value");
         _store.CreateQueue(message.Queue);
         _store.StoreIncoming(message);
@@ -36,7 +35,7 @@ public class IncomingMessageScenarios : IDisposable
     [Fact]
     public void storing_message_for_queue_that_doesnt_exist()
     {
-        var message = NewMessage<Message>();
+        var message = NewMessage();
         Assert.Throws<QueueDoesNotExistException>(() =>
         {
             _store.StoreIncoming(message);
@@ -46,14 +45,14 @@ public class IncomingMessageScenarios : IDisposable
     [Fact]
     public void crash_before_commit()
     {
-        var message = NewMessage<Message>();
+        var message = NewMessage();
         _store.CreateQueue(message.Queue);
         using (var transaction = _store.BeginTransaction())
         {
             _store.StoreIncoming(transaction, message);
-            _store.Dispose();
             //crash
         }
+        _store.Dispose();
         using var store = new LmdbMessageStore(_queuePath, new MessageSerializer());
         store.CreateQueue(message.Queue);
         var msg = store.GetMessage(message.Queue, message.Id);
@@ -63,7 +62,7 @@ public class IncomingMessageScenarios : IDisposable
     [Fact]
     public void rollback_messages_received()
     {
-        var message = NewMessage<Message>();
+        var message = NewMessage();
         _store.CreateQueue(message.Queue);
         using (var transaction = _store.BeginTransaction())
         {
@@ -84,7 +83,7 @@ public class IncomingMessageScenarios : IDisposable
 
     public void Dispose()
     {
-        _store.Dispose();
         GC.SuppressFinalize(this);
+        _store.Dispose();
     }
 }
