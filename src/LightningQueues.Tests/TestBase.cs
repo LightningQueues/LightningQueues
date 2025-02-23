@@ -4,6 +4,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using LightningDB;
+using LightningQueues.Serialization;
+using LightningQueues.Storage.LMDB;
 
 namespace LightningQueues.Tests;
 
@@ -37,6 +39,13 @@ public class TestBase
    protected Task QueueScenario(Func<Queue, CancellationToken, Task> scenario, string queueName = "test")
    {
       return QueueScenario(scenario, TimeSpan.FromSeconds(1), queueName);
+   }
+   
+   protected void StorageScenario(Action<LmdbMessageStore> action)
+   {
+      using var store = new LmdbMessageStore(TempPath(), new MessageSerializer());
+      store.CreateQueue("test");
+      action(store);
    }
 
    protected static Message NewMessage(string queueName = "test", string payload = "hello")

@@ -86,11 +86,4 @@ public class IncomingMessageScenarios : TestBase
         });
 
     }
-
-    private void StorageScenario(Action<LmdbMessageStore> action)
-    {
-        using var store = new LmdbMessageStore(TempPath(), new MessageSerializer());
-        store.CreateQueue("test");
-        action(store);
-    }
 }
