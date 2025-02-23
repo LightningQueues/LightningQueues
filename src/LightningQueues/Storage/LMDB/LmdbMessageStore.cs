@@ -34,6 +34,8 @@ public class LmdbMessageStore : IMessageStore
             _environment.Open(EnvironmentOpenFlags.NoLock);
         CreateQueue(OutgoingQueue);
     }
+    
+    public string Path => _environment.Path;
 
     public void StoreIncoming(params IEnumerable<Message> messages)
     {

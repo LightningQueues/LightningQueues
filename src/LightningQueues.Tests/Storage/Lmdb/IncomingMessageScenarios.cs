@@ -8,82 +8,89 @@ using Xunit;
 
 namespace LightningQueues.Tests.Storage.Lmdb;
 
-[Collection("SharedTestDirectory")]
-public class IncomingMessageScenarios : TestBase, IDisposable
+public class IncomingMessageScenarios : TestBase
 {
-    private readonly string _queuePath;
-    private readonly LmdbMessageStore _store;
-
-    public IncomingMessageScenarios(SharedTestDirectory testDirectory)
-    {
-        _queuePath = testDirectory.CreateNewDirectoryForTest();
-        _store = new LmdbMessageStore(_queuePath, new MessageSerializer());
-    }
-
     [Fact]
     public void happy_path_success()
     {
-        var message = NewMessage();
-        message.Headers.Add("my_key", "my_value");
-        _store.CreateQueue(message.Queue);
-        _store.StoreIncoming(message);
-        var msg = _store.GetMessage(message.Queue, message.Id);
-        System.Text.Encoding.UTF8.GetString(msg.Data).ShouldBe("hello");
-        msg.Headers.First().Value.ShouldBe("my_value");
+        StorageScenario(store =>
+        {
+            var message = NewMessage();
+            message.Headers.Add("my_key", "my_value");
+            store.CreateQueue(message.Queue);
+            store.StoreIncoming(message);
+            var msg = store.GetMessage(message.Queue, message.Id);
+            System.Text.Encoding.UTF8.GetString(msg.Data).ShouldBe("hello");
+            msg.Headers.First().Value.ShouldBe("my_value");
+        });
     }
 
     [Fact]
     public void storing_message_for_queue_that_doesnt_exist()
     {
-        var message = NewMessage();
-        Assert.Throws<QueueDoesNotExistException>(() =>
+        StorageScenario(store =>
         {
-            _store.StoreIncoming(message);
+            var message = NewMessage("blah");
+            Assert.Throws<QueueDoesNotExistException>(() => { store.StoreIncoming(message); });
         });
     }
 
     [Fact]
     public void crash_before_commit()
     {
-        var message = NewMessage();
-        _store.CreateQueue(message.Queue);
-        using (var transaction = _store.BeginTransaction())
+        StorageScenario(store =>
         {
-            _store.StoreIncoming(transaction, message);
-            //crash
-        }
-        _store.Dispose();
-        using var store = new LmdbMessageStore(_queuePath, new MessageSerializer());
-        store.CreateQueue(message.Queue);
-        var msg = store.GetMessage(message.Queue, message.Id);
-        msg.ShouldBeNull();
+            var message = NewMessage();
+            store.CreateQueue(message.Queue);
+            using (var transaction = store.BeginTransaction())
+            {
+                store.StoreIncoming(transaction, message);
+                //crash
+            }
+
+            store.Dispose();
+            using var store2 = new LmdbMessageStore(store.Path, new MessageSerializer());
+            store2.CreateQueue(message.Queue);
+            var msg = store2.GetMessage(message.Queue, message.Id);
+            msg.ShouldBeNull();
+        });
+
     }
 
     [Fact]
     public void rollback_messages_received()
     {
-        var message = NewMessage();
-        _store.CreateQueue(message.Queue);
-        using (var transaction = _store.BeginTransaction())
+        StorageScenario(store =>
         {
-            _store.StoreIncoming(transaction, message);
-        }
-        var msg = _store.GetMessage(message.Queue, message.Id);
-        msg.ShouldBeNull();
+            var message = NewMessage();
+            store.CreateQueue(message.Queue);
+            using (var transaction = store.BeginTransaction())
+            {
+                store.StoreIncoming(transaction, message);
+            }
+
+            var msg = store.GetMessage(message.Queue, message.Id);
+            msg.ShouldBeNull();
+        });
     }
 
     [Fact]
     public void creating_multiple_stores()
     {
-        _store.Dispose();
-        var store = new LmdbMessageStore(_queuePath, new MessageSerializer());
-        store.Dispose();
-        using var store2 = new LmdbMessageStore(_queuePath, new MessageSerializer());
+        StorageScenario(store =>
+        {
+            store.Dispose();
+            var store2 = new LmdbMessageStore(store.Path, new MessageSerializer());
+            store.Dispose();
+            using var store3 = new LmdbMessageStore(store.Path, new MessageSerializer());
+        });
+
     }
 
-    public void Dispose()
+    private void StorageScenario(Action<LmdbMessageStore> action)
     {
-        GC.SuppressFinalize(this);
-        _store.Dispose();
+        using var store = new LmdbMessageStore(TempPath(), new MessageSerializer());
+        store.CreateQueue("test");
+        action(store);
     }
 }
