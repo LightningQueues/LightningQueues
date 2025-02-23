@@ -69,8 +69,8 @@ public class Receiver : IDisposable
         if (_disposed)
             return;
         
-        _logger.ReceiverDisposing();
         _disposed = true;
+        _logger.ReceiverDisposing();
         if(_listener.Server.IsBound)
             _listener.Stop();
         GC.SuppressFinalize(this);

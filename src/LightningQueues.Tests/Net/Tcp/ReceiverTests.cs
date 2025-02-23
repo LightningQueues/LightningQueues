@@ -83,20 +83,16 @@ public class ReceiverTests : TestBase, IDisposable
     [Fact]
     public async Task can_handle_sending_three_bytes_then_disconnect()
     {
-        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
-        var receivingTask = Task.Factory.StartNew(async () =>
+        await NetworkScenario(async (_, sender, receiver, token, receivingLoop) =>
         {
-            var channel = Channel.CreateUnbounded<Message>();
-            await _receiver.StartReceivingAsync(channel.Writer, cancellation.Token);
-        }, cancellation.Token);
-        await Task.Delay(100, cancellation.Token);
-        using (var client = new TcpClient())
-        {
-            await client.ConnectAsync(_endpoint.Address, _endpoint.Port, cancellation.Token);
-            await client.GetStream().WriteAsync((new byte[] { 1, 4, 6 }).AsMemory(0, 3), cancellation.Token);
-        }
-        receivingTask.IsFaulted.ShouldBeFalse();
-        await cancellation.CancelAsync();
+            await Task.Delay(100, token);
+            using (var client = new TcpClient())
+            {
+                await client.ConnectAsync(_endpoint.Address, _endpoint.Port, token);
+                await client.GetStream().WriteAsync((new byte[] { 1, 4, 6 }).AsMemory(0, 3), token);
+            }
+            receivingLoop.IsFaulted.ShouldBeFalse();
+        });
     }
 
     [Fact]
@@ -159,6 +155,29 @@ public class ReceiverTests : TestBase, IDisposable
         actual.Queue.ShouldBe(expected.Queue);
         Encoding.UTF8.GetString(actual.Data).ShouldBe("hello");
         cancellation.Cancel();
+    }
+
+    private async Task NetworkScenario(Func<IPEndPoint, SendingProtocol, Receiver, CancellationToken, Task, Task> scenario)
+    {
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var endpoint = new IPEndPoint(IPAddress.Loopback, PortFinder.FindPort());
+        var logger = new RecordingLogger();
+        var serializer = new MessageSerializer();
+        using var store = new LmdbMessageStore(TempPath(), serializer);
+        store.CreateQueue("test");
+        using var sendingStore = new LmdbMessageStore(TempPath(), serializer);
+        sendingStore.CreateQueue("test");
+        var sender = new SendingProtocol(_sendingStore, new NoSecurity(), serializer, logger);
+        var protocol = new ReceivingProtocol(store, new NoSecurity(), serializer, 
+            new Uri($"lq.tcp://localhost:{endpoint.Port}"), logger);
+        using var receiver = new Receiver(_endpoint, protocol, logger); 
+        var receivingTask = Task.Factory.StartNew(() =>
+        {
+            var channel = Channel.CreateUnbounded<Message>();
+            return receiver.StartReceivingAsync(channel.Writer, cancellation.Token);
+        }, cancellation.Token);
+        await scenario(endpoint, sender, receiver, cancellation.Token, receivingTask);
+        await cancellation.CancelAsync();
     }
 
     public void Dispose()
