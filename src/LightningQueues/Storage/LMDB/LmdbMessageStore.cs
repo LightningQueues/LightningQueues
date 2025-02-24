@@ -16,14 +16,6 @@ public class LmdbMessageStore : IMessageStore
     private readonly IMessageSerializer _serializer;
     private bool _disposed;
 
-    public LmdbMessageStore(string path, EnvironmentConfiguration config, IMessageSerializer serializer) : this(new LightningEnvironment(path, config), serializer)
-    {
-    }
-
-    public LmdbMessageStore(string path, IMessageSerializer serializer) : this(path, new EnvironmentConfiguration {MapSize = 1024 * 1024 * 100, MaxDatabases = 5}, serializer)
-    {
-    }
-
     public LmdbMessageStore(LightningEnvironment environment, IMessageSerializer serializer)
     {
         _lock = new Lock();
@@ -110,8 +102,10 @@ public class LmdbMessageStore : IMessageStore
 
     public LmdbTransaction BeginTransaction()
     {
-        var scope = _lock.EnterScope();
-        return new LmdbTransaction(_environment.BeginTransaction(), scope);
+        lock (_lock)
+        {
+            return new LmdbTransaction(_environment.BeginTransaction());
+        }
     }
 
     public void FailedToSend(bool shouldRemove = false, params IEnumerable<Message> messages)

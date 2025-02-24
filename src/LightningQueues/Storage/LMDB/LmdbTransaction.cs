@@ -1,19 +1,11 @@
-﻿using System.Threading;
+﻿using System;
 using LightningDB;
 
 namespace LightningQueues.Storage.LMDB;
 
-public ref struct LmdbTransaction
+public class LmdbTransaction(LightningTransaction tx) : IDisposable
 {
-    private readonly Lock.Scope _scope;
-
-    public LmdbTransaction(LightningTransaction tx, Lock.Scope scope)
-    {
-        Transaction = tx;
-        _scope = scope;
-    }
-    
-    public LightningTransaction Transaction { get; }
+    public LightningTransaction Transaction { get; } = tx;
 
     public void Commit()
     {
@@ -24,7 +16,7 @@ public ref struct LmdbTransaction
 
     public void Dispose()
     {
-        using (_scope)
+        GC.SuppressFinalize(this);
         using(Transaction)
         {
         }

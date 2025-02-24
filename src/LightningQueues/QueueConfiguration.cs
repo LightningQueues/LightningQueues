@@ -6,7 +6,6 @@ using LightningQueues.Net.Security;
 using LightningQueues.Net.Tcp;
 using LightningQueues.Serialization;
 using LightningQueues.Storage;
-using LightningQueues.Storage.LMDB;
 using Microsoft.Extensions.Logging;
 
 namespace LightningQueues;
@@ -34,7 +33,7 @@ public class QueueConfiguration
     
     private IStreamSecurity _sendingSecurity;
     private IStreamSecurity _receivingSecurity;
-    private IMessageStore _store;
+    private Func<IMessageStore> _store;
     private IPEndPoint _endpoint;
     private IReceivingProtocol _receivingProtocol;
     private ISendingProtocol _sendingProtocol;
@@ -44,9 +43,8 @@ public class QueueConfiguration
     
     public IMessageSerializer Serializer => _serializer;
 
-    public QueueConfiguration StoreMessagesWith(IMessageStore store)
+    public QueueConfiguration StoreMessagesWith(Func<IMessageStore> store)
     {
-        _store?.Dispose();
         _store = store;
         return this;
     }
@@ -112,20 +110,15 @@ public class QueueConfiguration
         if(_endpoint == null)
             throw new ArgumentNullException(nameof(_endpoint), "Endpoint has not been configured. Are you missing a call to ReceiveMessageAt?");
 
-        InitializeDefaults();
+        var serializer = new MessageSerializer();
+        var store = _store();
+        _sendingProtocol ??= new SendingProtocol(store, _sendingSecurity, serializer, _logger);
+        _receivingProtocol ??= new ReceivingProtocol(store, _receivingSecurity, serializer, new Uri($"lq.tcp://{_endpoint}"), _logger);
 
 
         var receiver = new Receiver(_endpoint, _receivingProtocol, _logger);
         var sender = new Sender(_sendingProtocol, _logger, _timeoutBatchAfter);
-        var queue = new Queue(receiver, sender, _store, _logger);
+        var queue = new Queue(receiver, sender, store, _logger);
         return queue;
-    }
-
-    private void InitializeDefaults()
-    {
-        var serializer = new MessageSerializer();
-        _sendingProtocol ??= new SendingProtocol(_store, _sendingSecurity, serializer, _logger);
-        _receivingProtocol ??= new ReceivingProtocol(_store, _receivingSecurity, serializer, 
-            new Uri($"lq.tcp://{_endpoint}"), _logger);
     }
 }

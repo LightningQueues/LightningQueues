@@ -65,7 +65,7 @@ public class LmdbMessageStoreTests : TestBase
             }
 
             store.Dispose();
-            using var store2 = new LmdbMessageStore(store.Path, new MessageSerializer());
+            using var store2 = new LmdbMessageStore(LightningEnvironment(store.Path), new MessageSerializer());
             store2.CreateQueue("test");
             store2.PersistedIncoming("test").Count().ShouldBe(1);
             store2.PersistedOutgoing().Count().ShouldBe(1);

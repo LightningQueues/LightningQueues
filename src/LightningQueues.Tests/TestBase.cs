@@ -46,9 +46,14 @@ public class TestBase
    
    protected void StorageScenario(Action<LmdbMessageStore> action)
    {
-      using var store = new LmdbMessageStore(TempPath(), new MessageSerializer());
+      using var store = new LmdbMessageStore(LightningEnvironment(), new MessageSerializer());
       store.CreateQueue("test");
       action(store);
+   }
+
+   protected LightningEnvironment LightningEnvironment(string path = null)
+   {
+      return new LightningEnvironment(path ?? TempPath(), new EnvironmentConfiguration { MaxDatabases = 5, MapSize = 1024 * 1024 * 100 });
    }
 
    protected static Message NewMessage(string queueName = "test", string payload = "hello")

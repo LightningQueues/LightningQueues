@@ -99,9 +99,9 @@ public class ReceiverTests : TestBase
         var endpoint = new IPEndPoint(IPAddress.Loopback, PortFinder.FindPort());
         var logger = new RecordingLogger(Console);
         var serializer = new MessageSerializer();
-        using var store = new LmdbMessageStore(TempPath(), serializer);
+        using var store = new LmdbMessageStore(LightningEnvironment(), serializer);
         store.CreateQueue("test");
-        using var sendingStore = new LmdbMessageStore(TempPath(), serializer);
+        using var sendingStore = new LmdbMessageStore(LightningEnvironment(), serializer);
         sendingStore.CreateQueue("test");
         
         if (expected != null)

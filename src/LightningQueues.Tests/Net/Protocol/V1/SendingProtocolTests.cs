@@ -19,7 +19,7 @@ public class SendingProtocolTests : TestBase
     public async Task writing_single_message()
     {
         var serializer = new MessageSerializer();
-        using var store = new LmdbMessageStore(TempPath(), serializer);
+        using var store = new LmdbMessageStore(LightningEnvironment(), serializer);
         var sender = new SendingProtocol(store, new NoSecurity(), serializer, new RecordingLogger(Console));
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var expected = NewMessage();
