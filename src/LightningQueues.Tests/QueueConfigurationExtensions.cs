@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Net;
 using System.Net.Security;
 using System.Security.Authentication;
@@ -13,7 +14,7 @@ namespace LightningQueues.Tests;
 
 public static class QueueConfigurationExtensions
 {
-    public static QueueConfiguration WithDefaultsForTest(this QueueConfiguration configuration)
+    public static QueueConfiguration WithDefaultsForTest(this QueueConfiguration configuration, TextWriter console = null)
     {
         configuration.WithDefaults();
         configuration.StoreWithLmdb(TestBase.TempPath(), new EnvironmentConfiguration
@@ -21,7 +22,7 @@ public static class QueueConfigurationExtensions
             MapSize = 1024 * 1024 * 100,
             MaxDatabases = 5
         }, configuration.Serializer);
-        configuration.LogWith(new RecordingLogger());
+        configuration.LogWith(new RecordingLogger(console));
         return configuration;
     }
 

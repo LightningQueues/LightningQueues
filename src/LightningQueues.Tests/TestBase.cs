@@ -3,6 +3,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Fixie;
 using LightningDB;
 using LightningQueues.Serialization;
 using LightningQueues.Storage.LMDB;
@@ -12,12 +13,14 @@ namespace LightningQueues.Tests;
 public class TestBase
 {
    private static readonly string _tempPath = Path.Combine(Path.GetTempPath(), $"lightningqueuestests-{Environment.Version.ToString()}");
+   internal TextWriter Console { get; set; }
+
    protected async Task QueueScenario(Action<QueueConfiguration> queueBuilder,
       Func<Queue, CancellationToken, Task> scenario, TimeSpan timeout, string queueName = "test")
    {
       using var cancellation = new CancellationTokenSource(timeout);
       var queueConfiguration = new QueueConfiguration()
-         .WithDefaultsForTest();
+         .WithDefaultsForTest(Console);
       queueBuilder(queueConfiguration);
       using var queue = queueConfiguration.BuildAndStartQueue(queueName);
       await scenario(queue, cancellation.Token);

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using Microsoft.Extensions.Logging;
 
 namespace LightningQueues.Logging;
@@ -7,12 +8,14 @@ namespace LightningQueues.Logging;
 public class RecordingLogger : ILogger
 {
     private readonly LogLevel _level;
+    private readonly TextWriter _console;
     private readonly IList<string> _debug = new List<string>();
     private readonly IList<string> _error = new List<string>();
     private readonly IList<string> _info = new List<string>();
 
-    public RecordingLogger(LogLevel logLevel = LogLevel.Debug)
+    public RecordingLogger(TextWriter console, LogLevel logLevel = LogLevel.Debug)
     {
+        _console = console;
         _level = logLevel;
     }
 
@@ -31,7 +34,9 @@ public class RecordingLogger : ILogger
             LogLevel.Error => _error,
             _ => throw new ArgumentOutOfRangeException(nameof(logLevel))
         };
-        list.Add(formatter(state, exception));
+        var message = formatter(state, exception);
+        list.Add(message);
+        _console.WriteLine(message);
     }
 
     public bool IsEnabled(LogLevel logLevel) => logLevel switch

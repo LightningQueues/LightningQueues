@@ -12,9 +12,9 @@ public class IntegrationTests : TestBase
     {
         await QueueScenario(async (receiver, token) =>
         {
-            var senderLogger = new RecordingLogger();
+            var senderLogger = new RecordingLogger(Console);
             using var sender = new QueueConfiguration()
-                .WithDefaultsForTest()
+                .WithDefaultsForTest(Console)
                 .LogWith(senderLogger)
                 .BuildAndStartQueue("sender");
             var message = NewMessage("receiver2");

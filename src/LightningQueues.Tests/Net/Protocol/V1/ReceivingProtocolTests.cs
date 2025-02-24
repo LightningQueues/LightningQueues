@@ -149,7 +149,7 @@ public class ReceivingProtocolTests : TestBase
     private async Task ReceivingScenario(Func<ReceivingProtocol, RecordingLogger, CancellationToken, Task> scenario)
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
-        var logger = new RecordingLogger();
+        var logger = new RecordingLogger(Console);
         var serializer = new MessageSerializer();
         using var store = new LmdbMessageStore(TempPath(), serializer);
         store.CreateQueue("test");

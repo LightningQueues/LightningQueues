@@ -103,7 +103,7 @@ public class QueueTests : TestBase
         var serializer = new MessageSerializer();
         using var store = new LmdbMessageStore(TempPath(), serializer);
         var queueConfiguration = new QueueConfiguration();
-        queueConfiguration.LogWith(new RecordingLogger());
+        queueConfiguration.LogWith(new RecordingLogger(Console));
         queueConfiguration.AutomaticEndpoint();
         queueConfiguration.SerializeWith(serializer);
         queueConfiguration.StoreMessagesWith(store);

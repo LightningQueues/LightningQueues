@@ -97,7 +97,7 @@ public class ReceiverTests : TestBase
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var endpoint = new IPEndPoint(IPAddress.Loopback, PortFinder.FindPort());
-        var logger = new RecordingLogger();
+        var logger = new RecordingLogger(Console);
         var serializer = new MessageSerializer();
         using var store = new LmdbMessageStore(TempPath(), serializer);
         store.CreateQueue("test");

@@ -177,7 +177,7 @@ public class SendingErrorPolicyTests : TestBase
         var failures = Channel.CreateUnbounded<OutgoingMessageFailure>();
         var message = NewMessage();
         var store = new StubMessageStore();
-        var errorPolicy = new SendingErrorPolicy(new RecordingLogger(), store, failures);
+        var errorPolicy = new SendingErrorPolicy(new RecordingLogger(Console), store, failures);
         var ended = false;
         var failure = new OutgoingMessageFailure
         {
@@ -198,7 +198,7 @@ public class SendingErrorPolicyTests : TestBase
 
     private void ErrorPolicyScenario(Action<SendingErrorPolicy, IMessageStore, Channel<OutgoingMessageFailure>> scenario)
     {
-        var logger = new RecordingLogger();
+        var logger = new RecordingLogger(Console);
         using var store = new LmdbMessageStore(TempPath(), new MessageSerializer());
         var failures = Channel.CreateUnbounded<OutgoingMessageFailure>();
         var errorPolicy = new SendingErrorPolicy(logger, store, failures);
@@ -209,7 +209,7 @@ public class SendingErrorPolicyTests : TestBase
         Func<SendingErrorPolicy, IMessageStore, Channel<OutgoingMessageFailure>, CancellationTokenSource, Task> scenario)
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-        var logger = new RecordingLogger();
+        var logger = new RecordingLogger(Console);
         using var store = new LmdbMessageStore(TempPath(), new MessageSerializer());
         var failures = Channel.CreateUnbounded<OutgoingMessageFailure>();
         var errorPolicy = new SendingErrorPolicy(logger, store, failures);
