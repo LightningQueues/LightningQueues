@@ -1,8 +1,7 @@
-using System.Text;
 using BenchmarkDotNet.Attributes;
-using LightningQueues.Logging;
-using Microsoft.Extensions.Logging;
-using static LightningQueues.Helpers.QueueBuilder;
+using LightningDB;
+using LightningQueues.Serialization;
+using LightningQueues.Storage.LMDB;
 
 namespace LightningQueues.Benchmarks;
 
@@ -27,8 +26,18 @@ public class SendAndReceive
         var senderPath = Path.Combine(Path.GetTempPath(), "sender", Guid.NewGuid().ToString());
         var receiverPath = Path.Combine(Path.GetTempPath(), "receiver", Guid.NewGuid().ToString());
         _messages = new Message[MessageCount];
-        _sender = NewQueue(path: senderPath, queueName: "sender", new RecordingLogger(LogLevel.None));
-        _receiver = NewQueue(path: receiverPath, queueName: "receiver", new RecordingLogger(LogLevel.None));
+        _sender = new QueueConfiguration()
+            .WithDefaults()
+            .StoreWithLmdb(senderPath, new EnvironmentConfiguration { MapSize = 1024 * 1024 * 100, MaxDatabases = 5 }, new MessageSerializer())
+            .BuildQueue();
+        _sender.CreateQueue("sender");
+        _receiver = new QueueConfiguration()
+            .WithDefaults()
+            .StoreWithLmdb(receiverPath, new EnvironmentConfiguration { MapSize = 1024 * 1024 * 100, MaxDatabases = 5 }, new MessageSerializer())
+            .BuildQueue();
+        _sender.CreateQueue("receiver");
+        _sender.Start();
+        _receiver.Start();
         _receivingTask = Task.Factory.StartNew(async () =>
         {
             var count = 0;

@@ -97,7 +97,6 @@ public class QueueConfiguration
     public QueueConfiguration WithDefaults()
     {
         SerializeWith(new MessageSerializer());
-        //StoreMessagesWith(new NoStorage());
         LogWith(new NoLoggingLogger());
         SecureTransportWith(new NoSecurity(), new NoSecurity());
         TimeoutNetworkBatchAfter(TimeSpan.FromSeconds(5));
