@@ -367,16 +367,13 @@ public class LmdbMessageStore : IMessageStore
             ThrowIfError(tx.Commit());
         }
     }
-    
-    
+
+
 
     public void Dispose()
     {
         GC.SuppressFinalize(this);
-        lock (_lock)
-        {
-            Dispose(true);
-        }
+        Dispose(true);
     }
 
     ~LmdbMessageStore()
