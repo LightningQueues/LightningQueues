@@ -12,13 +12,11 @@ using LightningQueues.Net.Tcp;
 using LightningQueues.Serialization;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
-using Xunit;
 
 namespace LightningQueues.Tests.Net.Tcp;
 
 public class ReceiverTests : TestBase
 {
-    [Fact]
     public async Task stops_listening_on_task_cancellation()
     {
         await NetworkScenario(async (endpoint, _, _, token, receivingLoop, _) =>
@@ -34,7 +32,6 @@ public class ReceiverTests : TestBase
     }
 
 
-    [Fact]
     public async Task can_handle_connect_then_disconnect()
     {
         await NetworkScenario(async (endpoint, _, _, token, receivingLoop, _) =>
@@ -47,7 +44,6 @@ public class ReceiverTests : TestBase
         });
     }
 
-    [Fact]
     public async Task can_handle_sending_three_bytes_then_disconnect()
     {
         await NetworkScenario(async (endpoint, _, _, token, receivingLoop, _) =>
@@ -61,7 +57,6 @@ public class ReceiverTests : TestBase
         });
     }
 
-    [Fact]
     public async Task accepts_concurrently_connected_clients()
     {
         await NetworkScenario(async (endpoint, _, _, token, receivingTask, _) =>
@@ -78,7 +73,6 @@ public class ReceiverTests : TestBase
         });
     }
 
-    [Fact]
     public async Task receiving_a_valid_message()
     {
         var expected = NewMessage("test");

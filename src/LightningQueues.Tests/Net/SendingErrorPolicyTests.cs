@@ -11,13 +11,11 @@ using LightningQueues.Storage.LMDB;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Shouldly;
-using Xunit;
 
 namespace LightningQueues.Tests.Net;
 
 public class SendingErrorPolicyTests : TestBase
 {
-    [Fact]
     public void max_attempts_is_reached()
     {
         ErrorPolicyScenario((policy, _, _) =>
@@ -29,7 +27,6 @@ public class SendingErrorPolicyTests : TestBase
         });
     }
 
-    [Fact]
     public void max_attempts_is_not_reached()
     {
         ErrorPolicyScenario((policy, _, _) =>
@@ -41,7 +38,6 @@ public class SendingErrorPolicyTests : TestBase
         });
     }
 
-    [Fact]
     public void deliver_by_has_expired()
     {
         ErrorPolicyScenario((policy, _, _) =>
@@ -53,7 +49,6 @@ public class SendingErrorPolicyTests : TestBase
         });
     }
 
-    [Fact]
     public void deliver_by_has_not_expired()
     {
         ErrorPolicyScenario((policy, _, _) =>
@@ -65,7 +60,6 @@ public class SendingErrorPolicyTests : TestBase
         });
     }
 
-    [Fact]
     public void has_neither_deliver_by_nor_max_attempts()
     {
         ErrorPolicyScenario((policy, _, _) =>
@@ -76,7 +70,6 @@ public class SendingErrorPolicyTests : TestBase
         });
     }
 
-    [Fact]
     public Task message_is_observed_after_time()
     {
         return ErrorPolicyScenario(async (policy, store, failures, cancellation) =>
@@ -106,7 +99,6 @@ public class SendingErrorPolicyTests : TestBase
         });
     }
 
-    [Fact]
     public Task message_removed_from_storage_after_max()
     {
         return ErrorPolicyScenario(async (policy, store, failures, cancellation) =>
@@ -136,7 +128,6 @@ public class SendingErrorPolicyTests : TestBase
         });
     }
 
-    [Fact]
     public Task time_increases_with_each_failure()
     {
         return ErrorPolicyScenario(async (policy, store, failures, _) =>
@@ -179,7 +170,6 @@ public class SendingErrorPolicyTests : TestBase
         });
     }
 
-    [Fact]
     public async Task errors_in_storage_dont_end_stream()
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));

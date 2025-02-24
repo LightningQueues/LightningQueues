@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Linq;
 using Shouldly;
-using Xunit;
 
 namespace LightningQueues.Tests.Storage.Lmdb;
 
-public class OutgoingMessageScenarios : TestBase
+public class OutgoingMessageTests : TestBase
 {
-    [Fact]
     public void happy_path_messages_sent()
     {
         StorageScenario(store =>
@@ -40,7 +38,6 @@ public class OutgoingMessageScenarios : TestBase
         });
     }
 
-    [Fact]
     public void failed_to_send_with_max_attempts()
     {
         StorageScenario(store =>
@@ -63,7 +60,6 @@ public class OutgoingMessageScenarios : TestBase
         });
     }
 
-    [Fact]
     public void failed_to_send_with_deliver_by()
     {
         StorageScenario(store =>

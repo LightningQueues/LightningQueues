@@ -3,13 +3,11 @@ using System.Linq;
 using LightningQueues.Serialization;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
-using Xunit;
 
 namespace LightningQueues.Tests.Storage.Lmdb;
 
-public class LmdbMessageStoreTester : TestBase
+public class LmdbMessageStoreTests : TestBase
 {
-    [Fact]
     public void getting_all_queues()
     {
         StorageScenario(store =>
@@ -20,7 +18,6 @@ public class LmdbMessageStoreTester : TestBase
         });
     }
 
-    [Fact]
     public void clear_all_history_with_empty_dataset_doesnt_throw()
     {
         StorageScenario(store =>
@@ -29,7 +26,6 @@ public class LmdbMessageStoreTester : TestBase
         });
     }
 
-    [Fact]
     public void clear_all_history_with_persistent_data()
     {
         StorageScenario(store =>
@@ -53,7 +49,6 @@ public class LmdbMessageStoreTester : TestBase
         });
     }
 
-    [Fact]
     public void store_can_read_previously_stored_items()
     {
         StorageScenario(store =>
@@ -77,7 +72,6 @@ public class LmdbMessageStoreTester : TestBase
         });
     }
 
-    [Fact]
     public void retrieve_message_by_id()
     {
         StorageScenario(store =>

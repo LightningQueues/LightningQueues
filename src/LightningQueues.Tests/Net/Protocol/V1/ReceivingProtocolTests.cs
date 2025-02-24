@@ -1,4 +1,3 @@
-using Xunit;
 using System;
 using System.IO;
 using System.Linq;
@@ -18,7 +17,6 @@ namespace LightningQueues.Tests.Net.Protocol.V1;
 
 public class ReceivingProtocolTests : TestBase
 {
-    [Fact]
     public async Task client_sending_negative_length_is_ignored()
     {
         await ReceivingScenario(async (protocol, _, token) =>
@@ -30,7 +28,6 @@ public class ReceivingProtocolTests : TestBase
         });
     }
 
-    [Fact]
     public async Task handling_disconnects_mid_protocol_gracefully()
     {
         await ReceivingScenario(async (protocol, _, token) =>
@@ -45,7 +42,6 @@ public class ReceivingProtocolTests : TestBase
         });
     }
 
-    [Fact]
     public async Task handling_valid_length()
     {
         await ReceivingScenario(async (protocol, logger, token) =>
@@ -55,23 +51,21 @@ public class ReceivingProtocolTests : TestBase
         });
     }
 
-    [Fact]
     public async Task sending_shorter_length_than_payload_length()
     {
         await ReceivingScenario(async (protocol, _, token) =>
         {
-            var ex = await Assert.ThrowsAsync<ProtocolViolationException>(async () =>
+            var ex = await Should.ThrowAsync<ProtocolViolationException>(async () =>
                 await RunLengthTest(protocol, -2, token));
             ex.Message.ShouldBe("Protocol violation: received length of 70 bytes, but 72 bytes were available");
         });
     }
 
-    [Fact]
     public async Task sending_longer_length_than_payload_length()
     {
         await ReceivingScenario(async (protocol, _, token) =>
         {
-            var ex = await Assert.ThrowsAsync<ProtocolViolationException>(async () =>
+            var ex = await Should.ThrowAsync<ProtocolViolationException>(async () =>
                 await RunLengthTest(protocol, 5, token));
             ex.Message.ShouldBe("Protocol violation: received length of 77 bytes, but 72 bytes were available");
         });
@@ -94,7 +88,6 @@ public class ReceivingProtocolTests : TestBase
         var msgs = await protocol.ReceiveMessagesAsync(ms, token);
     }
 
-    [Fact]
     public async Task sending_to_a_queue_that_doesnt_exist()
     {
         await ReceivingScenario(async (protocol, _, token) =>
@@ -118,7 +111,6 @@ public class ReceivingProtocolTests : TestBase
         });
     }
 
-    [Fact]
     public async Task sending_data_that_is_cannot_be_deserialized()
     {
         await ReceivingScenario(async (protocol, _, token) =>
@@ -141,7 +133,6 @@ public class ReceivingProtocolTests : TestBase
         });
     }
 
-    [Fact]
     public async Task supports_ability_to_cancel_for_slow_clients()
     {
         await ReceivingScenario(async (protocol, logger, token) =>

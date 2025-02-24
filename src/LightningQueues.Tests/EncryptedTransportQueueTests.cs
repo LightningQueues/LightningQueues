@@ -2,13 +2,11 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Shouldly;
-using Xunit;
 
 namespace LightningQueues.Tests;
 
 public class EncryptedTransportQueueTests : TestBase
 {
-    [Fact]
     public async Task can_send_and_receive_messages_over_TLS1_2()
     {
         await QueueScenario(config =>

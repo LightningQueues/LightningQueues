@@ -2,14 +2,12 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using LightningQueues.Serialization;
-using Xunit;
-using static LightningQueues.Helpers.QueueBuilder;
+using Shouldly;
 
 namespace LightningQueues.Tests;
 
 public class SerializationTests : TestBase
 {
-    [Fact]
     public void can_serialize_and_deserialize_message_as_span()
     {
         var serializer = new MessageSerializer();
@@ -19,8 +17,8 @@ public class SerializationTests : TestBase
         var memory = serializer.ToMemory(msgs);
         var serialized = new ReadOnlySequence<byte>(memory);
         var deserialized = serializer.ToMessage(serialized.Slice(sizeof(int)).FirstSpan);
-        Assert.Equal(msg.Id, deserialized.Id);
-        Assert.Equal(msg.Data, deserialized.Data);
+        deserialized.Id.ShouldBe(msg.Id);
+        deserialized.Data.ShouldBe(msg.Data);
     }
 }
 

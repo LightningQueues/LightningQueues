@@ -1,16 +1,13 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using LightningQueues.Serialization;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
-using Xunit;
 
 namespace LightningQueues.Tests.Storage.Lmdb;
 
-public class IncomingMessageScenarios : TestBase
+public class IncomingMessageTests : TestBase
 {
-    [Fact]
     public void happy_path_success()
     {
         StorageScenario(store =>
@@ -25,17 +22,15 @@ public class IncomingMessageScenarios : TestBase
         });
     }
 
-    [Fact]
     public void storing_message_for_queue_that_doesnt_exist()
     {
         StorageScenario(store =>
         {
             var message = NewMessage("blah");
-            Assert.Throws<QueueDoesNotExistException>(() => { store.StoreIncoming(message); });
+            Should.Throw<QueueDoesNotExistException>(() => { store.StoreIncoming(message); });
         });
     }
 
-    [Fact]
     public void crash_before_commit()
     {
         StorageScenario(store =>
@@ -57,7 +52,6 @@ public class IncomingMessageScenarios : TestBase
 
     }
 
-    [Fact]
     public void rollback_messages_received()
     {
         StorageScenario(store =>
@@ -74,7 +68,6 @@ public class IncomingMessageScenarios : TestBase
         });
     }
 
-    [Fact]
     public void creating_multiple_stores()
     {
         StorageScenario(store =>

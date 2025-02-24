@@ -3,13 +3,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using LightningQueues.Logging;
 using Shouldly;
-using Xunit;
 
 namespace LightningQueues.Tests;
 
 public class IntegrationTests : TestBase
 {
-    [Fact]
     public async Task can_send_and_receive_after_queue_not_found()
     {
         await QueueScenario(async (receiver, token) =>
