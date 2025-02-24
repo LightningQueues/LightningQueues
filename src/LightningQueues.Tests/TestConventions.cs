@@ -16,7 +16,11 @@ class ParallelExecutionWithCleanup : IExecution
 {
     public async Task Run(TestSuite testSuite)
     {
-        await Parallel.ForEachAsync(testSuite.Tests, async (test, _) => await test.Run());
+        foreach (var test in testSuite.Tests)
+        {
+            await test.Run();
+        }
+        //await Parallel.ForEachAsync(testSuite.Tests, async (test, _) => await test.Run());
         TestBase.CleanupSession();
     }
 }
