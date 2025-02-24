@@ -20,7 +20,6 @@ public class TestBase
          .WithDefaultsForTest();
       queueBuilder(queueConfiguration);
       using var queue = queueConfiguration.BuildAndStartQueue(queueName);
-      await Task.Delay(100, CancellationToken.None); //give the queue a chance to start (and open the db)
       await scenario(queue, cancellation.Token);
       await cancellation.CancelAsync();
    }

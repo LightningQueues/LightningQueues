@@ -45,7 +45,7 @@ public class Sender : IDisposable
                     var messages = messageGroup.ToList();
                     try
                     {
-                        var client = new TcpClient();
+                        using var client = new TcpClient();
                         if (uri.IsLoopback || Dns.GetHostName() == uri.Host)
                         {
                             await client.ConnectAsync(IPAddress.Loopback, uri.Port, linked.Token)
