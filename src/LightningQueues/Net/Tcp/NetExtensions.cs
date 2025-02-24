@@ -8,7 +8,7 @@ namespace LightningQueues.Net.Tcp;
 
 public static class NetExtensions
 {
-    public static async ValueTask<T[]> ReadBatchAsync<T>(this ChannelReader<T> channelReader,
+    public static async ValueTask<List<T>> ReadBatchAsync<T>(this ChannelReader<T> channelReader,
         int batchSize, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(channelReader);
@@ -26,19 +26,17 @@ public static class NetExtensions
             {
                 item = await channelReader.ReadAsync(token).ConfigureAwait(false);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
             {
-                cancellationToken.ThrowIfCancellationRequested();
                 break; // The cancellation was induced by timeout (ignore it)
             }
             catch (ChannelClosedException)
             {
-                if (buffer.Count == 0) throw;
-                break;
+                break; // We are already persistent, will recover on the next start
             }
             buffer.Add(item);
             if (buffer.Count >= batchSize) break;
         }
-        return buffer.ToArray();
+        return buffer;
     }
 }

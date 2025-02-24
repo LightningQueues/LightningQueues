@@ -37,8 +37,10 @@ public class Sender : IDisposable
             {
                 var batch = await outgoing.ReadBatchAsync(50, TimeSpan.FromMilliseconds(200), cancellationToken)
                     .ConfigureAwait(false);
-                using var source = new CancellationTokenSource(_sendTimeout);
-                using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, source.Token);
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                linked.CancelAfter(_sendTimeout);
                 foreach (var messageGroup in batch.GroupBy(x => x.Destination))
                 {
                     var uri = messageGroup.Key;
