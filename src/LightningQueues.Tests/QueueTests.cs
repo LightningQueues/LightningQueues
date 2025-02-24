@@ -90,7 +90,7 @@ public class QueueTests : TestBase
                 message.MaxAttempts = 1;
                 message.Destination = new Uri($"lq.tcp://boom:{queue.Endpoint.Port + 1}");
                 queue.Send(message);
-                await Task.Delay(5000, token); //connect timeout cancellation, but windows is slow
+                await Task.Delay(5000, CancellationToken.None); //connect timeout cancellation, but windows is slow
                 var store = (LmdbMessageStore)queue.Store;
                 store.PersistedOutgoing().Any().ShouldBeFalse();
             }, TimeSpan.FromSeconds(10));
