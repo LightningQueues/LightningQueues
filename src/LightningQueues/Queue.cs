@@ -192,7 +192,13 @@ public class Queue : IDisposable
             using (_cancelOnDispose)
             {
                 _cancelOnDispose.Cancel();
-                Task.WaitAll(_receivingTask, _sendingTask);
+                try
+                {
+                    Task.WaitAll(_receivingTask, _sendingTask);
+                }
+                catch (TaskCanceledException)
+                {
+                }
                 _receivingChannel.Writer.TryComplete();
                 _sendChannel.Writer.TryComplete();
             }

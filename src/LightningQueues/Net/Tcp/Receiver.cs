@@ -51,6 +51,10 @@ public class Receiver : IDisposable
                         _logger.ReceiverErrorReadingMessages(socket.RemoteEndPoint, ex);
                     }
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
                 catch (Exception ex)
                 {
                     if (_logger.IsEnabled(LogLevel.Error))
