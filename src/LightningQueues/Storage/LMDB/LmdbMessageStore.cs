@@ -387,6 +387,9 @@ public class LmdbMessageStore : IMessageStore
         if (_disposed)
             return;
         _disposed = true;
-        _environment.Dispose();
+        lock (_lock)
+        {
+            _environment.Dispose();
+        }
     }
 }
