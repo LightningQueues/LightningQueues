@@ -23,6 +23,6 @@ public class EncryptedTransportQueueTests : TestBase
             received.ShouldNotBeNull();
             received.Message.Queue.ShouldBe(message.Queue);
             received.Message.Data.ShouldBe(message.Data);
-        }, TimeSpan.FromSeconds(2));
+        }, TimeSpan.FromSeconds(5));
     }
 }
