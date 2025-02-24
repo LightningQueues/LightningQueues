@@ -28,12 +28,12 @@ public class SendAndReceive
         _messages = new Message[MessageCount];
         _sender = new QueueConfiguration()
             .WithDefaults()
-            .StoreWithLmdb(senderPath, new EnvironmentConfiguration { MapSize = 1024 * 1024 * 100, MaxDatabases = 5 }, new MessageSerializer())
+            .StoreWithLmdb(senderPath, new EnvironmentConfiguration { MapSize = 1024 * 1024 * 100, MaxDatabases = 5 })
             .BuildQueue();
         _sender.CreateQueue("sender");
         _receiver = new QueueConfiguration()
             .WithDefaults()
-            .StoreWithLmdb(receiverPath, new EnvironmentConfiguration { MapSize = 1024 * 1024 * 100, MaxDatabases = 5 }, new MessageSerializer())
+            .StoreWithLmdb(receiverPath, new EnvironmentConfiguration { MapSize = 1024 * 1024 * 100, MaxDatabases = 5 })
             .BuildQueue();
         _sender.CreateQueue("receiver");
         _sender.Start();

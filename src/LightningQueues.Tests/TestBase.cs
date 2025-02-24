@@ -21,9 +21,9 @@ public class TestBase
       var serializer = new MessageSerializer();
       using var env = LightningEnvironment();
       var queueConfiguration = new QueueConfiguration()
-         .StoreWithLmdb(() => env, serializer)
          .WithDefaultsForTest(Console)
-         .SerializeWith(serializer);
+         .SerializeWith(serializer)
+         .StoreWithLmdb(() => env);
       queueBuilder(queueConfiguration);
       using var queue = queueConfiguration.BuildAndStartQueue(queueName);
       await scenario(queue, cancellation.Token);

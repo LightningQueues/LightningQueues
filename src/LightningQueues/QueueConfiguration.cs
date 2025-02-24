@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Net;
+using LightningDB;
 using LightningQueues.Net;
 using LightningQueues.Net.Protocol.V1;
 using LightningQueues.Net.Security;
 using LightningQueues.Net.Tcp;
 using LightningQueues.Serialization;
 using LightningQueues.Storage;
+using LightningQueues.Storage.LMDB;
 using Microsoft.Extensions.Logging;
 
 namespace LightningQueues;
@@ -92,13 +94,15 @@ public class QueueConfiguration
         return this;
     }
 
-    public QueueConfiguration WithDefaults()
+    public QueueConfiguration WithDefaults(string path = null)
     {
         SerializeWith(new MessageSerializer());
         LogWith(new NoLoggingLogger());
         SecureTransportWith(new NoSecurity(), new NoSecurity());
         TimeoutNetworkBatchAfter(TimeSpan.FromSeconds(5));
         AutomaticEndpoint();
+        if(path != null)
+            this.StoreWithLmdb(path, new EnvironmentConfiguration { MaxDatabases = 5, MapSize = 1024 * 1024 * 100 });
         return this;
     }
 
@@ -119,6 +123,14 @@ public class QueueConfiguration
         var receiver = new Receiver(_endpoint, _receivingProtocol, _logger);
         var sender = new Sender(_sendingProtocol, _logger, _timeoutBatchAfter);
         var queue = new Queue(receiver, sender, store, _logger);
+        return queue;
+    }
+
+    public Queue BuildAndStart(string queueName)
+    {
+        var queue = BuildQueue();
+        queue.CreateQueue(queueName);
+        queue.Start();
         return queue;
     }
 }

@@ -21,7 +21,7 @@ public static class QueueConfigurationExtensions
         {
             MapSize = 1024 * 1024 * 100,
             MaxDatabases = 5
-        }, configuration.Serializer);
+        });
         configuration.LogWith(new RecordingLogger(console));
         return configuration;
     }

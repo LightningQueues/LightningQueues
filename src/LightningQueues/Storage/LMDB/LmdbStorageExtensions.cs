@@ -1,20 +1,18 @@
 ﻿using System;
 using LightningDB;
-using LightningQueues.Serialization;
 
 namespace LightningQueues.Storage.LMDB;
 
 public static class LmdbStorageExtensions
 {
     public static QueueConfiguration StoreWithLmdb(this QueueConfiguration configuration, string path, 
-        EnvironmentConfiguration config, IMessageSerializer serializer)
+        EnvironmentConfiguration config)
     {
-        return configuration.StoreWithLmdb(() => new LightningEnvironment(path, config), serializer);
+        return configuration.StoreWithLmdb(() => new LightningEnvironment(path, config));
     }
 
-    public static QueueConfiguration StoreWithLmdb(this QueueConfiguration configuration, Func<LightningEnvironment> environment,
-        IMessageSerializer serializer)
+    public static QueueConfiguration StoreWithLmdb(this QueueConfiguration configuration, Func<LightningEnvironment> environment)
     {
-        return configuration.StoreMessagesWith(() => new LmdbMessageStore(environment(), serializer));
+        return configuration.StoreMessagesWith(() => new LmdbMessageStore(environment(), configuration.Serializer));
     }
 }
