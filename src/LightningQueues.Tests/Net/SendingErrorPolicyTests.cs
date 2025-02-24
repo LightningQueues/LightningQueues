@@ -199,7 +199,8 @@ public class SendingErrorPolicyTests : TestBase
     private void ErrorPolicyScenario(Action<SendingErrorPolicy, IMessageStore, Channel<OutgoingMessageFailure>> scenario)
     {
         var logger = new RecordingLogger(Console);
-        using var store = new LmdbMessageStore(LightningEnvironment(), new MessageSerializer());
+        using var env = LightningEnvironment();
+        using var store = new LmdbMessageStore(env, new MessageSerializer());
         var failures = Channel.CreateUnbounded<OutgoingMessageFailure>();
         var errorPolicy = new SendingErrorPolicy(logger, store, failures);
         scenario(errorPolicy, store, failures);
@@ -210,7 +211,8 @@ public class SendingErrorPolicyTests : TestBase
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var logger = new RecordingLogger(Console);
-        using var store = new LmdbMessageStore(LightningEnvironment(), new MessageSerializer());
+        using var env = LightningEnvironment();
+        using var store = new LmdbMessageStore(env, new MessageSerializer());
         var failures = Channel.CreateUnbounded<OutgoingMessageFailure>();
         var errorPolicy = new SendingErrorPolicy(logger, store, failures);
         await scenario(errorPolicy, store, failures, cancellation);

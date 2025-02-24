@@ -196,7 +196,7 @@ public class Queue : IDisposable
                 {
                     Task.WaitAll(_receivingTask, _sendingTask);
                 }
-                catch (TaskCanceledException)
+                catch (AggregateException)
                 {
                 }
                 _receivingChannel.Writer.TryComplete();

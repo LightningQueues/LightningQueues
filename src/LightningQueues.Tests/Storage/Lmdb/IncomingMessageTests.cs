@@ -44,7 +44,8 @@ public class IncomingMessageTests : TestBase
             }
 
             store.Dispose();
-            using var store2 = new LmdbMessageStore(LightningEnvironment(), new MessageSerializer());
+            using var env = LightningEnvironment();
+            using var store2 = new LmdbMessageStore(env, new MessageSerializer());
             store2.CreateQueue(message.Queue);
             var msg = store2.GetMessage(message.Queue, message.Id);
             msg.ShouldBeNull();
@@ -73,9 +74,11 @@ public class IncomingMessageTests : TestBase
         StorageScenario(store =>
         {
             store.Dispose();
-            var store2 = new LmdbMessageStore(LightningEnvironment(), new MessageSerializer());
-            store.Dispose();
-            using var store3 = new LmdbMessageStore(LightningEnvironment(), new MessageSerializer());
+            using var env = LightningEnvironment();
+            var store2 = new LmdbMessageStore(env, new MessageSerializer());
+            store2.Dispose();
+            using var env2 = LightningEnvironment();
+            using var store3 = new LmdbMessageStore(env2, new MessageSerializer());
         });
 
     }

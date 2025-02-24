@@ -151,7 +151,8 @@ public class ReceivingProtocolTests : TestBase
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var logger = new RecordingLogger(Console);
         var serializer = new MessageSerializer();
-        using var store = new LmdbMessageStore(LightningEnvironment(), serializer);
+        using var env = LightningEnvironment();
+        using var store = new LmdbMessageStore(env, serializer);
         store.CreateQueue("test");
         var protocol = new ReceivingProtocol(store, new NoSecurity(), serializer, new Uri("lq.tcp://localhost"), logger); 
         await scenario(protocol, logger, cancellation.Token);

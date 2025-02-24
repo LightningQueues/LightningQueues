@@ -101,7 +101,8 @@ public class QueueTests : TestBase
         //This shows that the port doesn't have an exclusive lock, and that lmdb itself can have multiple instances
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var serializer = new MessageSerializer();
-        using var store = new LmdbMessageStore(LightningEnvironment(), serializer);
+        using var env = LightningEnvironment();
+        using var store = new LmdbMessageStore(env, serializer);
         var queueConfiguration = new QueueConfiguration();
         queueConfiguration.LogWith(new RecordingLogger(Console));
         queueConfiguration.AutomaticEndpoint();
