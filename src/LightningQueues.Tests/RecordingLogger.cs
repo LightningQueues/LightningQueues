@@ -36,7 +36,7 @@ public class RecordingLogger : ILogger
         };
         var message = formatter(state, exception);
         list.Add(message);
-        _console.WriteLine(message);
+        _console.WriteLine(message + exception);
     }
 
     public bool IsEnabled(LogLevel logLevel) => logLevel switch
