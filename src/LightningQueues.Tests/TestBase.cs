@@ -3,7 +3,6 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Fixie;
 using LightningDB;
 using LightningQueues.Serialization;
 using LightningQueues.Storage.LMDB;
@@ -19,8 +18,12 @@ public class TestBase
       Func<Queue, CancellationToken, Task> scenario, TimeSpan timeout, string queueName = "test")
    {
       using var cancellation = new CancellationTokenSource(timeout);
+      var serializer = new MessageSerializer();
+      using var env = LightningEnvironment();
       var queueConfiguration = new QueueConfiguration()
-         .WithDefaultsForTest(Console);
+         .StoreWithLmdb(() => env, serializer)
+         .WithDefaultsForTest(Console)
+         .SerializeWith(serializer);
       queueBuilder(queueConfiguration);
       using var queue = queueConfiguration.BuildAndStartQueue(queueName);
       await scenario(queue, cancellation.Token);
@@ -46,7 +49,8 @@ public class TestBase
    
    protected void StorageScenario(Action<LmdbMessageStore> action)
    {
-      using var store = new LmdbMessageStore(LightningEnvironment(), new MessageSerializer());
+      using var env = LightningEnvironment();
+      using var store = new LmdbMessageStore(env, new MessageSerializer());
       store.CreateQueue("test");
       action(store);
    }
@@ -73,9 +77,6 @@ public class TestBase
       Directory.CreateDirectory(path);
       return path;
    }
-   
-   protected LightningEnvironment CreateEnvironment() => 
-      new(TempPath(), new EnvironmentConfiguration { MaxDatabases = 5, MapSize = 1024 * 1024 * 100 });
    
    public static void CleanupSession()
    {
