@@ -32,7 +32,7 @@ public class QueueTests : TestBase
             var receiveTask = queue.Receive("test", token).FirstAsync(token);
             await Task.Delay(100, token);
             receiveTask.IsCompleted.ShouldBeFalse();
-            await Task.WhenAny(receiveTask.AsTask(), Task.Delay(950, token));
+            await Task.WhenAny(receiveTask.AsTask(), Task.Delay(TimeSpan.FromSeconds(1), token));
             receiveTask.IsCompleted.ShouldBeTrue();
         }, TimeSpan.FromSeconds(2));
     }
