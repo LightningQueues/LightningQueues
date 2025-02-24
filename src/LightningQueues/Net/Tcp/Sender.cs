@@ -59,6 +59,16 @@ public class Sender : IDisposable
                         await _protocol.SendAsync(uri, client.GetStream(), messages, linked.Token)
                             .ConfigureAwait(false);
                     }
+                    catch (SocketException ex) when (ex.SocketErrorCode == SocketError.HostNotFound)
+                    {
+                        _logger.SenderSendingError(uri, ex);
+                        var failed = new OutgoingMessageFailure
+                        {
+                            Messages = messages,
+                            ShouldRetry = false
+                        };
+                        await _failedToSend.Writer.WriteAsync(failed, cancellationToken).ConfigureAwait(false);
+                    }
                     catch (QueueDoesNotExistException ex)
                     {
                         _logger.SenderQueueDoesNotExistError(uri, ex);
@@ -68,7 +78,8 @@ public class Sender : IDisposable
                         _logger.SenderSendingError(uri, ex);
                         var failed = new OutgoingMessageFailure
                         {
-                            Messages = messages
+                            Messages = messages,
+                            ShouldRetry = true
                         };
                         await _failedToSend.Writer.WriteAsync(failed, cancellationToken).ConfigureAwait(false);
                     }

@@ -53,7 +53,7 @@ public class OutgoingMessageTests : TestBase
                 tx.Commit();
             }
 
-            store.FailedToSend(message);
+            store.FailedToSend(false, message);
 
             var outgoing = store.GetMessage("outgoing", message.Id);
             outgoing.ShouldBeNull();
@@ -74,7 +74,7 @@ public class OutgoingMessageTests : TestBase
                 tx.Commit();
             }
 
-            store.FailedToSend(message);
+            store.FailedToSend(false, message);
 
             var outgoing = store.GetMessage("outgoing", message.Id);
             outgoing.ShouldBeNull();

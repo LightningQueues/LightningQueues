@@ -18,7 +18,7 @@ public interface IMessageStore : IDisposable
     void SuccessfullyReceived(LmdbTransaction transaction, Message message);
     void StoreOutgoing(LmdbTransaction tx, Message message);
     void StoreOutgoing(params IEnumerable<Message> messages);
-    int FailedToSend(Message message);
+    void FailedToSend(bool shouldRemove = false, params IEnumerable<Message> message);
     void SuccessfullySent(params IEnumerable<Message> messages);
     Message GetMessage(string queueName, MessageId messageId);
     string[] GetAllQueues();

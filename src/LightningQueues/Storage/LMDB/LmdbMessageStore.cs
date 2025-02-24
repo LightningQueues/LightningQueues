@@ -114,14 +114,16 @@ public class LmdbMessageStore : IMessageStore
         return new LmdbTransaction(_environment.BeginTransaction(), scope);
     }
 
-    public int FailedToSend(Message message)
+    public void FailedToSend(bool shouldRemove = false, params IEnumerable<Message> messages)
     {
         lock (_lock)
         {
             using var tx = _environment.BeginTransaction();
-            var result = FailedToSend(tx, message);
+            foreach (var message in messages)
+            {
+                FailedToSend(tx, message);
+            }
             ThrowIfError(tx.Commit());
-            return result;
         }
     }
 
@@ -308,14 +310,14 @@ public class LmdbMessageStore : IMessageStore
             throw new StorageException("Error with LightningDB read operation", resultCode);
     }
 
-    private int FailedToSend(LightningTransaction tx, Message message)
+    private void FailedToSend(LightningTransaction tx, Message message)
     {
         Span<byte> id = stackalloc byte[16];
         message.Id.MessageIdentifier.TryWriteBytes(id);
         using var db = OpenQueueDatabase(tx, OutgoingQueue);
         var value = tx.Get(db, id);
         if (value.resultCode == MDBResultCode.NotFound)
-            return int.MaxValue;
+            return;
         var valueBuffer = value.value.AsSpan();
         var msg = _serializer.ToMessage(valueBuffer);
         var attempts = message.SentAttempts;
@@ -335,7 +337,6 @@ public class LmdbMessageStore : IMessageStore
         {
             ThrowIfError(tx.Put(db, id, _serializer.AsSpan(msg)));
         }
-        return attempts;
     }
 
     private void MoveToQueue(LightningTransaction tx, string queueName, Message message)

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
@@ -8,8 +9,6 @@ using LightningQueues.Net;
 using LightningQueues.Serialization;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
-using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 using Shouldly;
 
 namespace LightningQueues.Tests.Net;
@@ -86,7 +85,8 @@ public class SendingErrorPolicyTests : TestBase
             var errorTask = policy.StartRetries(cancellation.Token);
             var failure = new OutgoingMessageFailure
             {
-                Messages = [message]
+                Messages = [message],
+                ShouldRetry = true
             };
             var retryTask = policy.Retries.ReadAllAsync(cancellation.Token)
                 .FirstAsync(cancellation.Token);
@@ -146,7 +146,8 @@ public class SendingErrorPolicyTests : TestBase
             var errorTask = policy.StartRetries(cancellation.Token);
             var failure = new OutgoingMessageFailure
             {
-                Messages = [message]
+                Messages = [message],
+                ShouldRetry = true
             };
             var retriesTask = Task.Factory.StartNew(async () =>
             {
@@ -175,8 +176,7 @@ public class SendingErrorPolicyTests : TestBase
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var failures = Channel.CreateUnbounded<OutgoingMessageFailure>();
         var message = NewMessage();
-        var store = Substitute.For<IMessageStore>();
-        store.FailedToSend(Arg.Is(message)).Throws(new Exception("bam!"));
+        var store = new StubMessageStore();
         var errorPolicy = new SendingErrorPolicy(new RecordingLogger(), store, failures);
         var ended = false;
         var failure = new OutgoingMessageFailure
@@ -215,5 +215,93 @@ public class SendingErrorPolicyTests : TestBase
         var errorPolicy = new SendingErrorPolicy(logger, store, failures);
         await scenario(errorPolicy, store, failures, cancellation);
         await cancellation.CancelAsync();
+    }
+}
+
+public class StubMessageStore : IMessageStore
+{
+    public void Dispose()
+    {
+        // TODO release managed resources here
+    }
+
+    public LmdbTransaction BeginTransaction()
+    {
+        throw new NotImplementedException();
+    }
+
+    public void CreateQueue(string queueName)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void StoreIncoming(params IEnumerable<Message> messages)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void StoreIncoming(LmdbTransaction transaction, params IEnumerable<Message> messages)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void DeleteIncoming(params IEnumerable<Message> messages)
+    {
+        throw new NotImplementedException();
+    }
+
+    public IEnumerable<Message> PersistedIncoming(string queueName)
+    {
+        throw new NotImplementedException();
+    }
+
+    public IEnumerable<Message> PersistedOutgoing()
+    {
+        throw new NotImplementedException();
+    }
+
+    public void MoveToQueue(LmdbTransaction transaction, string queueName, Message message)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void SuccessfullyReceived(LmdbTransaction transaction, Message message)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void StoreOutgoing(LmdbTransaction tx, Message message)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void StoreOutgoing(params IEnumerable<Message> messages)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void FailedToSend(bool shouldRemove = false, params IEnumerable<Message> message)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void SuccessfullySent(params IEnumerable<Message> messages)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Message GetMessage(string queueName, MessageId messageId)
+    {
+        throw new NotImplementedException();
+    }
+
+    public string[] GetAllQueues()
+    {
+        throw new NotImplementedException();
+    }
+
+    public void ClearAllStorage()
+    {
+        throw new NotImplementedException();
     }
 }

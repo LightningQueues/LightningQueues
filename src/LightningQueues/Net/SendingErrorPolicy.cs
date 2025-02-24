@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -28,19 +29,27 @@ public class SendingErrorPolicy
     {
         await foreach (var messageFailure in _failedToConnect.Reader.ReadAllAsync(cancellationToken))
         {
-            foreach (var message in messageFailure.Messages)
-            {
-                IncrementAttempt(message);
-                if (!ShouldRetry(message)) 
-                    continue;
-                await Task.Delay(TimeSpan.FromSeconds(message.SentAttempts * message.SentAttempts), cancellationToken);
-                await _retries.Writer.WriteAsync(message, cancellationToken);
-            }
+            IncrementSentAttempt(messageFailure.Messages);
+            IncrementAttemptAndStoreForRecovery(!messageFailure.ShouldRetry, messageFailure.Messages);
+            await HandleMessageRetries(messageFailure.ShouldRetry, cancellationToken, messageFailure.Messages);
         }
     }
 
-    public bool ShouldRetry(Message message)
+    private async Task HandleMessageRetries(bool shouldRetry, CancellationToken cancellationToken, params IEnumerable<Message> messages)
     {
+        foreach (var message in messages)
+        {
+            if (!ShouldRetry(message, shouldRetry)) 
+                continue;
+            await Task.Delay(TimeSpan.FromSeconds(message.SentAttempts * message.SentAttempts), cancellationToken);
+            await _retries.Writer.WriteAsync(message, cancellationToken);
+        }
+    }
+
+    public bool ShouldRetry(Message message, bool shouldRetryOverride = true)
+    {
+        if (!shouldRetryOverride)
+            return false;
         var totalAttempts = message.MaxAttempts ?? 100;
         if(_logger.IsEnabled(LogLevel.Debug))
             _logger.LogDebug("Failed to send should retry with on: {AttemptCount}, out of {TotalAttempts}", message.SentAttempts, totalAttempts);
@@ -51,17 +60,25 @@ public class SendingErrorPolicy
                (!message.DeliverBy.HasValue || DateTime.Now < message.DeliverBy);
     }
 
-    private void IncrementAttempt(Message message)
+    private void IncrementAttemptAndStoreForRecovery(bool shouldRemove, params IEnumerable<Message> messages)
     {
         try
         {
-            message.SentAttempts++;
-            _store.FailedToSend(message);
+
+            _store.FailedToSend(shouldRemove, messages);
         }
         catch (Exception ex)
         {
             if(_logger.IsEnabled(LogLevel.Error))
                 _logger.LogError(ex, "Failed to increment send failure");
+        }
+    }
+
+    private static void IncrementSentAttempt(IEnumerable<Message> messages)
+    {
+        foreach (var message in messages)
+        {
+            message.SentAttempts++;
         }
     }
 }
