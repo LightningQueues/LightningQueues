@@ -110,9 +110,6 @@ new TlsStreamSecurity(async (_, stream) =>
         checkCertificateRevocation: false, enabledSslProtocols: SslProtocols.Tls12);
     return sslStream;
 }));
-
-var secureQueueManager = new QueueManager("C:\\secure-queue-data", options);
-secureQueueManager.Start();
 ```
 
 You can customize the encryption level based on your requirements.
