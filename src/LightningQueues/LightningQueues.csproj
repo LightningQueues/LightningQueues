@@ -8,7 +8,7 @@
     <LangVersion>13</LangVersion>
     <AssemblyName>LightningQueues</AssemblyName>
     <PackageId>LightningQueues</PackageId>
-    <PackageIconUrl>lightning-qqqs.png</PackageIconUrl>
+    <PackageIconUrl>https://raw.githubusercontent.com/LightningQueues/LightningQueues/refs/heads/main/lighting-qqqs.png</PackageIconUrl>
     <PackageTags>queue;lightning;messaging;store-and-forward;</PackageTags>
     <PackageProjectUrl>https://github.com/LightningQueues/LightningQueues</PackageProjectUrl>
     <PackageLicenseUrl>https://github.com/LightningQueues/LightningQueues/blob/main/LICENSE</PackageLicenseUrl>

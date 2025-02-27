@@ -1,6 +1,6 @@
 # LightningQueues - Fast Persistent Queues for .NET
 
-![LightningQueues logo](https://github.com/LightningQueues/LightningQueues/blob/main/lightning-qqqs.png)
+---
 
 [![.NET Tests](https://github.com/LightningQueues/LightningQueues/workflows/.NET%20Tests/badge.svg)](https://github.com/LightningQueues/LightningQueues/actions)
 [![NuGet version](https://img.shields.io/nuget/v/LightningQueues.svg)](https://www.nuget.org/packages/LightningQueues/)
