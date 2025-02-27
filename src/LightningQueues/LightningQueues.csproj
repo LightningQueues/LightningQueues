@@ -2,15 +2,22 @@
 
   <PropertyGroup>
     <Description>LightningQueues</Description>
-    <VersionPrefix>0.4.0</VersionPrefix>
+    <VersionPrefix>0.5.0</VersionPrefix>
     <Authors>Corey Kaylor</Authors>
     <TargetFramework>net9.0</TargetFramework>
     <LangVersion>13</LangVersion>
     <AssemblyName>LightningQueues</AssemblyName>
     <PackageId>LightningQueues</PackageId>
+    <PackageIconUrl>lightning-qqqs.png</PackageIconUrl>
     <PackageTags>queue;lightning;messaging;store-and-forward;</PackageTags>
     <PackageProjectUrl>https://github.com/LightningQueues/LightningQueues</PackageProjectUrl>
+    <PackageLicenseUrl>https://github.com/LightningQueues/LightningQueues/blob/main/LICENSE</PackageLicenseUrl>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
   </PropertyGroup>
+  
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\..\readme.md" Pack="true" Visible="false" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="DotNext.IO" Version="5.18.2" />

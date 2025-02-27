@@ -1,6 +1,8 @@
 # LightningQueues - Fast Persistent Queues for .NET
 
-[![.NET Tests](https://github.com/LightningQueues/LightningQueues/workflows/.NET%20Tests/badge.svg)](https://github.com/LightningQueues/LightningQueues/actions)  
+![LightningQueues logo](https://github.com/LightningQueues/LightningQueues/blob/main/lightning-qqqs.png)
+
+[![.NET Tests](https://github.com/LightningQueues/LightningQueues/workflows/.NET%20Tests/badge.svg)](https://github.com/LightningQueues/LightningQueues/actions)
 [![NuGet version](https://img.shields.io/nuget/v/LightningQueues.svg)](https://www.nuget.org/packages/LightningQueues/)
 
 LightningQueues is a high-performance, lightweight, **store-and-forward message queue** for .NET applications. Powered
@@ -92,7 +94,7 @@ dotnet test
 ## Transport Security (TLS Encryption)
 
 LightningQueues supports **TLS encryption** to secure communication. The library provides hooks to enable custom
-certificate validation and encryption settings. For example:
+certificate validation and encry![lightningqueues.jpg](../../../Downloads/lightningqueues.jpg)ption settings. For example:
 
 ```csharp
 var certificate = LoadYourCertificate();
