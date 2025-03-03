@@ -186,22 +186,40 @@ public class Queue : IDisposable
 
         try
         {
-            using (Store)
-            using (_receiver)
-            using (_sender)
-            using (_cancelOnDispose)
+            // First signal cancellation to stop all tasks
+            _cancelOnDispose.Cancel();
+            
+            // Complete the channels to prevent new messages
+            _receivingChannel.Writer.TryComplete();
+            _sendChannel.Writer.TryComplete();
+            
+            // Give tasks time to respond to cancellation
+            try
             {
-                _cancelOnDispose.Cancel();
-                try
+                // Use a timeout to avoid hanging indefinitely 
+                if (_sendingTask != null && _receivingTask != null)
                 {
-                    Task.WaitAll(_receivingTask, _sendingTask);
+                    var completedTask = Task.WhenAll(_sendingTask, _receivingTask).Wait(TimeSpan.FromSeconds(5));
+                    if (!completedTask && _logger.IsEnabled(LogLevel.Warning))
+                    {
+                        _logger.LogWarning("Tasks did not complete within timeout during disposal");
+                    }
                 }
-                catch (AggregateException)
-                {
-                }
-                _receivingChannel.Writer.TryComplete();
-                _sendChannel.Writer.TryComplete();
             }
+            catch (AggregateException ex)
+            {
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug(ex, "Exception waiting for tasks to complete during disposal");
+            }
+            
+            // Now dispose components in correct order
+            // Dispose sender and receiver first as they might be using the store
+            _sender?.Dispose();
+            _receiver?.Dispose();
+            
+            // Finally dispose the store and cancellation token
+            Store?.Dispose();
+            _cancelOnDispose?.Dispose();
         }
         catch (Exception ex)
         {

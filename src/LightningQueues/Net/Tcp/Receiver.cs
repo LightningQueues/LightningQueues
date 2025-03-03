@@ -73,10 +73,23 @@ public class Receiver : IDisposable
         if (_disposed)
             return;
         
+        // Mark as disposed first to stop accepting new connections in StartReceivingAsync
         _disposed = true;
         _logger.ReceiverDisposing();
-        if(_listener.Server.IsBound)
-            _listener.Stop();
+        
+        try
+        {
+            // Safely stop the listener if it's running
+            if(_listener.Server.IsBound)
+                _listener.Stop();
+        }
+        catch (Exception ex)
+        {
+            // Just log and continue with disposal
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug(ex, "Error stopping listener during disposal");
+        }
+        
         GC.SuppressFinalize(this);
     }
 }

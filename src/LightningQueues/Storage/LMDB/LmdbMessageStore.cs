@@ -30,6 +30,7 @@ public class LmdbMessageStore : IMessageStore
 
     public void StoreIncoming(params IEnumerable<Message> messages)
     {
+        CheckDisposed();
         lock (_lock)
         {
             using var tx = _environment.BeginTransaction();
@@ -37,9 +38,16 @@ public class LmdbMessageStore : IMessageStore
             ThrowIfError(tx.Commit());
         }
     }
+    
+    private void CheckDisposed()
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(LmdbMessageStore), "Cannot perform operation on a disposed message store");
+    }
 
     public void StoreIncoming(LmdbTransaction transaction, params IEnumerable<Message> messages)
     {
+        CheckDisposed();
         var tx = transaction.Transaction;
         StoreIncoming(tx, messages);
     }
@@ -75,6 +83,7 @@ public class LmdbMessageStore : IMessageStore
 
     public void DeleteIncoming(IEnumerable<Message> messages)
     {
+        CheckDisposed();
         lock (_lock)
         {
             using var tx = _environment.BeginTransaction();
@@ -102,6 +111,7 @@ public class LmdbMessageStore : IMessageStore
 
     public LmdbTransaction BeginTransaction()
     {
+        CheckDisposed();
         lock (_lock)
         {
             return new LmdbTransaction(_environment.BeginTransaction());
@@ -110,6 +120,7 @@ public class LmdbMessageStore : IMessageStore
 
     public void FailedToSend(bool shouldRemove = false, params IEnumerable<Message> messages)
     {
+        CheckDisposed();
         lock (_lock)
         {
             using var tx = _environment.BeginTransaction();
@@ -123,6 +134,7 @@ public class LmdbMessageStore : IMessageStore
 
     public void SuccessfullySent(params IEnumerable<Message> messages)
     {
+        CheckDisposed();
         lock (_lock)
         {
             using var tx = _environment.BeginTransaction();
@@ -133,6 +145,7 @@ public class LmdbMessageStore : IMessageStore
 
     public Message GetMessage(string queueName, MessageId messageId)
     {
+        CheckDisposed();
         Span<byte> id = stackalloc byte[16];
         messageId.MessageIdentifier.TryWriteBytes(id);
         lock (_lock)
@@ -150,11 +163,13 @@ public class LmdbMessageStore : IMessageStore
 
     public string[] GetAllQueues()
     {
+        CheckDisposed();
         return GetAllQueuesImpl().Where(x => OutgoingQueue != x).ToArray();
     }
 
     public void ClearAllStorage()
     {
+        CheckDisposed();
         var databases = GetAllQueuesImpl().ToArray();
         lock (_lock)
         {
@@ -192,6 +207,7 @@ public class LmdbMessageStore : IMessageStore
 
     public IEnumerable<Message> PersistedIncoming(string queueName)
     {
+        CheckDisposed();
         var list = new List<Message>();
         lock (_lock)
         {
@@ -211,6 +227,7 @@ public class LmdbMessageStore : IMessageStore
 
     public IEnumerable<Message> PersistedOutgoing()
     {
+        CheckDisposed();
         var list = new List<Message>();
         lock (_lock)
         {
@@ -229,12 +246,14 @@ public class LmdbMessageStore : IMessageStore
 
     public void MoveToQueue(LmdbTransaction transaction, string queueName, Message message)
     {
+        CheckDisposed();
         var tx = transaction.Transaction;
         MoveToQueue(tx, queueName, message);
     }
 
     public void SuccessfullyReceived(LmdbTransaction transaction, Message message)
     {
+        CheckDisposed();
         var tx = transaction.Transaction;
         SuccessfullyReceived(tx, message);
     }
@@ -265,12 +284,14 @@ public class LmdbMessageStore : IMessageStore
 
     public void StoreOutgoing(LmdbTransaction transaction, Message message)
     {
+        CheckDisposed();
         var tx = transaction.Transaction;
         StoreOutgoing(tx, message);
     }
 
     public void StoreOutgoing(IEnumerable<Message> messages)
     {
+        CheckDisposed();
         lock (_lock)
         {
             using var tx = _environment.BeginTransaction();
@@ -355,6 +376,7 @@ public class LmdbMessageStore : IMessageStore
 
     public void CreateQueue(string queueName)
     {
+        CheckDisposed();
         lock (_lock)
         {
             using var tx = _environment.BeginTransaction();
@@ -380,10 +402,26 @@ public class LmdbMessageStore : IMessageStore
     {
         if (_disposed)
             return;
+            
+        // First mark as disposed to prevent new operations
         _disposed = true;
-        lock (_lock)
+        
+        if (disposing)
         {
-            _environment.Dispose();
+            // Use lock to ensure we don't dispose while another operation is in progress
+            lock (_lock)
+            {
+                try
+                {
+                    // Dispose the environment in a controlled manner
+                    _environment.Dispose();
+                }
+                catch (Exception)
+                {
+                    // Swallow exceptions during disposal to prevent disruption
+                    // We're already tearing down, so not much we can do about failures
+                }
+            }
         }
     }
 }

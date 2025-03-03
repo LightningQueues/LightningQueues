@@ -15,7 +15,6 @@ public class Sender : IDisposable
     private readonly ISendingProtocol _protocol;
     private readonly Channel<OutgoingMessageFailure> _failedToSend;
     private readonly ILogger _logger;
-    private readonly CancellationTokenSource _cancellation;
     private readonly TimeSpan _sendTimeout;
 
     public Sender(ISendingProtocol protocol, ILogger logger, TimeSpan sendTimeout)
@@ -24,7 +23,6 @@ public class Sender : IDisposable
         _logger = logger;
         _sendTimeout = sendTimeout;
         _failedToSend = Channel.CreateUnbounded<OutgoingMessageFailure>();
-        _cancellation = new CancellationTokenSource();
     }
 
     public Channel<OutgoingMessageFailure> FailedToSend() => _failedToSend;
@@ -97,10 +95,17 @@ public class Sender : IDisposable
     public void Dispose()
     {
         _logger.SenderDisposing();
-        using (_cancellation)
+        
+        try
         {
-            if (!_cancellation.IsCancellationRequested)
-                _cancellation.Cancel();
+            // Complete the channel to prevent further sends
+            _failedToSend.Writer.TryComplete();
+        }
+        catch (Exception ex)
+        {
+            // Just log and continue with disposal
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug(ex, "Error during sender disposal");
         }
 
         GC.SuppressFinalize(this);
