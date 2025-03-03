@@ -61,8 +61,7 @@ public class Queue : IDisposable
         }
         catch (Exception ex)
         {
-            if(_logger.IsEnabled(LogLevel.Error))
-                _logger.LogError(ex, "Error starting queue");
+            _logger.QueueStartError(ex);
         }
     }
 
@@ -73,8 +72,7 @@ public class Queue : IDisposable
 
     private async Task StartSendingAsync(CancellationToken token)
     {
-        if(_logger.IsEnabled(LogLevel.Debug))
-            _logger.LogDebug("Starting LightningQueues");
+        _logger.QueueStarting();
         var errorPolicy = new SendingErrorPolicy(_logger, Store, _sender.FailedToSend());
         var errorTask = errorPolicy.StartRetries(token);
         var persistedMessages = Store.PersistedOutgoing().ToList();
@@ -113,8 +111,7 @@ public class Queue : IDisposable
 
     public void MoveToQueue(string queueName, Message message)
     {
-        if(_logger.IsEnabled(LogLevel.Debug))
-            _logger.LogDebug("Moving message {MessageIdentifier} to {QueueName}", message.Id.MessageIdentifier, queueName);
+        _logger.QueueMoveMessage(message.Id, queueName);
         using var tx = Store.BeginTransaction();
         Store.MoveToQueue(tx, queueName, message);
         tx.Commit();
@@ -155,8 +152,7 @@ public class Queue : IDisposable
         }
         catch (Exception ex)
         {
-            if(_logger.IsEnabled(LogLevel.Error))
-                _logger.LogError(ex, "Error sending queue outgoing messages");
+            _logger.QueueOutgoingError(ex);
         }
     }
     
@@ -200,16 +196,15 @@ public class Queue : IDisposable
                 if (_sendingTask != null && _receivingTask != null)
                 {
                     var completedTask = Task.WhenAll(_sendingTask, _receivingTask).Wait(TimeSpan.FromSeconds(5));
-                    if (!completedTask && _logger.IsEnabled(LogLevel.Warning))
+                    if (!completedTask)
                     {
-                        _logger.LogWarning("Tasks did not complete within timeout during disposal");
+                        _logger.QueueTasksTimeout();
                     }
                 }
             }
             catch (AggregateException ex)
             {
-                if (_logger.IsEnabled(LogLevel.Debug))
-                    _logger.LogDebug(ex, "Exception waiting for tasks to complete during disposal");
+                _logger.QueueTasksDisposeException(ex);
             }
             
             // Now dispose components in correct order

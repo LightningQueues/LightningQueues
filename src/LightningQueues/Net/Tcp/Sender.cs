@@ -104,8 +104,7 @@ public class Sender : IDisposable
         catch (Exception ex)
         {
             // Just log and continue with disposal
-            if (_logger.IsEnabled(LogLevel.Debug))
-                _logger.LogDebug(ex, "Error during sender disposal");
+            _logger.SenderDisposalError(ex);
         }
 
         GC.SuppressFinalize(this);

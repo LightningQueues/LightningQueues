@@ -45,7 +45,7 @@ public abstract class ProtocolBase
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error reading from stream");
+            Logger.ProtocolStreamError(ex);
             if (!cancellationToken.IsCancellationRequested)
                 throw;
         }

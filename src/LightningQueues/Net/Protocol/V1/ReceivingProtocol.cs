@@ -66,12 +66,12 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
         }
         catch (EndOfStreamException)
         {
-            Logger.LogError("Failed to read from client, possible disconnected client or malformed request");
+            Logger.ProtocolReadError();
             throw new ProtocolViolationException("Failed to read messages, possible disconnected client or malformed request");
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Failed to read messages");
+            Logger.ProtocolReadMessagesError(ex);
             throw;
         }
         
@@ -117,7 +117,7 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Failed to send queue not found");
+            Logger.ProtocolQueueNotFoundError(ex);
         }
     }
 
@@ -130,7 +130,7 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Failed to send processing error");
+            Logger.ProtocolProcessingError(ex);
         }
     }
 

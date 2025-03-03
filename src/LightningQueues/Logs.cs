@@ -50,6 +50,11 @@ internal static class Logs
         LoggerMessage.Define(LogLevel.Debug, QueueEvents.Sender, "Disposing Sender");
     public static void SenderDisposing(this ILogger logger)=>
         SenderDisposingDefinition(logger, default);
+    
+    private static readonly Action<ILogger, Exception> SenderDisposalErrorDefinition = 
+        LoggerMessage.Define(LogLevel.Debug, QueueEvents.Sender, "Error during sender disposal");
+    public static void SenderDisposalError(this ILogger logger, Exception ex)=>
+        SenderDisposalErrorDefinition(logger, ex);
     //End Sender
 
     //Receiver
@@ -67,6 +72,16 @@ internal static class Logs
         LoggerMessage.Define(LogLevel.Debug, QueueEvents.Receiver, "Receiver Disposing");
     public static void ReceiverDisposing(this ILogger logger)=>
         ReceiverDisposingDefinition(logger, default);
+    
+    private static readonly Action<ILogger, Exception> ReceiverAcceptErrorDefinition = 
+        LoggerMessage.Define(LogLevel.Error, QueueEvents.Receiver, "Error accepting socket");
+    public static void ReceiverAcceptError(this ILogger logger, Exception ex)=>
+        ReceiverAcceptErrorDefinition(logger, ex);
+    
+    private static readonly Action<ILogger, Exception> ReceiverDisposalErrorDefinition = 
+        LoggerMessage.Define(LogLevel.Debug, QueueEvents.Receiver, "Error stopping listener during disposal");
+    public static void ReceiverDisposalError(this ILogger logger, Exception ex)=>
+        ReceiverDisposalErrorDefinition(logger, ex);
     //End Receiver
     
     //Queue
@@ -114,5 +129,79 @@ internal static class Logs
         LoggerMessage.Define<string>(LogLevel.Debug, QueueEvents.Receiver, "Start receiving for {Queue}");
     public static void QueueStartReceiving(this ILogger logger, string queueName)=>
         QueueStartingReceiveDefinition(logger, queueName, default);
+    
+    private static readonly Action<ILogger, Exception> QueueStartErrorDefinition = 
+        LoggerMessage.Define(LogLevel.Error, QueueEvents.Receiver, "Error starting queue");
+    public static void QueueStartError(this ILogger logger, Exception ex)=>
+        QueueStartErrorDefinition(logger, ex);
+    
+    private static readonly Action<ILogger, Exception> QueueStartingDefinition = 
+        LoggerMessage.Define(LogLevel.Debug, QueueEvents.Receiver, "Starting LightningQueues");
+    public static void QueueStarting(this ILogger logger)=>
+        QueueStartingDefinition(logger, default);
+    
+    private static readonly Action<ILogger, MessageId, string, Exception> QueueMoveMessageDefinition = 
+        LoggerMessage.Define<MessageId, string>(LogLevel.Debug, QueueEvents.Receiver, "Moving message {MessageIdentifier} to {QueueName}");
+    public static void QueueMoveMessage(this ILogger logger, MessageId messageId, string queueName)=>
+        QueueMoveMessageDefinition(logger, messageId, queueName, default);
+    
+    private static readonly Action<ILogger, Exception> QueueOutgoingErrorDefinition = 
+        LoggerMessage.Define(LogLevel.Error, QueueEvents.Receiver, "Error sending queue outgoing messages");
+    public static void QueueOutgoingError(this ILogger logger, Exception ex)=>
+        QueueOutgoingErrorDefinition(logger, ex);
+    
+    private static readonly Action<ILogger, Exception> QueueTasksTimeoutDefinition = 
+        LoggerMessage.Define(LogLevel.Warning, QueueEvents.Receiver, "Tasks did not complete within timeout during disposal");
+    public static void QueueTasksTimeout(this ILogger logger)=>
+        QueueTasksTimeoutDefinition(logger, default);
+    
+    private static readonly Action<ILogger, Exception> QueueTasksDisposeExceptionDefinition = 
+        LoggerMessage.Define(LogLevel.Debug, QueueEvents.Receiver, "Exception waiting for tasks to complete during disposal");
+    public static void QueueTasksDisposeException(this ILogger logger, Exception ex)=>
+        QueueTasksDisposeExceptionDefinition(logger, ex);
     //End Queue
+    
+    //SendingErrorPolicy
+    private static readonly Action<ILogger, int, int, Exception> PolicyShouldRetryAttemptsDefinition = 
+        LoggerMessage.Define<int, int>(LogLevel.Debug, QueueEvents.Queue, "Failed to send should retry with on: {AttemptCount}, out of {TotalAttempts}");
+    public static void PolicyShouldRetryAttempts(this ILogger logger, int attempts, int totalAttempts)=>
+        PolicyShouldRetryAttemptsDefinition(logger, attempts, totalAttempts, default);
+    
+    private static readonly Action<ILogger, DateTime?, DateTime, Exception> PolicyShouldRetryTimingDefinition = 
+        LoggerMessage.Define<DateTime?, DateTime>(LogLevel.Debug, QueueEvents.Queue, "Failed to send should retry with: {DeliverBy}, due to {CurrentTime}");
+    public static void PolicyShouldRetryTiming(this ILogger logger, DateTime? deliverBy, DateTime currentTime)=>
+        PolicyShouldRetryTimingDefinition(logger, deliverBy, currentTime, default);
+    
+    private static readonly Action<ILogger, Exception> PolicyIncrementFailureErrorDefinition = 
+        LoggerMessage.Define(LogLevel.Error, QueueEvents.Queue, "Failed to increment send failure");
+    public static void PolicyIncrementFailureError(this ILogger logger, Exception ex)=>
+        PolicyIncrementFailureErrorDefinition(logger, ex);
+    //End SendingErrorPolicy
+    
+    //Protocol
+    private static readonly Action<ILogger, Exception> ProtocolReadErrorDefinition = 
+        LoggerMessage.Define(LogLevel.Error, QueueEvents.Protocol, "Failed to read from client, possible disconnected client or malformed request");
+    public static void ProtocolReadError(this ILogger logger)=>
+        ProtocolReadErrorDefinition(logger, default);
+    
+    private static readonly Action<ILogger, Exception> ProtocolReadMessagesErrorDefinition = 
+        LoggerMessage.Define(LogLevel.Error, QueueEvents.Protocol, "Failed to read messages");
+    public static void ProtocolReadMessagesError(this ILogger logger, Exception ex)=>
+        ProtocolReadMessagesErrorDefinition(logger, ex);
+    
+    private static readonly Action<ILogger, Exception> ProtocolQueueNotFoundErrorDefinition = 
+        LoggerMessage.Define(LogLevel.Error, QueueEvents.Protocol, "Failed to send queue not found");
+    public static void ProtocolQueueNotFoundError(this ILogger logger, Exception ex)=>
+        ProtocolQueueNotFoundErrorDefinition(logger, ex);
+    
+    private static readonly Action<ILogger, Exception> ProtocolProcessingErrorDefinition = 
+        LoggerMessage.Define(LogLevel.Error, QueueEvents.Protocol, "Failed to send processing error");
+    public static void ProtocolProcessingError(this ILogger logger, Exception ex)=>
+        ProtocolProcessingErrorDefinition(logger, ex);
+    
+    private static readonly Action<ILogger, Exception> ProtocolStreamErrorDefinition = 
+        LoggerMessage.Define(LogLevel.Error, QueueEvents.Protocol, "Error reading from stream");
+    public static void ProtocolStreamError(this ILogger logger, Exception ex)=>
+        ProtocolStreamErrorDefinition(logger, ex);
+    //End Protocol
 }

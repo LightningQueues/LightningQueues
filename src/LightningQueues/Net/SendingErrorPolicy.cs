@@ -51,10 +51,9 @@ public class SendingErrorPolicy
         if (!shouldRetryOverride)
             return false;
         var totalAttempts = message.MaxAttempts ?? 100;
-        if(_logger.IsEnabled(LogLevel.Debug))
-            _logger.LogDebug("Failed to send should retry with on: {AttemptCount}, out of {TotalAttempts}", message.SentAttempts, totalAttempts);
-        if(message.DeliverBy.HasValue && _logger.IsEnabled(LogLevel.Debug))
-            _logger.LogDebug("Failed to send should retry with: {DeliverBy}, due to {CurrentTime}", message.DeliverBy, DateTime.Now);
+        _logger.PolicyShouldRetryAttempts(message.SentAttempts, totalAttempts);
+        if(message.DeliverBy.HasValue)
+            _logger.PolicyShouldRetryTiming(message.DeliverBy, DateTime.Now);
         return message.SentAttempts < totalAttempts
                &&
                (!message.DeliverBy.HasValue || DateTime.Now < message.DeliverBy);
@@ -69,8 +68,7 @@ public class SendingErrorPolicy
         }
         catch (Exception ex)
         {
-            if(_logger.IsEnabled(LogLevel.Error))
-                _logger.LogError(ex, "Failed to increment send failure");
+            _logger.PolicyIncrementFailureError(ex);
         }
     }
 

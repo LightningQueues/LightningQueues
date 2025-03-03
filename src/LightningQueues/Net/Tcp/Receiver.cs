@@ -57,8 +57,7 @@ public class Receiver : IDisposable
                 }
                 catch (Exception ex)
                 {
-                    if (_logger.IsEnabled(LogLevel.Error))
-                        _logger.LogError(ex, "Error accepting socket");
+                    _logger.ReceiverAcceptError(ex);
                 }
             }
         }
@@ -86,8 +85,7 @@ public class Receiver : IDisposable
         catch (Exception ex)
         {
             // Just log and continue with disposal
-            if (_logger.IsEnabled(LogLevel.Debug))
-                _logger.LogDebug(ex, "Error stopping listener during disposal");
+            _logger.ReceiverDisposalError(ex);
         }
         
         GC.SuppressFinalize(this);
