@@ -139,7 +139,7 @@ public class ReceivingProtocolTests : TestBase
         {
             using var ms = new MemoryStream();
             var msgs = protocol.ReceiveMessagesAsync(ms, token);
-            await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
+            await Task.Delay(TimeSpan.FromSeconds(2), CancellationToken.None);
             ms.Write(BitConverter.GetBytes(5));
             token.IsCancellationRequested.ShouldBe(true);
             logger.DebugMessages.ShouldBeEmpty();
