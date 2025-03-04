@@ -224,7 +224,6 @@ public class StubMessageStore : IMessageStore
 {
     public void Dispose()
     {
-        // TODO release managed resources here
     }
 
     public LmdbTransaction BeginTransaction()

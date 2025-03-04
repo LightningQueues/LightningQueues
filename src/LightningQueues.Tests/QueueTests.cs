@@ -116,4 +116,105 @@ public class QueueTests : TestBase
         queue2.Start();
         await cancellation.CancelAsync();
     }
+    
+    public async Task send_batch_of_messages()
+    {
+        await QueueScenario(async (queue, token) =>
+        {
+            // Create batch of messages for self
+            var message1 = NewMessage("test", "payload1");
+            var message2 = NewMessage("test", "payload2");
+            var message3 = NewMessage("test", "payload3");
+            
+            // Set destination to self for all messages
+            var destination = new Uri($"lq.tcp://localhost:{queue.Endpoint.Port}");
+            message1.Destination = destination;
+            message2.Destination = destination;
+            message3.Destination = destination;
+            
+            // Send all messages as a batch
+            queue.Send(message1, message2, message3);
+            
+            // Receive all the messages (should be 3)
+            var receivedMessages = await queue.Receive("test", token)
+                .Take(3)
+                .ToListAsync(token);
+            
+            receivedMessages.Count.ShouldBe(3);
+            
+            // Verify we received each message
+            var payloads = receivedMessages
+                .Select(ctx => System.Text.Encoding.UTF8.GetString(ctx.Message.Data))
+                .ToList();
+                
+            payloads.ShouldContain("payload1");
+            payloads.ShouldContain("payload2");
+            payloads.ShouldContain("payload3");
+            
+            // Verify the message store shows they were all sent
+            var store = (LmdbMessageStore)queue.Store;
+            store.PersistedOutgoing().Count().ShouldBe(0); // Should be 0 since they were processed
+        }, TimeSpan.FromSeconds(5));
+    }
+    
+    public async Task receive_from_multiple_queues_concurrently()
+    {
+        await QueueScenario(async (queue, token) =>
+        {
+            // Create multiple queues
+            queue.CreateQueue("queue1");
+            queue.CreateQueue("queue2");
+            queue.CreateQueue("queue3");
+            
+            // Enqueue messages in different queues
+            var message1 = NewMessage("queue1", "payload1");
+            var message2 = NewMessage("queue2", "payload2");
+            var message3 = NewMessage("queue3", "payload3");
+            
+            queue.Enqueue(message1);
+            queue.Enqueue(message2);
+            queue.Enqueue(message3);
+            
+            // Start receiving from all queues concurrently
+            var receiveQueue1Task = queue.Receive("queue1", token).FirstAsync(token);
+            var receiveQueue2Task = queue.Receive("queue2", token).FirstAsync(token);
+            var receiveQueue3Task = queue.Receive("queue3", token).FirstAsync(token);
+            
+            // Wait for all receives to complete and get results
+            var received1 = await receiveQueue1Task;
+            var received2 = await receiveQueue2Task;
+            var received3 = await receiveQueue3Task;
+            
+            System.Text.Encoding.UTF8.GetString(received1.Message.Data).ShouldBe("payload1");
+            System.Text.Encoding.UTF8.GetString(received2.Message.Data).ShouldBe("payload2");
+            System.Text.Encoding.UTF8.GetString(received3.Message.Data).ShouldBe("payload3");
+            
+            received1.Message.Queue.ShouldBe("queue1");
+            received2.Message.Queue.ShouldBe("queue2");
+            received3.Message.Queue.ShouldBe("queue3");
+        }, TimeSpan.FromSeconds(5));
+    }
+    
+    public async Task get_all_queue_names()
+    {
+        await QueueScenario((queue, token) =>
+        {
+            // Create multiple queues
+            queue.CreateQueue("queue1");
+            queue.CreateQueue("queue2");
+            queue.CreateQueue("queue3");
+            
+            // Get all queue names
+            var queueNames = queue.Queues;
+            
+            // Verify all queues are listed (including the default "test" queue)
+            queueNames.Length.ShouldBe(4); 
+            queueNames.ShouldContain("test");
+            queueNames.ShouldContain("queue1");
+            queueNames.ShouldContain("queue2");
+            queueNames.ShouldContain("queue3");
+            
+            return Task.CompletedTask;
+        });
+    }
 }
