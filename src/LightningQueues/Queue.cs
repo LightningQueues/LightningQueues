@@ -75,12 +75,12 @@ public class Queue : IDisposable
         _logger.QueueStarting();
         var errorPolicy = new SendingErrorPolicy(_logger, Store, _sender.FailedToSend());
         var errorTask = errorPolicy.StartRetries(token);
-        var persistedMessages = Store.PersistedOutgoing().ToList();
-        var sendingTask = Task.Factory.StartNew(async () =>
-        {
-            await _sender.StartSendingAsync(_sendChannel.Reader, token).ConfigureAwait(false);
-        }, token);
-        foreach (var message in persistedMessages)
+        // Start the sending task first to begin processing messages immediately
+        var sendingTask = Task.Run(async () =>
+            await _sender.StartSendingAsync(_sendChannel.Reader, token).ConfigureAwait(false), 
+            token);
+            
+        foreach (var message in Store.PersistedOutgoing())
         {
             await _sendChannel.Writer.WriteAsync(message, token).ConfigureAwait(false);
         }
@@ -94,19 +94,33 @@ public class Queue : IDisposable
         await Task.WhenAll(sendingTask, errorTask.AsTask());
     }
 
-    public IAsyncEnumerable<MessageContext> Receive(string queueName, CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<MessageContext> Receive(string queueName, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        if (cancellationToken != default)
-            cancellationToken = CancellationTokenSource
-                .CreateLinkedTokenSource(cancellationToken, _cancelOnDispose.Token).Token;
-        else
-            cancellationToken = _cancelOnDispose.Token;
+        // Combine the user's token with our disposal token, creating as few objects as possible
+        using var linkedSource = cancellationToken != CancellationToken.None
+            ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _cancelOnDispose.Token)
+            : null;
+        var effectiveToken = linkedSource?.Token ?? _cancelOnDispose.Token;
 
         _logger.QueueStartReceiving(queueName);
-        return Store.PersistedIncoming(queueName)
-            .Concat(_receivingChannel.Reader.ReadAllAsync(cancellationToken))
-            .Where(x => x.Queue == queueName)
-            .Select(x => new MessageContext(x, this));
+        
+        // First yield all persisted messages from storage
+        foreach (var message in Store.PersistedIncoming(queueName))
+        {
+            if (message.Queue == queueName)
+            {
+                yield return new MessageContext(message, this);
+            }
+        }
+        
+        // Then stream from the channel, filtering as we go
+        await foreach (var message in _receivingChannel.Reader.ReadAllAsync(effectiveToken))
+        {
+            if (message.Queue == queueName)
+            {
+                yield return new MessageContext(message, this);
+            }
+        }
     }
 
     public void MoveToQueue(string queueName, Message message)
@@ -134,7 +148,6 @@ public class Queue : IDisposable
             {
                 if (!ReceivingChannel.TryWrite(message))
                     _logger.QueueErrorReceiveLater(message.Id, timeSpan, null);
-
             });
     }
 

@@ -8,6 +8,5 @@ namespace LightningQueues.Net;
 
 public interface ISendingProtocol
 {
-    ValueTask SendAsync(Uri destination, Stream stream, IEnumerable<Message> batch, 
-        CancellationToken token);
+    ValueTask SendAsync(Uri destination, Stream stream, List<Message> batch, CancellationToken token);
 }

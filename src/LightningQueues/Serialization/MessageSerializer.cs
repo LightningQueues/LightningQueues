@@ -22,9 +22,10 @@ public class MessageSerializer : IMessageSerializer
 
     public IList<Message> ReadMessages(ReadOnlySequence<byte> buffer)
     {
-        var messages = new List<Message>();
         var reader = new SequenceReader(buffer);
         var numberOfMessages = reader.ReadLittleEndian<int>();
+        var messages = new List<Message>(numberOfMessages);
+            
         for (var i = 0; i < numberOfMessages; ++i)
         {
             var msg = ReadMessage(ref reader);
@@ -96,9 +97,17 @@ public class MessageSerializer : IMessageSerializer
 
     public Message ToMessage(ReadOnlySpan<byte> buffer)
     {
-        using var owner = MemoryPool<byte>.Shared.Rent(buffer.Length);
-        var reader = ReaderFor(owner, buffer);
-        return ReadMessage(ref reader);
+        try
+        {
+            using var owner = MemoryPool<byte>.Shared.Rent(buffer.Length);
+            var reader = ReaderFor(owner, buffer);
+            return ReadMessage(ref reader);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            // Convert deserialization issues into protocol violations to maintain compatibility
+            throw new System.Net.ProtocolViolationException("Failed to deserialize message");
+        }
     }
 
     private Message ReadMessage(ref SequenceReader reader)
@@ -127,8 +136,16 @@ public class MessageSerializer : IMessageSerializer
         }
 
         var dataLength = reader.ReadLittleEndian<int>();
-        msg.Data = reader.RemainingSequence.Slice(reader.Position, dataLength).ToArray();
-        reader.Skip(dataLength);
+        if (dataLength > 0)
+        {
+            // Allocate once with correct size
+            msg.Data = new byte[dataLength];
+            reader.Read(msg.Data);
+        }
+        else
+        {
+            msg.Data = [];
+        }
         var uri = ReadCommonString(ref reader);
         if (!string.IsNullOrEmpty(uri))
             msg.Destination = new Uri(uri);

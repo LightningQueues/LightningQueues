@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipelines;
-using System.Linq;
 using System.Net;
 using System.Runtime.Serialization;
 using System.Threading;
@@ -27,8 +26,7 @@ public class SendingProtocol : ProtocolBase, ISendingProtocol
         _serializer = serializer;
     }
 
-    public async ValueTask SendAsync(Uri destination, Stream stream,
-        IEnumerable<Message> batch, CancellationToken token)
+    public async ValueTask SendAsync(Uri destination, Stream stream, List<Message> batch, CancellationToken token)
     {
         using var doneCancellation = new CancellationTokenSource();
         using var linkedCancel = CancellationTokenSource.CreateLinkedTokenSource(doneCancellation.Token, token);
@@ -38,17 +36,17 @@ public class SendingProtocol : ProtocolBase, ISendingProtocol
         }
         finally
         {
-            doneCancellation.Cancel();
+            await doneCancellation.CancelAsync();
         }
     }
 
-    private async ValueTask SendAsyncImpl(Uri destination, Stream stream,
-        IEnumerable<Message> batch, CancellationToken token)
+    private async ValueTask SendAsyncImpl(Uri destination, Stream stream, List<Message> messages, CancellationToken token)
     {
         stream = await _security.Apply(destination, stream).ConfigureAwait(false);
-        var messages = batch.ToList();
+        
         var memory = _serializer.ToMemory(messages);
-        await stream.WriteAsync(BitConverter.GetBytes(memory.Length), token).ConfigureAwait(false);
+        
+        await stream.WriteAsync(BitConverter.GetBytes(memory.Length), 0, 4, token).ConfigureAwait(false);
         Logger.SenderWritingMessageBatch();
         await stream.WriteAsync(memory, token).ConfigureAwait(false);
         Logger.SenderSuccessfullyWroteMessageBatch();

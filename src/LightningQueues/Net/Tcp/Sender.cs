@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -39,10 +40,19 @@ public class Sender : IDisposable
                     break;
                 using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 linked.CancelAfter(_sendTimeout);
-                foreach (var messageGroup in batch.GroupBy(x => x.Destination))
+                // Group messages by destination without creating extra lists
+                // First, find the distinct destinations
+                var destinations = new HashSet<Uri>();
+                foreach (var message in batch)
                 {
-                    var uri = messageGroup.Key;
-                    var messages = messageGroup.ToList();
+                    destinations.Add(message.Destination);
+                }
+
+                // Then process each destination with its messages
+                foreach (var uri in destinations)
+                {
+                    var messagesForDestination = batch.Where(m => m.Destination == uri).ToList();
+                    
                     try
                     {
                         using var client = new TcpClient();
@@ -56,7 +66,7 @@ public class Sender : IDisposable
                             await client.ConnectAsync(uri.Host, uri.Port, linked.Token).ConfigureAwait(false);
                         }
 
-                        await _protocol.SendAsync(uri, client.GetStream(), messages, linked.Token)
+                        await _protocol.SendAsync(uri, client.GetStream(), messagesForDestination, linked.Token)
                             .ConfigureAwait(false);
                     }
                     catch (SocketException ex) when (ex.SocketErrorCode == SocketError.HostNotFound)
@@ -64,7 +74,7 @@ public class Sender : IDisposable
                         _logger.SenderSendingError(uri, ex);
                         var failed = new OutgoingMessageFailure
                         {
-                            Messages = messages,
+                            Messages = messagesForDestination,
                             ShouldRetry = false
                         };
                         await _failedToSend.Writer.WriteAsync(failed, cancellationToken).ConfigureAwait(false);
@@ -78,7 +88,7 @@ public class Sender : IDisposable
                         _logger.SenderSendingError(uri, ex);
                         var failed = new OutgoingMessageFailure
                         {
-                            Messages = messages,
+                            Messages = messagesForDestination,
                             ShouldRetry = true
                         };
                         await _failedToSend.Writer.WriteAsync(failed, cancellationToken).ConfigureAwait(false);
