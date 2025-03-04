@@ -25,7 +25,7 @@ public class ReceiverTests : TestBase
             var listener = new TcpListener(endpoint);
             Should.Throw<SocketException>(() => listener.Start());
             await token.CancelAsync();
-            await Task.Delay(500, CancellationToken.None);
+            await DeterministicDelay(500, CancellationToken.None);
             receivingLoop.IsCompleted.ShouldBe(true);
             listener.Start();
             listener.Stop();
@@ -122,7 +122,7 @@ public class ReceiverTests : TestBase
         var channel = Channel.CreateUnbounded<Message>();
         var receivingTask = Task.Factory.StartNew(() => 
             receiver.StartReceivingAsync(channel.Writer, cancellation.Token), cancellation.Token);
-        await Task.Delay(50, CancellationToken.None);
+        await DeterministicDelay(50, CancellationToken.None);
         await scenario(endpoint, sender, receiver, cancellation, receivingTask, channel);
         await cancellation.CancelAsync();
     }

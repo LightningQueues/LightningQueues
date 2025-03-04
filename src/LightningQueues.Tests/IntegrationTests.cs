@@ -20,7 +20,7 @@ public class IntegrationTests : TestBase
             var message = NewMessage("receiver2");
             message.Destination = new Uri($"lq.tcp://localhost:{receiver.Endpoint.Port}");
             sender.Send(message);
-            await Task.Delay(500, token); //passing buffer delay
+            await DeterministicDelay(500, token); //passing buffer delay
             message.Queue = "receiver";
             sender.Send(message);
             var received = await receiver.Receive("receiver", token)

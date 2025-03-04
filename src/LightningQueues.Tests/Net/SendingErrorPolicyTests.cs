@@ -94,7 +94,7 @@ public class SendingErrorPolicyTests : TestBase
             var retryMessage = await retryTask;
             retryMessage.Id.ShouldBe(message.Id);
             await cancellation.CancelAsync();
-            await Task.Delay(50, CancellationToken.None);
+            await DeterministicDelay(50, CancellationToken.None);
             errorTask.IsCanceled.ShouldBeTrue();
         });
     }
@@ -119,11 +119,11 @@ public class SendingErrorPolicyTests : TestBase
             var errorTask = policy.StartRetries(cancellation.Token);
             var retryTask = policy.Retries.ReadAllAsync(cancellation.Token).FirstAsync(cancellation.Token);
             failures.Writer.TryWrite(failure);
-            await Task.Delay(TimeSpan.FromSeconds(1), cancellation.Token);
+            await DeterministicDelay(TimeSpan.FromSeconds(1), cancellation.Token);
             retryTask.IsCompleted.ShouldBeFalse();
             store.PersistedOutgoing().Any().ShouldBeFalse();
             await cancellation.CancelAsync();
-            await Task.Delay(50, CancellationToken.None);
+            await DeterministicDelay(50, CancellationToken.None);
             errorTask.IsCanceled.ShouldBeTrue();
         });
     }
@@ -157,14 +157,14 @@ public class SendingErrorPolicyTests : TestBase
                 }
             }, cancellation.Token);
             failures.Writer.TryWrite(failure);
-            await Task.Delay(TimeSpan.FromSeconds(1.5), cancellation.Token);
+            await DeterministicDelay(TimeSpan.FromSeconds(1.5), cancellation.Token);
             observed.ShouldNotBeNull("first");
             observed = null;
             failures.Writer.TryWrite(failure);
             observed.ShouldBeNull("second");
-            await Task.Delay(TimeSpan.FromSeconds(1), cancellation.Token);
+            await DeterministicDelay(TimeSpan.FromSeconds(1), cancellation.Token);
             observed.ShouldBeNull("third");
-            await Task.WhenAny(Task.Delay(TimeSpan.FromSeconds(4), cancellation.Token));
+            await Task.WhenAny(DeterministicDelay(TimeSpan.FromSeconds(4), cancellation.Token));
             observed.ShouldNotBeNull("fourth");
             await cancellation.CancelAsync();
             await Task.WhenAny(errorTask.AsTask(), retriesTask);
@@ -191,7 +191,7 @@ public class SendingErrorPolicyTests : TestBase
             ended = true;
         }, cancellation.Token);
         failures.Writer.TryWrite(failure);
-        await Task.WhenAny(retryTask, Task.Delay(TimeSpan.FromSeconds(1), cancellation.Token));
+        await Task.WhenAny(retryTask, DeterministicDelay(TimeSpan.FromSeconds(1), cancellation.Token));
         ended.ShouldBeFalse();
         await cancellation.CancelAsync();
     }

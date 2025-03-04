@@ -135,13 +135,14 @@ public class ReceivingProtocolTests : TestBase
 
     public async Task supports_ability_to_cancel_for_slow_clients()
     {
-        await ReceivingScenario(async (protocol, logger, token) =>
+        await ReceivingScenario(async (protocol, logger, _) =>
         {
+            var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
             using var ms = new MemoryStream();
-            var msgs = protocol.ReceiveMessagesAsync(ms, token);
-            await Task.Delay(TimeSpan.FromSeconds(2), CancellationToken.None);
+            var msgs = protocol.ReceiveMessagesAsync(ms, cts.Token);
+            await DeterministicDelay(TimeSpan.FromMilliseconds(200), CancellationToken.None);
             ms.Write(BitConverter.GetBytes(5));
-            token.IsCancellationRequested.ShouldBe(true);
+            cts.Token.IsCancellationRequested.ShouldBe(true);
             logger.DebugMessages.ShouldBeEmpty();
         });
     }

@@ -16,7 +16,7 @@ public class EncryptedTransportQueueTests : TestBase
         {
             var message = NewMessage("test");
             message.Destination = new Uri($"lq.tcp://localhost:{queue.Endpoint.Port}");
-            await Task.Delay(100, token);
+            await DeterministicDelay(100, token);
             queue.Send(message);
             var received = await queue.Receive("test", token)
                 .FirstAsync(token);

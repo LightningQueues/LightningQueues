@@ -14,6 +14,33 @@ public class TestBase
    private static readonly string _tempPath = Path.Combine(Path.GetTempPath(), $"lightningqueuestests-{Environment.Version.ToString()}");
    internal TextWriter Console { get; set; }
 
+   protected static Task DeterministicDelay(int delayMs, CancellationToken token)
+   {
+       if (token.IsCancellationRequested)
+           return Task.FromCanceled(token);
+
+       int actualDelay = Math.Max(delayMs, 10);
+            
+       var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+       
+       var timer = new Timer(_ => tcs.TrySetResult(), null, actualDelay, Timeout.Infinite);
+       
+       token.Register(() => 
+       {
+           timer.Dispose();
+           tcs.TrySetCanceled(token);
+       }, useSynchronizationContext: false);
+       
+       tcs.Task.ContinueWith(_ => timer.Dispose(), TaskContinuationOptions.ExecuteSynchronously);
+       
+       return tcs.Task;
+   }
+   
+   protected static Task DeterministicDelay(TimeSpan delay, CancellationToken token)
+   {
+       return DeterministicDelay((int)delay.TotalMilliseconds, token);
+   }
+
    protected async Task QueueScenario(Action<QueueConfiguration> queueBuilder,
       Func<Queue, CancellationToken, Task> scenario, TimeSpan timeout, string queueName = "test")
    {

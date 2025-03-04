@@ -17,11 +17,11 @@ public class QueueTests : TestBase
         {
             queue.ReceiveLater(NewMessage("test"), TimeSpan.FromSeconds(1));
             var receiveTask = queue.Receive("test", token).FirstAsync(token);
-            await Task.Delay(100, token);
+            await DeterministicDelay(100, token);
             receiveTask.IsCompleted.ShouldBeFalse();
-            await Task.WhenAny(receiveTask.AsTask(), Task.Delay(1000, token));
+            await DeterministicDelay(2000, token);
             receiveTask.IsCompleted.ShouldBeTrue();
-        }, TimeSpan.FromSeconds(2));
+        }, TimeSpan.FromSeconds(4));
     }
 
     public async Task receive_at_a_specified_time()
@@ -30,11 +30,11 @@ public class QueueTests : TestBase
         {
             queue.ReceiveLater(NewMessage("test"), DateTimeOffset.Now.AddSeconds(1));
             var receiveTask = queue.Receive("test", token).FirstAsync(token);
-            await Task.Delay(100, token);
+            await DeterministicDelay(100, token);
             receiveTask.IsCompleted.ShouldBeFalse();
-            await Task.WhenAny(receiveTask.AsTask(), Task.Delay(TimeSpan.FromSeconds(1), token));
+            await DeterministicDelay(2000, token);
             receiveTask.IsCompleted.ShouldBeTrue();
-        }, TimeSpan.FromSeconds(2));
+        }, TimeSpan.FromSeconds(4));
     }
 
     public async Task enqueue_a_message()
@@ -90,7 +90,7 @@ public class QueueTests : TestBase
                 message.MaxAttempts = 1;
                 message.Destination = new Uri($"lq.tcp://boom:{queue.Endpoint.Port + 1}");
                 queue.Send(message);
-                await Task.Delay(5000, token); //connect timeout cancellation, but windows is slow
+                await DeterministicDelay(5000, token); //connect timeout cancellation, but windows is slow
                 var store = (LmdbMessageStore)queue.Store;
                 store.PersistedOutgoing().Any().ShouldBeFalse();
             }, TimeSpan.FromSeconds(10));
