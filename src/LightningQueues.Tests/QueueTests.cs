@@ -150,6 +150,7 @@ public class QueueTests : TestBase
             payloads.ShouldContain("payload1");
             payloads.ShouldContain("payload2");
             payloads.ShouldContain("payload3");
+            await DeterministicDelay(TimeSpan.FromSeconds(1), token);
             
             // Verify the message store shows they were all sent
             var store = (LmdbMessageStore)queue.Store;
