@@ -202,7 +202,10 @@ public class LmdbMessageStore : IMessageStore
     public string[] GetAllQueues()
     {
         CheckDisposed();
-        return GetAllQueuesImpl().ToArray();
+        // Filter out the outgoing queue
+        return GetAllQueuesImpl()
+            .Where(queueName => queueName != OutgoingQueue)
+            .ToArray();
     }
 
     public void ClearAllStorage()

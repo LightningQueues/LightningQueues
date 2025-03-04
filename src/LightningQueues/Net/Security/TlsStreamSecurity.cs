@@ -15,6 +15,6 @@ public class TlsStreamSecurity : IStreamSecurity
         
     public async ValueTask<Stream> Apply(Uri endpoint, Stream stream)
     {
-        return await _streamSecurity(endpoint, stream);
+        return await _streamSecurity(endpoint, stream).ConfigureAwait(false);
     }
 }

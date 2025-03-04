@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using DotNext;
 using Microsoft.Extensions.Logging;
 using LightningQueues.Net;
 using LightningQueues.Net.Tcp;
@@ -67,7 +65,7 @@ public class Queue : IDisposable
 
     private async Task StartReceivingAsync(CancellationToken token)
     {
-        await _receiver.StartReceivingAsync(_receivingChannel.Writer, token);
+        await _receiver.StartReceivingAsync(_receivingChannel.Writer, token).ConfigureAwait(false);
     }
 
     private async Task StartSendingAsync(CancellationToken token)
@@ -86,12 +84,12 @@ public class Queue : IDisposable
         }
 
         var outgoingRetries = errorPolicy.Retries.ReadAllAsync(token);
-        await foreach (var message in outgoingRetries)
+        await foreach (var message in outgoingRetries.ConfigureAwait(false))
         {
-            await _sendChannel.Writer.WriteAsync(message, token);
+            await _sendChannel.Writer.WriteAsync(message, token).ConfigureAwait(false);
         }
 
-        await Task.WhenAll(sendingTask, errorTask.AsTask());
+        await Task.WhenAll(sendingTask, errorTask.AsTask()).ConfigureAwait(false);
     }
 
     public async IAsyncEnumerable<MessageContext> Receive(string queueName, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -114,7 +112,7 @@ public class Queue : IDisposable
         }
         
         // Then stream from the channel, filtering as we go
-        await foreach (var message in _receivingChannel.Reader.ReadAllAsync(effectiveToken))
+        await foreach (var message in _receivingChannel.Reader.ReadAllAsync(effectiveToken).ConfigureAwait(false))
         {
             if (message.Queue == queueName)
             {

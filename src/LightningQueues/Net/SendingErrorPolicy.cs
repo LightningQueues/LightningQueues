@@ -27,11 +27,11 @@ public class SendingErrorPolicy
 
     public async ValueTask StartRetries(CancellationToken cancellationToken)
     {
-        await foreach (var messageFailure in _failedToConnect.Reader.ReadAllAsync(cancellationToken))
+        await foreach (var messageFailure in _failedToConnect.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
         {
             IncrementSentAttempt(messageFailure.Messages);
             IncrementAttemptAndStoreForRecovery(!messageFailure.ShouldRetry, messageFailure.Messages);
-            await HandleMessageRetries(messageFailure.ShouldRetry, cancellationToken, messageFailure.Messages);
+            await HandleMessageRetries(messageFailure.ShouldRetry, cancellationToken, messageFailure.Messages).ConfigureAwait(false);
         }
     }
 
@@ -41,8 +41,8 @@ public class SendingErrorPolicy
         {
             if (!ShouldRetry(message, shouldRetry)) 
                 continue;
-            await Task.Delay(TimeSpan.FromSeconds(message.SentAttempts * message.SentAttempts), cancellationToken);
-            await _retries.Writer.WriteAsync(message, cancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(message.SentAttempts * message.SentAttempts), cancellationToken).ConfigureAwait(false);
+            await _retries.Writer.WriteAsync(message, cancellationToken).ConfigureAwait(false);
         }
     }
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipelines;
+using System.Linq;
 using System.Net;
 using System.Runtime.Serialization;
 using System.Threading;
@@ -36,7 +37,7 @@ public class SendingProtocol : ProtocolBase, ISendingProtocol
         }
         finally
         {
-            await doneCancellation.CancelAsync();
+            await doneCancellation.CancelAsync().ConfigureAwait(false);
         }
     }
 

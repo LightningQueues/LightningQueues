@@ -39,7 +39,7 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
         }
         finally
         {
-            await doneCancellation.CancelAsync();
+            await doneCancellation.CancelAsync().ConfigureAwait(false);
         }
     }
 
