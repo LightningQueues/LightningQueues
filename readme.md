@@ -94,7 +94,7 @@ dotnet test
 ## Transport Security (TLS Encryption)
 
 LightningQueues supports **TLS encryption** to secure communication. The library provides hooks to enable custom
-certificate validation and encry![lightningqueues.jpg](../../../Downloads/lightningqueues.jpg)ption settings. For example:
+certificate validation and encryption settings. For example:
 
 ```csharp
 var certificate = LoadYourCertificate();
