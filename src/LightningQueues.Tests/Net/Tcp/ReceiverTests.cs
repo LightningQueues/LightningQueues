@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -78,7 +79,7 @@ public class ReceiverTests : TestBase
         var expected = NewMessage("test");
         await NetworkScenario(async (endpoint, sender, _, cancellation, _, channel) =>
         {
-            var messages = new[] { expected };
+            var messages = new List<Message>([expected]);
             using var client = new TcpClient();
             await client.ConnectAsync(endpoint.Address, endpoint.Port, cancellation.Token);
             await sender.SendAsync(expected.Destination, client.GetStream(), messages, cancellation.Token);

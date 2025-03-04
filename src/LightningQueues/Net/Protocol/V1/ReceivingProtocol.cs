@@ -37,6 +37,10 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
         {
             return await ReceiveMessagesAsyncImpl(stream, linkedCancel.Token).ConfigureAwait(false);
         }
+        catch (ArgumentOutOfRangeException)
+        {
+            throw new ProtocolViolationException("Unable to receive messages, malformed message received");
+        }
         finally
         {
             await doneCancellation.CancelAsync().ConfigureAwait(false);
