@@ -23,8 +23,11 @@ public class SendingProtocolTests : TestBase
         using var store = new LmdbMessageStore(env, serializer);
         var sender = new SendingProtocol(store, new NoSecurity(), serializer, new RecordingLogger(Console));
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
-        var expected = NewMessage();
-        expected.Destination = new Uri("lq.tcp://fake:1234");
+        var expected = Message.Create(
+            data: "hello"u8.ToArray(),
+            queue: "test",
+            destinationUri: "lq.tcp://fake:1234"
+        );
         using var ms = new MemoryStream();
         //not exercising full protocol
         await Should.ThrowAsync<ProtocolViolationException>(async () =>

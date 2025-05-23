@@ -87,7 +87,6 @@ internal class QueueContext : IQueueContext
 
         public void Success()
         {
-            _context._queue.SendingChannel.TryWrite(_message);
         }
     }
 
@@ -109,7 +108,6 @@ internal class QueueContext : IQueueContext
 
         public void Success()
         {
-            _context._queue.ReceivingChannel.TryWrite(_message);
         }
     }
 
@@ -131,9 +129,6 @@ internal class QueueContext : IQueueContext
 
         public void Success()
         {
-            var message = _context._message;
-            message.Queue = _queueName;
-            _context._queue.ReceivingChannel.TryWrite(message);
         }
     }
 

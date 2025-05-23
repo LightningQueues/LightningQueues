@@ -16,7 +16,7 @@ public class QueueContextTests : TestBase
             var message = NewMessage("test");
             queue.Enqueue(message);
             
-            var receivedContext = await queue.Receive("test", token).FirstAsync(token);
+            var receivedContext = await queue.Receive("test", cancellationToken: token).FirstAsync(token);
             
             receivedContext.QueueContext.SuccessfullyReceived();
             receivedContext.QueueContext.CommitChanges();
@@ -37,13 +37,13 @@ public class QueueContextTests : TestBase
             var message = NewMessage("test");
             queue.Enqueue(message);
             
-            var receivedContext = await queue.Receive("test", token).FirstAsync(token);
+            var receivedContext = await queue.Receive("test", cancellationToken: token).FirstAsync(token);
             
             receivedContext.QueueContext.MoveTo("another");
             receivedContext.QueueContext.CommitChanges();
             
-            var movedMessage = await queue.Receive("another", token).FirstAsync(token);
-            movedMessage.Message.Queue.ShouldBe("another");
+            var movedMessage = await queue.Receive("another", cancellationToken: token).FirstAsync(token);
+            movedMessage.Message.QueueString.ShouldBe("another");
             
             var store = (LmdbMessageStore)queue.Store;
             store.PersistedIncoming("test").Any().ShouldBeFalse();
@@ -59,16 +59,19 @@ public class QueueContextTests : TestBase
             var receivedMessage = NewMessage("test");
             queue.Enqueue(receivedMessage);
             
-            var receivedContext = await queue.Receive("test", token).FirstAsync(token);
+            var receivedContext = await queue.Receive("test", cancellationToken: token).FirstAsync(token);
             
-            var responseMessage = NewMessage("response");
-            responseMessage.Destination = new Uri($"lq.tcp://localhost:{queue.Endpoint.Port}");
+            var responseMessage = Message.Create(
+                data: "hello"u8.ToArray(),
+                queue: "response",
+                destinationUri: $"lq.tcp://localhost:{queue.Endpoint.Port}"
+            );
             
             receivedContext.QueueContext.Send(responseMessage);
             receivedContext.QueueContext.CommitChanges();
             
-            var sent = await queue.Receive("response", token).FirstAsync(token);
-            sent.Message.Queue.ShouldBe("response");
+            var sent = await queue.Receive("response", cancellationToken: token).FirstAsync(token);
+            sent.Message.QueueString.ShouldBe("response");
         }, TimeSpan.FromSeconds(3));
     }
     
@@ -79,7 +82,7 @@ public class QueueContextTests : TestBase
             var message = NewMessage("test");
             queue.Enqueue(message);
             
-            var receivedContext = await queue.Receive("test", token).FirstAsync(token);
+            var receivedContext = await queue.Receive("test", cancellationToken: token).FirstAsync(token);
             var messageId = receivedContext.Message.Id;
             
             receivedContext.QueueContext.ReceiveLater(TimeSpan.FromMilliseconds(800));
@@ -91,7 +94,7 @@ public class QueueContextTests : TestBase
             
             await DeterministicDelay(1000, token);
             
-            var delayedMessage = await queue.Receive("test", token).FirstAsync(token);
+            var delayedMessage = await queue.Receive("test", cancellationToken: token).FirstAsync(token);
             delayedMessage.Message.Id.ShouldBe(messageId);
         }, TimeSpan.FromSeconds(5));
     }
@@ -103,7 +106,7 @@ public class QueueContextTests : TestBase
             var message = NewMessage("test");
             queue.Enqueue(message);
             
-            var receivedContext = await queue.Receive("test", token).FirstAsync(token);
+            var receivedContext = await queue.Receive("test", cancellationToken: token).FirstAsync(token);
             var messageId = receivedContext.Message.Id;
             
             var futureTime = DateTimeOffset.Now.AddMilliseconds(800);
@@ -116,7 +119,7 @@ public class QueueContextTests : TestBase
             
             await DeterministicDelay(1000, token);
             
-            var delayedMessage = await queue.Receive("test", token).FirstAsync(token);
+            var delayedMessage = await queue.Receive("test", cancellationToken: token).FirstAsync(token);
             delayedMessage.Message.Id.ShouldBe(messageId);
         }, TimeSpan.FromSeconds(5));
     }
@@ -128,7 +131,7 @@ public class QueueContextTests : TestBase
             var receivedMessage = NewMessage("test");
             queue.Enqueue(receivedMessage);
             
-            var receivedContext = await queue.Receive("test", token).FirstAsync(token);
+            var receivedContext = await queue.Receive("test", cancellationToken: token).FirstAsync(token);
             
             var newMessage = NewMessage("test", "new payload");
             var newMessageId = newMessage.Id;
@@ -138,9 +141,9 @@ public class QueueContextTests : TestBase
             receivedContext.QueueContext.SuccessfullyReceived();
             receivedContext.QueueContext.CommitChanges();
             
-            var enqueuedMessage = await queue.Receive("test", token).FirstAsync(token);
+            var enqueuedMessage = await queue.Receive("test", cancellationToken: token).FirstAsync(token);
             enqueuedMessage.Message.Id.ShouldBe(newMessageId);
-            Encoding.UTF8.GetString(enqueuedMessage.Message.Data).ShouldBe("new payload");
+            Encoding.UTF8.GetString(enqueuedMessage.Message.DataArray).ShouldBe("new payload");
         }, TimeSpan.FromSeconds(3));
     }
     
@@ -153,11 +156,14 @@ public class QueueContextTests : TestBase
             var message = NewMessage("test");
             queue.Enqueue(message);
             
-            var receivedContext = await queue.Receive("test", token).FirstAsync(token);
+            var receivedContext = await queue.Receive("test", cancellationToken: token).FirstAsync(token);
             
             var messageToMove = NewMessage("test", "move me");
-            var messageToSend = NewMessage("response");
-            messageToSend.Destination = new Uri($"lq.tcp://localhost:{queue.Endpoint.Port}");
+            var messageToSend = Message.Create(
+                data: "hello"u8.ToArray(),
+                queue: "response",
+                destinationUri: $"lq.tcp://localhost:{queue.Endpoint.Port}"
+            );
             var messageToEnqueue = NewMessage("test", "enqueued");
             
             var originalMessageId = message.Id;
@@ -178,7 +184,7 @@ public class QueueContextTests : TestBase
                 .Any(m => m.Id == originalMessageId);
             originalStillExists.ShouldBeFalse();
             
-            var enqueuedMessages = await queue.Receive("test", token)
+            var enqueuedMessages = await queue.Receive("test", cancellationToken: token)
                 .Take(2)
                 .ToListAsync(token);
             
@@ -188,7 +194,7 @@ public class QueueContextTests : TestBase
             foundIds.ShouldContain(moveMessageId);
             foundIds.ShouldContain(enqueueMessageId);
             
-            var sentMessage = await queue.Receive("response", token).FirstAsync(token);
+            var sentMessage = await queue.Receive("response", cancellationToken: token).FirstAsync(token);
             sentMessage.Message.Id.ShouldBe(sendMessageId);
         }, TimeSpan.FromSeconds(5));
     }

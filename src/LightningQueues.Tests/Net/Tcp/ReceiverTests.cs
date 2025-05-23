@@ -86,15 +86,14 @@ public class ReceiverTests : TestBase
 
             var actual = await channel.Reader.ReadAsync(cancellation.Token);
             await cancellation.CancelAsync();
-            actual.ShouldNotBeNull();
             actual.Id.ShouldBe(expected.Id);
-            actual.Queue.ShouldBe(expected.Queue);
-            Encoding.UTF8.GetString(actual.Data).ShouldBe("hello");
+            actual.QueueString.ShouldBe(expected.QueueString);
+            Encoding.UTF8.GetString(actual.DataArray).ShouldBe("hello");
         }, expected);
 
     }
 
-    private async Task NetworkScenario(Func<IPEndPoint, SendingProtocol, Receiver, CancellationTokenSource, Task, Channel<Message>, Task> scenario, Message expected = null)
+    private async Task NetworkScenario(Func<IPEndPoint, SendingProtocol, Receiver, CancellationTokenSource, Task, Channel<Message>, Task> scenario, Message? expected = null)
     {
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         var endpoint = new IPEndPoint(IPAddress.Loopback, PortFinder.FindPort());
@@ -107,11 +106,21 @@ public class ReceiverTests : TestBase
         using var sendingStore = new LmdbMessageStore(sendingEnv, serializer);
         sendingStore.CreateQueue("test");
         
-        if (expected != null)
+        if (expected.HasValue)
         {
-            expected.Destination = new Uri($"lq.tcp://localhost:{endpoint.Port}");
+            var expectedWithDestination = new Message(
+                expected.Value.Id,
+                expected.Value.Data,
+                expected.Value.Queue,
+                expected.Value.SentAt,
+                expected.Value.SubQueue,
+                $"lq.tcp://localhost:{endpoint.Port}".AsMemory(),
+                expected.Value.DeliverBy,
+                expected.Value.MaxAttempts,
+                expected.Value.Headers
+            );
             using var tx = sendingStore.BeginTransaction();
-            sendingStore.StoreOutgoing(tx, expected);
+            sendingStore.StoreOutgoing(tx, expectedWithDestination);
             tx.Commit();
         }
 

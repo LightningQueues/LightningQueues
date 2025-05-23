@@ -19,9 +19,7 @@ public class SendingErrorPolicyTests : TestBase
     {
         ErrorPolicyScenario((policy, _, _) =>
         {
-            var message = NewMessage();
-            message.MaxAttempts = 3;
-            message.SentAttempts = 3;
+            var message = Message.Create(maxAttempts: 3).WithSentAttempts(3);
             policy.ShouldRetry(message).ShouldBeFalse();
         });
     }
@@ -30,9 +28,7 @@ public class SendingErrorPolicyTests : TestBase
     {
         ErrorPolicyScenario((policy, _, _) =>
         {
-            var message = NewMessage();
-            message.MaxAttempts = 20;
-            message.SentAttempts = 5;
+            var message = Message.Create(maxAttempts: 20).WithSentAttempts(5);
             policy.ShouldRetry(message).ShouldBeTrue();
         });
     }
@@ -41,9 +37,7 @@ public class SendingErrorPolicyTests : TestBase
     {
         ErrorPolicyScenario((policy, _, _) =>
         {
-            var message = NewMessage();
-            message.DeliverBy = DateTime.Now.Subtract(TimeSpan.FromSeconds(1));
-            message.SentAttempts = 5;
+            var message = Message.Create(deliverBy: DateTime.Now.Subtract(TimeSpan.FromSeconds(1))).WithSentAttempts(5);
             policy.ShouldRetry(message).ShouldBeFalse();
         });
     }
@@ -52,9 +46,7 @@ public class SendingErrorPolicyTests : TestBase
     {
         ErrorPolicyScenario((policy, _, _) =>
         {
-            var message = NewMessage();
-            message.DeliverBy = DateTime.Now.Add(TimeSpan.FromSeconds(1));
-            message.SentAttempts = 5;
+            var message = Message.Create(deliverBy: DateTime.Now.Add(TimeSpan.FromSeconds(1))).WithSentAttempts(5);
             policy.ShouldRetry(message).ShouldBeTrue();
         });
     }
@@ -63,8 +55,7 @@ public class SendingErrorPolicyTests : TestBase
     {
         ErrorPolicyScenario((policy, _, _) =>
         {
-            var message = NewMessage();
-            message.SentAttempts = 5;
+            var message = NewMessage().WithSentAttempts(5);
             policy.ShouldRetry(message).ShouldBeTrue();
         });
     }
@@ -73,9 +64,10 @@ public class SendingErrorPolicyTests : TestBase
     {
         return ErrorPolicyScenario(async (policy, store, failures, cancellation) =>
         {
-            var message = NewMessage();
-            message.Destination = new Uri("lq.tcp://localhost:5150/blah");
-            message.MaxAttempts = 2;
+            var message = Message.Create(
+                destinationUri: "lq.tcp://localhost:5150/blah",
+                maxAttempts: 2
+            );
             using (var tx = store.BeginTransaction())
             {
                 store.StoreOutgoing(tx, message);
@@ -103,9 +95,10 @@ public class SendingErrorPolicyTests : TestBase
     {
         return ErrorPolicyScenario(async (policy, store, failures, cancellation) =>
         {
-            var message = NewMessage();
-            message.Destination = new Uri("lq.tcp://localhost:5150/blah");
-            message.MaxAttempts = 1;
+            var message = Message.Create(
+                destinationUri: "lq.tcp://localhost:5150/blah",
+                maxAttempts: 1
+            );
             using (var tx = store.BeginTransaction())
             {
                 store.StoreOutgoing(tx, message);
@@ -133,10 +126,11 @@ public class SendingErrorPolicyTests : TestBase
         return ErrorPolicyScenario(async (policy, store, failures, _) =>
         {
             using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(6));
-            Message observed = null;
-            var message = NewMessage();
-            message.Destination = new Uri("lq.tcp://localhost:5150/blah");
-            message.MaxAttempts = 5;
+            Message? observed = null;
+            var message = Message.Create(
+                destinationUri: "lq.tcp://localhost:5150/blah",
+                maxAttempts: 5
+            );
             using (var tx = store.BeginTransaction())
             {
                 store.StoreOutgoing(tx, message);
@@ -276,7 +270,17 @@ public class StubMessageStore : IMessageStore
         throw new NotImplementedException();
     }
 
+    public void StoreOutgoing(Message message)
+    {
+        throw new NotImplementedException();
+    }
+
     public void StoreOutgoing(params IEnumerable<Message> messages)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void StoreOutgoing(ReadOnlySpan<Message> messages)
     {
         throw new NotImplementedException();
     }
@@ -291,7 +295,7 @@ public class StubMessageStore : IMessageStore
         throw new NotImplementedException();
     }
 
-    public Message GetMessage(string queueName, MessageId messageId)
+    public Message? GetMessage(string queueName, MessageId messageId)
     {
         throw new NotImplementedException();
     }

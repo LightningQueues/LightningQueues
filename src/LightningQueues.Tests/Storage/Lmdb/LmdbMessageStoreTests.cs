@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using LightningQueues.Serialization;
 using LightningQueues.Storage.LMDB;
 using Shouldly;
@@ -31,9 +30,11 @@ public class LmdbMessageStoreTests : TestBase
         StorageScenario(store =>
         {
             var message = NewMessage("test");
-            var outgoingMessage = NewMessage();
-            outgoingMessage.Destination = new Uri("lq.tcp://localhost:3030");
-            outgoingMessage.SentAt = DateTime.Now;
+            var outgoingMessage = Message.Create(
+                data: "hello"u8.ToArray(),
+                queue: "test",
+                destinationUri: "lq.tcp://localhost:3030"
+            );
             using (var tx = store.BeginTransaction())
             {
                 store.StoreOutgoing(tx, outgoingMessage);
@@ -54,9 +55,11 @@ public class LmdbMessageStoreTests : TestBase
         StorageScenario(store =>
         {
             var message = NewMessage("test");
-            var outgoingMessage = NewMessage();
-            outgoingMessage.Destination = new Uri("lq.tcp://localhost:3030");
-            outgoingMessage.SentAt = DateTime.Now;
+            var outgoingMessage = Message.Create(
+                data: "hello"u8.ToArray(),
+                queue: "test",
+                destinationUri: "lq.tcp://localhost:3030"
+            );
             using (var tx = store.BeginTransaction())
             {
                 store.StoreOutgoing(tx, outgoingMessage);
@@ -78,9 +81,11 @@ public class LmdbMessageStoreTests : TestBase
         StorageScenario(store =>
         {
             var message = NewMessage("test");
-            var outgoingMessage = NewMessage();
-            outgoingMessage.Destination = new Uri("lq.tcp://localhost:3030");
-            outgoingMessage.SentAt = DateTime.Now;
+            var outgoingMessage = Message.Create(
+                data: "hello"u8.ToArray(),
+                queue: "test",
+                destinationUri: "lq.tcp://localhost:3030"
+            );
             using (var tx = store.BeginTransaction())
             {
                 store.StoreOutgoing(tx, outgoingMessage);
@@ -88,7 +93,7 @@ public class LmdbMessageStoreTests : TestBase
                 tx.Commit();
             }
 
-            var message2 = store.GetMessage(message.Queue, message.Id);
+            var message2 = store.GetMessage(message.QueueString, message.Id);
             var outgoing2 = store.GetMessage("outgoing", outgoingMessage.Id);
             message2.ShouldNotBeNull();
             outgoing2.ShouldNotBeNull();

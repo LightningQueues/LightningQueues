@@ -121,6 +121,16 @@ public interface IMessageStore : IDisposable
     void StoreOutgoing(LmdbTransaction tx, Message message);
     
     /// <summary>
+    /// Stores a single outgoing message.
+    /// </summary>
+    /// <param name="message">The message to store.</param>
+    /// <remarks>
+    /// This method persists a message that is to be sent to another queue.
+    /// This overload is optimized for single message operations.
+    /// </remarks>
+    void StoreOutgoing(Message message);
+
+    /// <summary>
     /// Stores multiple outgoing messages.
     /// </summary>
     /// <param name="messages">The messages to store.</param>
@@ -128,6 +138,16 @@ public interface IMessageStore : IDisposable
     /// This method persists messages that are to be sent to other queues.
     /// </remarks>
     void StoreOutgoing(params IEnumerable<Message> messages);
+
+    /// <summary>
+    /// Stores multiple outgoing messages using a span.
+    /// </summary>
+    /// <param name="messages">The span of messages to store.</param>
+    /// <remarks>
+    /// This method persists messages that are to be sent to other queues.
+    /// Uses ReadOnlySpan for better performance by avoiding array allocations.
+    /// </remarks>
+    void StoreOutgoing(ReadOnlySpan<Message> messages);
     
     /// <summary>
     /// Handles messages that failed to send.
@@ -161,7 +181,7 @@ public interface IMessageStore : IDisposable
     /// This method is typically used for administrative purposes or
     /// for implementing message tracking features.
     /// </remarks>
-    Message GetMessage(string queueName, MessageId messageId);
+    Message? GetMessage(string queueName, MessageId messageId);
     
     /// <summary>
     /// Gets an array of all queue names in the store.

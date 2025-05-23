@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Shouldly;
 
@@ -10,14 +11,20 @@ public class OutgoingMessageTests : TestBase
     {
         StorageScenario(store =>
         {
-            var destination = new Uri("lq.tcp://localhost:5050");
-            var message = NewMessage("test");
-            message.Destination = destination;
-            var message2 = NewMessage("test");
-            message2.Destination = destination;
-            message2.DeliverBy = DateTime.Now.AddSeconds(5);
-            message2.MaxAttempts = 3;
-            message2.Headers.Add("header", "header_value");
+            var message = Message.Create(
+                data: "hello"u8.ToArray(),
+                queue: "test",
+                destinationUri: "lq.tcp://localhost:5050"
+            );
+            var headers = new Dictionary<string, string> { ["header"] = "header_value" };
+            var message2 = Message.Create(
+                data: "hello"u8.ToArray(),
+                queue: "test",
+                destinationUri: "lq.tcp://localhost:5050",
+                deliverBy: DateTime.Now.AddSeconds(5),
+                maxAttempts: 3,
+                headers: headers
+            );
             using (var tx = store.BeginTransaction())
             {
                 store.StoreOutgoing(tx, message);
@@ -29,12 +36,12 @@ public class OutgoingMessageTests : TestBase
 
             var result = store.PersistedOutgoing().First();
             result.Id.ShouldBe(message2.Id);
-            result.Queue.ShouldBe(message2.Queue);
-            result.Data.ShouldBe(message2.Data);
+            result.QueueString.ShouldBe(message2.QueueString);
+            result.DataArray.ShouldBe(message2.DataArray);
             result.SentAt.ShouldBe(message2.SentAt);
             result.DeliverBy.ShouldBe(message2.DeliverBy);
             result.MaxAttempts.ShouldBe(message2.MaxAttempts);
-            result.Headers["header"].ShouldBe("header_value");
+            result.GetHeadersDictionary()["header"].ShouldBe("header_value");
         });
     }
 
@@ -42,11 +49,12 @@ public class OutgoingMessageTests : TestBase
     {
         StorageScenario(store =>
         {
-            var destination = new Uri("lq.tcp://localhost:5050");
-            var message = NewMessage("test");
-            message.MaxAttempts = 1;
-            message.SentAttempts = 1;
-            message.Destination = destination;
+            var message = Message.Create(
+                data: "hello"u8.ToArray(),
+                queue: "test",
+                destinationUri: "lq.tcp://localhost:5050",
+                maxAttempts: 1
+            ).WithSentAttempts(1);
             using (var tx = store.BeginTransaction())
             {
                 store.StoreOutgoing(tx, message);
@@ -64,10 +72,12 @@ public class OutgoingMessageTests : TestBase
     {
         StorageScenario(store =>
         {
-            var destination = new Uri("lq.tcp://localhost:5050");
-            var message = NewMessage("test");
-            message.DeliverBy = DateTime.Now;
-            message.Destination = destination;
+            var message = Message.Create(
+                data: "hello"u8.ToArray(),
+                queue: "test",
+                destinationUri: "lq.tcp://localhost:5050",
+                deliverBy: DateTime.Now
+            );
             using (var tx = store.BeginTransaction())
             {
                 store.StoreOutgoing(tx, message);

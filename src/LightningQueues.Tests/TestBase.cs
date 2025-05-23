@@ -89,13 +89,10 @@ public class TestBase
 
    protected static Message NewMessage(string queueName = "test", string payload = "hello")
    {
-      var message = new Message
-      {
-         Data = Encoding.UTF8.GetBytes(payload),
-         Id = MessageId.GenerateRandom(),
-         Queue = queueName,
-      };
-      return message;
+      return Message.Create(
+         data: Encoding.UTF8.GetBytes(payload),
+         queue: queueName
+      );
    }
 
    public static string TempPath()

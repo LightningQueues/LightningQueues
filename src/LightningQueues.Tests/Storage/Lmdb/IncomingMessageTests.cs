@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using LightningQueues.Serialization;
 using LightningQueues.Storage;
 using LightningQueues.Storage.LMDB;
@@ -12,13 +13,17 @@ public class IncomingMessageTests : TestBase
     {
         StorageScenario(store =>
         {
-            var message = NewMessage();
-            message.Headers.Add("my_key", "my_value");
-            store.CreateQueue(message.Queue);
+            var headers = new Dictionary<string, string> { ["my_key"] = "my_value" };
+            var message = Message.Create(
+                data: "hello"u8.ToArray(),
+                queue: "test",
+                headers: headers
+            );
+            store.CreateQueue(message.QueueString);
             store.StoreIncoming(message);
-            var msg = store.GetMessage(message.Queue, message.Id);
-            System.Text.Encoding.UTF8.GetString(msg.Data).ShouldBe("hello");
-            msg.Headers.First().Value.ShouldBe("my_value");
+            var msg = store.GetMessage(message.QueueString, message.Id);
+            System.Text.Encoding.UTF8.GetString(msg.Value.DataArray).ShouldBe("hello");
+            msg.Value.GetHeadersDictionary().First().Value.ShouldBe("my_value");
         });
     }
 
@@ -36,7 +41,7 @@ public class IncomingMessageTests : TestBase
         StorageScenario(store =>
         {
             var message = NewMessage();
-            store.CreateQueue(message.Queue);
+            store.CreateQueue(message.QueueString);
             using (var transaction = store.BeginTransaction())
             {
                 store.StoreIncoming(transaction, message);
@@ -46,8 +51,8 @@ public class IncomingMessageTests : TestBase
             store.Dispose();
             using var env = LightningEnvironment();
             using var store2 = new LmdbMessageStore(env, new MessageSerializer());
-            store2.CreateQueue(message.Queue);
-            var msg = store2.GetMessage(message.Queue, message.Id);
+            store2.CreateQueue(message.QueueString);
+            var msg = store2.GetMessage(message.QueueString, message.Id);
             msg.ShouldBeNull();
         });
 
@@ -58,13 +63,13 @@ public class IncomingMessageTests : TestBase
         StorageScenario(store =>
         {
             var message = NewMessage();
-            store.CreateQueue(message.Queue);
+            store.CreateQueue(message.QueueString);
             using (var transaction = store.BeginTransaction())
             {
                 store.StoreIncoming(transaction, message);
             }
 
-            var msg = store.GetMessage(message.Queue, message.Id);
+            var msg = store.GetMessage(message.QueueString, message.Id);
             msg.ShouldBeNull();
         });
     }

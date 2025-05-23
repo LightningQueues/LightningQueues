@@ -108,7 +108,7 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
 
     private static async ValueTask SendReceived(Stream stream, CancellationToken cancellationToken)
     {
-        await stream.WriteAsync(Constants.ReceivedBuffer.AsMemory(), cancellationToken)
+        await stream.WriteAsync(Constants.ReceivedMemory, cancellationToken)
             .ConfigureAwait(false);
     }
     
@@ -116,7 +116,7 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
     {
         try
         {
-            await stream.WriteAsync(Constants.QueueDoesNotExistBuffer.AsMemory(), cancellationToken)
+            await stream.WriteAsync(Constants.QueueDoesNotExistMemory, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -129,7 +129,7 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
     {
         try
         {
-            await stream.WriteAsync(Constants.ProcessingFailureBuffer.AsMemory(), cancellationToken)
+            await stream.WriteAsync(Constants.ProcessingFailureMemory, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (Exception ex)

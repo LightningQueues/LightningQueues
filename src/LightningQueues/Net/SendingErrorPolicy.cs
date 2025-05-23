@@ -29,9 +29,9 @@ public class SendingErrorPolicy
     {
         await foreach (var messageFailure in _failedToConnect.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
         {
-            IncrementSentAttempt(messageFailure.Messages);
-            IncrementAttemptAndStoreForRecovery(!messageFailure.ShouldRetry, messageFailure.Messages);
-            await HandleMessageRetries(messageFailure.ShouldRetry, cancellationToken, messageFailure.Messages).ConfigureAwait(false);
+            var incrementedMessages = IncrementSentAttempt(messageFailure.Messages);
+            IncrementAttemptAndStoreForRecovery(!messageFailure.ShouldRetry, incrementedMessages);
+            await HandleMessageRetries(messageFailure.ShouldRetry, cancellationToken, incrementedMessages).ConfigureAwait(false);
         }
     }
 
@@ -72,11 +72,11 @@ public class SendingErrorPolicy
         }
     }
 
-    private static void IncrementSentAttempt(IEnumerable<Message> messages)
+    private static IEnumerable<Message> IncrementSentAttempt(IEnumerable<Message> messages)
     {
         foreach (var message in messages)
         {
-            message.SentAttempts++;
+            yield return message.WithSentAttempts(message.SentAttempts + 1);
         }
     }
 }

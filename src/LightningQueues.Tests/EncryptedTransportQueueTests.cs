@@ -14,15 +14,18 @@ public class EncryptedTransportQueueTests : TestBase
             config.WithSelfSignedCertificateSecurity();
         }, async (queue, token) =>
         {
-            var message = NewMessage("test");
-            message.Destination = new Uri($"lq.tcp://localhost:{queue.Endpoint.Port}");
+            var message = Message.Create(
+                data: "hello"u8.ToArray(),
+                queue: "test",
+                destinationUri: $"lq.tcp://localhost:{queue.Endpoint.Port}"
+            );
             await DeterministicDelay(100, token);
             queue.Send(message);
-            var received = await queue.Receive("test", token)
+            var received = await queue.Receive("test", cancellationToken: token)
                 .FirstAsync(token);
             received.ShouldNotBeNull();
-            received.Message.Queue.ShouldBe(message.Queue);
-            received.Message.Data.ShouldBe(message.Data);
+            received.Message.QueueString.ShouldBe(message.QueueString);
+            received.Message.DataArray.ShouldBe(message.DataArray);
         }, TimeSpan.FromSeconds(5));
     }
 }

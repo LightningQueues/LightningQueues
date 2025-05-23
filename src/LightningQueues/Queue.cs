@@ -20,7 +20,6 @@ public class Queue : IDisposable
 {
     private readonly Sender _sender;
     private readonly Receiver _receiver;
-    private readonly Channel<Message> _sendChannel;
     private readonly Channel<Message> _receivingChannel;
     private readonly CancellationTokenSource _cancelOnDispose;
     private readonly ILogger _logger;
@@ -40,10 +39,6 @@ public class Queue : IDisposable
         _sender = sender;
         _cancelOnDispose = new CancellationTokenSource();
         Store = messageStore;
-        _sendChannel = Channel.CreateUnbounded<Message>(new UnboundedChannelOptions
-        {
-            SingleWriter = false, SingleReader = false, AllowSynchronousContinuations = false
-        });
         _receivingChannel = Channel.CreateUnbounded<Message>();
         _logger = logger;
     }
@@ -62,9 +57,6 @@ public class Queue : IDisposable
     /// Gets the message store used by this queue for persistence.
     /// </summary>
     public IMessageStore Store { get; }
-
-    internal ChannelWriter<Message> SendingChannel => _sendChannel.Writer;
-    internal ChannelWriter<Message> ReceivingChannel => _receivingChannel.Writer;
 
     /// <summary>
     /// Creates a new queue with the specified name.
@@ -110,29 +102,36 @@ public class Queue : IDisposable
         _logger.QueueStarting();
         var errorPolicy = new SendingErrorPolicy(_logger, Store, _sender.FailedToSend());
         var errorTask = errorPolicy.StartRetries(token);
-        // Start the sending task first to begin processing messages immediately
+        
+        // Task to handle retry messages by putting them back into outgoing storage
+        var retryTask = Task.Run(async () =>
+        {
+            await foreach (var retryMessage in errorPolicy.Retries.ReadAllAsync(token).ConfigureAwait(false))
+            {
+                try
+                {
+                    Store.StoreOutgoing(retryMessage);
+                }
+                catch (Exception ex)
+                {
+                    _logger.QueueOutgoingError(ex);
+                }
+            }
+        }, token);
+        
+        // Start the sending task using storage-based approach
         var sendingTask = Task.Run(async () =>
-            await _sender.StartSendingAsync(_sendChannel.Reader, token).ConfigureAwait(false), 
+            await _sender.StartSendingAsync(Store, 50, TimeSpan.FromMilliseconds(200), token).ConfigureAwait(false), 
             token);
-            
-        foreach (var message in Store.PersistedOutgoing())
-        {
-            await _sendChannel.Writer.WriteAsync(message, token).ConfigureAwait(false);
-        }
 
-        var outgoingRetries = errorPolicy.Retries.ReadAllAsync(token);
-        await foreach (var message in outgoingRetries.ConfigureAwait(false))
-        {
-            await _sendChannel.Writer.WriteAsync(message, token).ConfigureAwait(false);
-        }
-
-        await Task.WhenAll(sendingTask, errorTask.AsTask()).ConfigureAwait(false);
+        await Task.WhenAll(sendingTask, errorTask.AsTask(), retryTask).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Receives messages from the specified queue as an asynchronous stream.
     /// </summary>
     /// <param name="queueName">The name of the queue to receive messages from.</param>
+    /// <param name="pollIntervalInMilliseconds">The period to rest before checking for new messages if no messages are found.</param>
     /// <param name="cancellationToken">A token to cancel the receive operation.</param>
     /// <returns>
     /// An asynchronous stream of <see cref="MessageContext"/> objects, each containing
@@ -147,7 +146,7 @@ public class Queue : IDisposable
     /// processing the message such as marking it as received, moving it to another queue,
     /// or scheduling it for later processing.
     /// </remarks>
-    public async IAsyncEnumerable<MessageContext> Receive(string queueName, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<MessageContext> Receive(string queueName, int pollIntervalInMilliseconds = 200, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         // Combine the user's token with our disposal token, creating as few objects as possible
         using var linkedSource = cancellationToken != CancellationToken.None
@@ -155,23 +154,37 @@ public class Queue : IDisposable
             : null;
         var effectiveToken = linkedSource?.Token ?? _cancelOnDispose.Token;
 
+        TimeSpan pollInterval = TimeSpan.FromMilliseconds(pollIntervalInMilliseconds);
         _logger.QueueStartReceiving(queueName);
         
-        // First yield all persisted messages from storage
-        foreach (var message in Store.PersistedIncoming(queueName))
+        while (!effectiveToken.IsCancellationRequested)
         {
-            if (message.Queue == queueName)
+            var foundNewMessages = false;
+            
+            // Read messages from storage
+            foreach (var message in Store.PersistedIncoming(queueName))
             {
-                yield return new MessageContext(message, this);
+                if (effectiveToken.IsCancellationRequested)
+                    yield break;
+                
+                if (message.Queue.Span.SequenceEqual(queueName.AsSpan()))
+                {
+                    foundNewMessages = true;
+                    yield return new MessageContext(message, this);
+                }
             }
-        }
-        
-        // Then stream from the channel, filtering as we go
-        await foreach (var message in _receivingChannel.Reader.ReadAllAsync(effectiveToken).ConfigureAwait(false))
-        {
-            if (message.Queue == queueName)
+            
+            // If no new messages found, wait before polling again
+            if (!foundNewMessages)
             {
-                yield return new MessageContext(message, this);
+                try
+                {
+                    await Task.Delay(pollInterval, effectiveToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    yield break;
+                }
             }
         }
     }
@@ -191,8 +204,6 @@ public class Queue : IDisposable
         using var tx = Store.BeginTransaction();
         Store.MoveToQueue(tx, queueName, message);
         tx.Commit();
-        message.Queue = queueName;
-        ReceivingChannel.TryWrite(message);
     }
 
     /// <summary>
@@ -206,9 +217,8 @@ public class Queue : IDisposable
     /// </remarks>
     public void Enqueue(Message message)
     {
-        _logger.QueueEnqueue(message.Id, message.Queue);
+        _logger.QueueEnqueue(message.Id, message.QueueString);
         Store.StoreIncoming(message);
-        ReceivingChannel.TryWrite(message);
     }
 
     /// <summary>
@@ -227,8 +237,14 @@ public class Queue : IDisposable
         Task.Delay(timeSpan)
             .ContinueWith(_ =>
             {
-                if (!ReceivingChannel.TryWrite(message))
-                    _logger.QueueErrorReceiveLater(message.Id, timeSpan, null);
+                try
+                {
+                    Store.StoreIncoming(message);
+                }
+                catch (Exception ex)
+                {
+                    _logger.QueueErrorReceiveLater(message.Id, timeSpan, ex);
+                }
             });
     }
 
@@ -246,19 +262,14 @@ public class Queue : IDisposable
         _logger.QueueSendBatch(messages.Length);
         try
         {
-            Store.StoreOutgoing(messages);
-            foreach (var message in messages)
-            {
-                if (!_sendChannel.Writer.TryWrite(message))
-                    throw new Exception("Failed to send message");//throw better error
-            }
+            Store.StoreOutgoing(messages.AsSpan());
         }
         catch (Exception ex)
         {
             _logger.QueueOutgoingError(ex);
         }
     }
-    
+
     /// <summary>
     /// Sends a single message to its destination.
     /// </summary>
@@ -274,8 +285,6 @@ public class Queue : IDisposable
         try
         {
             Store.StoreOutgoing(message);
-            if (!_sendChannel.Writer.TryWrite(message))
-                throw new Exception("Failed to send message");//throw better error
         }
         catch (Exception ex)
         {
@@ -324,7 +333,6 @@ public class Queue : IDisposable
             
             // Complete the channels to prevent new messages
             _receivingChannel.Writer.TryComplete();
-            _sendChannel.Writer.TryComplete();
             
             // Give tasks time to respond to cancellation
             try

@@ -16,7 +16,7 @@ public class QueueTests : TestBase
         await QueueScenario(async (queue, token) =>
         {
             queue.ReceiveLater(NewMessage("test"), TimeSpan.FromSeconds(1));
-            var receiveTask = queue.Receive("test", token).FirstAsync(token);
+            var receiveTask = queue.Receive("test", cancellationToken: token).FirstAsync(token);
             await DeterministicDelay(100, token);
             receiveTask.IsCompleted.ShouldBeFalse();
             await DeterministicDelay(2000, token);
@@ -29,7 +29,7 @@ public class QueueTests : TestBase
         await QueueScenario(async (queue, token) =>
         {
             queue.ReceiveLater(NewMessage("test"), DateTimeOffset.Now.AddSeconds(1));
-            var receiveTask = queue.Receive("test", token).FirstAsync(token);
+            var receiveTask = queue.Receive("test", cancellationToken: token).FirstAsync(token);
             await DeterministicDelay(100, token);
             receiveTask.IsCompleted.ShouldBeFalse();
             await DeterministicDelay(2000, token);
@@ -42,10 +42,12 @@ public class QueueTests : TestBase
         await QueueScenario(async (queue, token) =>
         {
             var expected = NewMessage("test");
-            var receiveTask = queue.Receive("test", token).FirstAsync(token);
+            var receiveTask = queue.Receive("test", cancellationToken: token).FirstAsync(token);
             queue.Enqueue(expected);
             var result = await receiveTask;
-            expected.ShouldBeSameAs(result.Message);
+            result.Message.Id.ShouldBe(expected.Id);
+            result.Message.QueueString.ShouldBe(expected.QueueString);
+            result.Message.DataArray.ShouldBe(expected.DataArray);
         });
     }
 
@@ -56,11 +58,11 @@ public class QueueTests : TestBase
             queue.CreateQueue("another");
             var expected = NewMessage("test");
             queue.Enqueue(expected);
-            var message = await queue.Receive("test", token).FirstAsync(token);
+            var message = await queue.Receive("test", 50, cancellationToken: token).FirstAsync(token);
             queue.MoveToQueue("another", message.Message);
 
-            message = await queue.Receive("another", token).FirstAsync(token);
-            message.Message.Queue.ShouldBe("another");
+            message = await queue.Receive("another", 50, cancellationToken: token).FirstAsync(token);
+            message.Message.QueueString.ShouldBe("another");
         });
     }
 
@@ -68,10 +70,13 @@ public class QueueTests : TestBase
     {
         await QueueScenario(async (queue, token) =>
         {
-            var message = NewMessage("test");
-            message.Destination = new Uri($"lq.tcp://localhost:{queue.Endpoint.Port}");
+            var message = Message.Create(
+                data: "hello"u8.ToArray(),
+                queue: "test",
+                destinationUri: $"lq.tcp://localhost:{queue.Endpoint.Port}"
+            );
             queue.Send(message);
-            var received = await queue.Receive("test", token).FirstAsync(token);
+            var received = await queue.Receive("test", cancellationToken: token).FirstAsync(token);
             received.ShouldNotBeNull();
             received.Message.Queue.ShouldBe(message.Queue);
             received.Message.Data.ShouldBe(message.Data);
@@ -86,9 +91,12 @@ public class QueueTests : TestBase
             },
             async (queue, token) =>
             {
-                var message = NewMessage("test");
-                message.MaxAttempts = 1;
-                message.Destination = new Uri($"lq.tcp://boom:{queue.Endpoint.Port + 1}");
+                var message = Message.Create(
+                    data: "hello"u8.ToArray(),
+                    queue: "test",
+                    destinationUri: $"lq.tcp://boom:{queue.Endpoint.Port + 1}",
+                    maxAttempts: 1
+                );
                 queue.Send(message);
                 await DeterministicDelay(5000, token); //connect timeout cancellation, but windows is slow
                 var store = (LmdbMessageStore)queue.Store;
@@ -122,21 +130,28 @@ public class QueueTests : TestBase
         await QueueScenario(async (queue, token) =>
         {
             // Create batch of messages for self
-            var message1 = NewMessage("test", "payload1");
-            var message2 = NewMessage("test", "payload2");
-            var message3 = NewMessage("test", "payload3");
-            
-            // Set destination to self for all messages
-            var destination = new Uri($"lq.tcp://localhost:{queue.Endpoint.Port}");
-            message1.Destination = destination;
-            message2.Destination = destination;
-            message3.Destination = destination;
+            var destination = $"lq.tcp://localhost:{queue.Endpoint.Port}";
+            var message1 = Message.Create(
+                data: "payload1"u8.ToArray(),
+                queue: "test",
+                destinationUri: destination
+            );
+            var message2 = Message.Create(
+                data: "payload2"u8.ToArray(),
+                queue: "test",
+                destinationUri: destination
+            );
+            var message3 = Message.Create(
+                data: "payload3"u8.ToArray(),
+                queue: "test",
+                destinationUri: destination
+            );
             
             // Send all messages as a batch
             queue.Send(message1, message2, message3);
             
             // Receive all the messages (should be 3)
-            var receivedMessages = await queue.Receive("test", token)
+            var receivedMessages = await queue.Receive("test", cancellationToken: token)
                 .Take(3)
                 .ToListAsync(token);
             
@@ -144,7 +159,7 @@ public class QueueTests : TestBase
             
             // Verify we received each message
             var payloads = receivedMessages
-                .Select(ctx => System.Text.Encoding.UTF8.GetString(ctx.Message.Data))
+                .Select(ctx => System.Text.Encoding.UTF8.GetString(ctx.Message.DataArray))
                 .ToList();
                 
             payloads.ShouldContain("payload1");
@@ -176,23 +191,23 @@ public class QueueTests : TestBase
             queue.Enqueue(message2);
             queue.Enqueue(message3);
             
-            // Start receiving from all queues concurrently
-            var receiveQueue1Task = queue.Receive("queue1", token).FirstAsync(token);
-            var receiveQueue2Task = queue.Receive("queue2", token).FirstAsync(token);
-            var receiveQueue3Task = queue.Receive("queue3", token).FirstAsync(token);
+            // Start receiving from all queues concurrently with fast polling
+            var receiveQueue1Task = queue.Receive("queue1", pollIntervalInMilliseconds: 10, cancellationToken: token).FirstAsync(token);
+            var receiveQueue2Task = queue.Receive("queue2", pollIntervalInMilliseconds: 10, cancellationToken: token).FirstAsync(token);
+            var receiveQueue3Task = queue.Receive("queue3", pollIntervalInMilliseconds: 10, cancellationToken: token).FirstAsync(token);
             
             // Wait for all receives to complete and get results
             var received1 = await receiveQueue1Task;
             var received2 = await receiveQueue2Task;
             var received3 = await receiveQueue3Task;
             
-            System.Text.Encoding.UTF8.GetString(received1.Message.Data).ShouldBe("payload1");
-            System.Text.Encoding.UTF8.GetString(received2.Message.Data).ShouldBe("payload2");
-            System.Text.Encoding.UTF8.GetString(received3.Message.Data).ShouldBe("payload3");
+            System.Text.Encoding.UTF8.GetString(received1.Message.DataArray).ShouldBe("payload1");
+            System.Text.Encoding.UTF8.GetString(received2.Message.DataArray).ShouldBe("payload2");
+            System.Text.Encoding.UTF8.GetString(received3.Message.DataArray).ShouldBe("payload3");
             
-            received1.Message.Queue.ShouldBe("queue1");
-            received2.Message.Queue.ShouldBe("queue2");
-            received3.Message.Queue.ShouldBe("queue3");
+            received1.Message.QueueString.ShouldBe("queue1");
+            received2.Message.QueueString.ShouldBe("queue2");
+            received3.Message.QueueString.ShouldBe("queue3");
         }, TimeSpan.FromSeconds(5));
     }
     

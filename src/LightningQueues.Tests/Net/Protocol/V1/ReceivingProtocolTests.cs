@@ -73,12 +73,10 @@ public class ReceivingProtocolTests : TestBase
 
     private async Task RunLengthTest(IReceivingProtocol protocol, int differenceFromActualLength, CancellationToken token)
     {
-        var message = new Message
-        {
-            Id = MessageId.GenerateRandom(),
-            Data = "hello"u8.ToArray(),
-            Queue = "test"
-        };
+        var message = Message.Create(
+            data: "hello"u8.ToArray(),
+            queue: "test"
+        );
         var serializer = new MessageSerializer();
         var memory = serializer.ToMemory([message]);
         using var ms = new MemoryStream();
@@ -92,12 +90,10 @@ public class ReceivingProtocolTests : TestBase
     {
         await ReceivingScenario(async (protocol, _, token) =>
         {
-            var message = new Message
-            {
-                Id = MessageId.GenerateRandom(),
-                Data = "hello"u8.ToArray(),
-                Queue = "test2"
-            };
+            var message = Message.Create(
+                data: "hello"u8.ToArray(),
+                queue: "test2"
+            );
             var serializer = new MessageSerializer();
             var memory = serializer.ToMemory([message]);
             using var ms = new MemoryStream();

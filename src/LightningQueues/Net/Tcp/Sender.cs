@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -17,6 +18,23 @@ public class Sender : IDisposable
     private readonly Channel<OutgoingMessageFailure> _failedToSend;
     private readonly ILogger _logger;
     private readonly TimeSpan _sendTimeout;
+    
+    // Connection pooling for improved performance
+    private readonly ConcurrentDictionary<string, ConcurrentQueue<PooledTcpClient>> _connectionPools = new();
+    private readonly Timer _poolCleanupTimer;
+    private const int MaxConnectionsPerEndpoint = 5;
+    private const int ConnectionIdleTimeoutMs = 30000;
+    
+    // DNS resolution cache for improved performance
+    private readonly ConcurrentDictionary<string, CachedDnsEntry> _dnsCache = new();
+    private const int DnsCacheTimeoutMs = 300000; // 5 minutes
+
+    private class CachedDnsEntry
+    {
+        public IPAddress[] Addresses { get; set; }
+        public DateTime CachedAt { get; set; }
+        public bool IsExpired => DateTime.UtcNow - CachedAt > TimeSpan.FromMilliseconds(DnsCacheTimeoutMs);
+    }
 
     public Sender(ISendingProtocol protocol, ILogger logger, TimeSpan sendTimeout)
     {
@@ -24,50 +42,269 @@ public class Sender : IDisposable
         _logger = logger;
         _sendTimeout = sendTimeout;
         _failedToSend = Channel.CreateUnbounded<OutgoingMessageFailure>();
+        
+        // Start cleanup timer to periodically clean up idle connections
+        _poolCleanupTimer = new Timer(CleanupIdleConnections, null, 
+            TimeSpan.FromMilliseconds(ConnectionIdleTimeoutMs), 
+            TimeSpan.FromMilliseconds(ConnectionIdleTimeoutMs));
+    }
+
+    private class PooledTcpClient : IDisposable
+    {
+        public Socket Socket { get; }
+        public NetworkStream Stream { get; }
+        public DateTime LastUsed { get; set; }
+        public string Endpoint { get; }
+
+        public PooledTcpClient(Socket socket, string endpoint)
+        {
+            Socket = socket;
+            Stream = new NetworkStream(socket, ownsSocket: false);
+            Endpoint = endpoint;
+            LastUsed = DateTime.UtcNow;
+        }
+
+        public bool IsConnected => Socket.Connected;
+        
+        public bool IsExpired => DateTime.UtcNow - LastUsed > TimeSpan.FromMilliseconds(ConnectionIdleTimeoutMs);
+
+        public void UpdateLastUsed() => LastUsed = DateTime.UtcNow;
+
+        public void Dispose()
+        {
+            Stream?.Dispose();
+            Socket?.Dispose();
+        }
+    }
+
+    private void CleanupIdleConnections(object state)
+    {
+        // Clean up connection pools - avoid List allocation by processing immediately
+        foreach (var kvp in _connectionPools)
+        {
+            var pool = kvp.Value;
+            
+            // Process connections one by one without collecting them
+            var processedCount = 0;
+            var maxToProcess = 10; // Limit processing to prevent long blocking
+            
+            while (processedCount < maxToProcess && pool.TryDequeue(out var pooledClient))
+            {
+                if (pooledClient.IsExpired || !pooledClient.IsConnected)
+                {
+                    pooledClient.Dispose();
+                }
+                else
+                {
+                    // Put back non-expired connection and stop processing this pool
+                    pool.Enqueue(pooledClient);
+                    break;
+                }
+                processedCount++;
+            }
+        }
+        
+        // Clean up DNS cache - avoid LINQ allocation by processing directly
+        foreach (var kvp in _dnsCache)
+        {
+            if (kvp.Value.IsExpired)
+            {
+                _dnsCache.TryRemove(kvp.Key, out _);
+            }
+        }
+    }
+
+    private async Task<IPAddress> ResolveDnsAsync(string hostName, CancellationToken cancellationToken)
+    {
+        // Check cache first
+        if (_dnsCache.TryGetValue(hostName, out var cachedEntry) && !cachedEntry.IsExpired)
+        {
+            return cachedEntry.Addresses[0]; // Return first address
+        }
+
+        // Resolve DNS and cache result
+        try
+        {
+            var addresses = await Dns.GetHostAddressesAsync(hostName, cancellationToken).ConfigureAwait(false);
+            if (addresses.Length > 0)
+            {
+                _dnsCache[hostName] = new CachedDnsEntry
+                {
+                    Addresses = addresses,
+                    CachedAt = DateTime.UtcNow
+                };
+                return addresses[0];
+            }
+        }
+        catch
+        {
+            // Fall back to default resolution if caching fails
+        }
+        
+        // Fallback to synchronous resolution
+        var fallbackAddresses = Dns.GetHostAddresses(hostName);
+        return fallbackAddresses.Length > 0 ? fallbackAddresses[0] : null;
+    }
+
+    private async Task<PooledTcpClient> GetConnectionAsync(Uri uri, CancellationToken cancellationToken)
+    {
+        var endpoint = $"{uri.Host}:{uri.Port}";
+        var pool = _connectionPools.GetOrAdd(endpoint, _ => new ConcurrentQueue<PooledTcpClient>());
+
+        // Try to get an existing connection
+        while (pool.TryDequeue(out var pooledClient))
+        {
+            if (pooledClient.IsConnected && !pooledClient.IsExpired)
+            {
+                pooledClient.UpdateLastUsed();
+                return pooledClient;
+            }
+            pooledClient.Dispose(); // Clean up invalid connection
+        }
+
+        // Create new connection using Socket for better performance
+        var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        try
+        {
+            if (uri.IsLoopback || Dns.GetHostName() == uri.Host)
+            {
+                await socket.ConnectAsync(IPAddress.Loopback, uri.Port, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                // Use cached DNS resolution for better performance
+                var resolvedAddress = await ResolveDnsAsync(uri.Host, cancellationToken).ConfigureAwait(false);
+                if (resolvedAddress != null)
+                {
+                    await socket.ConnectAsync(resolvedAddress, uri.Port, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                else
+                {
+                    // Fallback to hostname if DNS resolution fails
+                    await socket.ConnectAsync(uri.Host, uri.Port, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+            }
+            
+            // Configure socket for optimal performance
+            socket.NoDelay = true; // Disable Nagle's algorithm for low latency
+            socket.ReceiveBufferSize = 8192;
+            socket.SendBufferSize = 8192;
+            
+            return new PooledTcpClient(socket, endpoint);
+        }
+        catch
+        {
+            socket.Dispose();
+            throw;
+        }
+    }
+
+    private void ReturnConnection(PooledTcpClient pooledClient)
+    {
+        if (pooledClient?.IsConnected == true && !pooledClient.IsExpired)
+        {
+            var pool = _connectionPools.GetOrAdd(pooledClient.Endpoint, _ => new ConcurrentQueue<PooledTcpClient>());
+            
+            // Limit pool size to prevent memory leaks
+            var currentSize = 0;
+            var tempList = new List<PooledTcpClient>();
+            
+            while (pool.TryDequeue(out var existing) && currentSize < MaxConnectionsPerEndpoint - 1)
+            {
+                if (existing.IsConnected && !existing.IsExpired)
+                {
+                    tempList.Add(existing);
+                    currentSize++;
+                }
+                else
+                {
+                    existing.Dispose();
+                }
+            }
+            
+            // Return valid connections to pool
+            foreach (var connection in tempList)
+            {
+                pool.Enqueue(connection);
+            }
+            
+            // Add the current connection if there's space
+            if (currentSize < MaxConnectionsPerEndpoint)
+            {
+                pool.Enqueue(pooledClient);
+            }
+            else
+            {
+                pooledClient.Dispose();
+            }
+        }
+        else
+        {
+            pooledClient?.Dispose();
+        }
     }
 
     public Channel<OutgoingMessageFailure> FailedToSend() => _failedToSend;
 
-    public async ValueTask StartSendingAsync(ChannelReader<Message> outgoing, CancellationToken cancellationToken)
+    public async ValueTask StartSendingAsync(IMessageStore messageStore, int batchSize = 50, TimeSpan pollInterval = default, CancellationToken cancellationToken = default)
     {
+        pollInterval = pollInterval == default ? TimeSpan.FromMilliseconds(200) : pollInterval;
+        
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                var batch = await outgoing.ReadBatchAsync(50, TimeSpan.FromMilliseconds(200), cancellationToken)
-                    .ConfigureAwait(false);
-                if (cancellationToken.IsCancellationRequested)
-                    break;
+                var batch = new List<Message>(batchSize);
+                var batchCount = 0;
+                
+                // Read messages from storage up to batch size
+                foreach (var message in messageStore.PersistedOutgoing())
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                        break;
+                    
+                    batch.Add(message);
+                    batchCount++;
+                    
+                    if (batchCount >= batchSize)
+                        break;
+                }
+                
+                // If no messages, wait before polling again
+                if (batchCount == 0)
+                {
+                    await Task.Delay(pollInterval, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
                 using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 linked.CancelAfter(_sendTimeout);
-                // Group messages by destination without creating extra lists
-                // First, find the distinct destinations
-                var destinations = new HashSet<Uri>();
-                foreach (var message in batch)
-                {
-                    destinations.Add(message.Destination);
-                }
+                // Group messages by destination AND queue to prevent batching messages to different queues together
+                // This ensures that a QueueDoesNotExistException for one queue doesn't affect messages to other queues
+                var destinationQueueGroups = batch.GroupBy(m => new { m.Destination, Queue = m.QueueString }).ToList();
 
-                // Then process each destination with its messages
-                foreach (var uri in destinations)
+                // Process each destination+queue group separately
+                foreach (var group in destinationQueueGroups)
                 {
-                    var messagesForDestination = batch.Where(m => m.Destination == uri).ToList();
+                    var uri = group.Key.Destination;
+                    var messagesForDestination = group.ToList();
+                    PooledTcpClient pooledClient = null;
                     
                     try
                     {
-                        using var client = new TcpClient();
-                        if (uri.IsLoopback || Dns.GetHostName() == uri.Host)
-                        {
-                            await client.ConnectAsync(IPAddress.Loopback, uri.Port, linked.Token)
-                                .ConfigureAwait(false);
-                        }
-                        else
-                        {
-                            await client.ConnectAsync(uri.Host, uri.Port, linked.Token).ConfigureAwait(false);
-                        }
+                        pooledClient = await GetConnectionAsync(uri, linked.Token).ConfigureAwait(false);
 
-                        await _protocol.SendAsync(uri, client.GetStream(), messagesForDestination, linked.Token)
+                        await _protocol.SendAsync(uri, pooledClient.Stream, messagesForDestination, linked.Token)
                             .ConfigureAwait(false);
+                            
+                        // Mark messages as successfully sent and remove from storage
+                        messageStore.SuccessfullySent(messagesForDestination);
+                        
+                        // Return connection to pool on success
+                        ReturnConnection(pooledClient);
+                        pooledClient = null; // Prevent disposal in finally
                     }
                     catch (SocketException ex) when (ex.SocketErrorCode == SocketError.HostNotFound)
                     {
@@ -82,6 +319,18 @@ public class Sender : IDisposable
                     catch (QueueDoesNotExistException ex)
                     {
                         _logger.SenderQueueDoesNotExistError(uri, ex);
+                        // When queue doesn't exist, separate messages by queue and handle each queue's retry logic independently
+                        // This allows messages to valid queues to be retried while avoiding infinite retries for non-existent queues
+                        var messagesByQueue = messagesForDestination.GroupBy(m => m.QueueString);
+                        foreach (var queueGroup in messagesByQueue)
+                        {
+                            var failed = new OutgoingMessageFailure
+                            {
+                                Messages = queueGroup.ToList(),
+                                ShouldRetry = true // Let the retry policy handle max attempts per queue
+                            };
+                            await _failedToSend.Writer.WriteAsync(failed, cancellationToken).ConfigureAwait(false);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -92,6 +341,11 @@ public class Sender : IDisposable
                             ShouldRetry = true
                         };
                         await _failedToSend.Writer.WriteAsync(failed, cancellationToken).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        // Dispose connection on error (if not returned to pool)
+                        pooledClient?.Dispose();
                     }
                 }
             }
@@ -110,6 +364,22 @@ public class Sender : IDisposable
         {
             // Complete the channel to prevent further sends
             _failedToSend.Writer.TryComplete();
+            
+            // Dispose the cleanup timer
+            _poolCleanupTimer?.Dispose();
+            
+            // Dispose all pooled connections
+            foreach (var kvp in _connectionPools)
+            {
+                while (kvp.Value.TryDequeue(out var pooledClient))
+                {
+                    pooledClient.Dispose();
+                }
+            }
+            _connectionPools.Clear();
+            
+            // Clear DNS cache
+            _dnsCache.Clear();
         }
         catch (Exception ex)
         {

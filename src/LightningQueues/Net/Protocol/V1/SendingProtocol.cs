@@ -84,6 +84,6 @@ public class SendingProtocol : ProtocolBase, ISendingProtocol
 
     private static async ValueTask WriteAcknowledgement(Stream stream, CancellationToken token)
     {
-        await stream.WriteAsync(Constants.AcknowledgedBuffer.AsMemory(), token).ConfigureAwait(false);
+        await stream.WriteAsync(Constants.AcknowledgedMemory, token).ConfigureAwait(false);
     }
 }

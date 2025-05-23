@@ -9,15 +9,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
+      <PackageReference Include="BenchmarkDotNet" Version="0.15.0" />
+      <PackageReference Include="BenchmarkDotNet.Diagnostics.dotMemory" Version="0.15.0" />
+      <PackageReference Include="BenchmarkDotNet.Diagnostics.dotTrace" Version="0.15.0" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\LightningQueues\LightningQueues.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="BenchmarkDotNet.Artifacts" />
     </ItemGroup>
 
 </Project>

@@ -51,15 +51,13 @@ public class SendAndReceive
         var random = new Random();
         for (var i = 0; i < MessageCount; ++i)
         {
-            var msg = new Message
-            {
-                Data = "hello"u8.ToArray(),
-                Id = MessageId.GenerateRandom(),
-                Queue = "receiver",
-            }; 
-            msg.Destination = new Uri($"lq.tcp://{_receiver.Endpoint}");
-            msg.Data = new byte[MessageDataSize];
-            random.NextBytes(msg.Data);
+            var data = new byte[MessageDataSize];
+            random.NextBytes(data);
+            var msg = Message.Create(
+                data: data,
+                queue: "receiver",
+                destinationUri: $"lq.tcp://{_receiver.Endpoint}"
+            );
             _messages[i] = msg;
         }
     }
@@ -81,7 +79,7 @@ public class SendAndReceive
     {
         for (var i = 0; i < MessageCount; ++i)
         {
-            _sender?.Send(_messages?[i]);
+            _sender?.Send(_messages![i]);
         }
 
         if(_receivingTask != null)

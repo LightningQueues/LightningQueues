@@ -17,17 +17,24 @@ public class IntegrationTests : TestBase
                 .WithDefaultsForTest(Console)
                 .LogWith(senderLogger)
                 .BuildAndStartQueue("sender");
-            var message = NewMessage("receiver2");
-            message.Destination = new Uri($"lq.tcp://localhost:{receiver.Endpoint.Port}");
-            sender.Send(message);
-            await DeterministicDelay(500, token); //passing buffer delay
-            message.Queue = "receiver";
-            sender.Send(message);
-            var received = await receiver.Receive("receiver", token)
+            var message1 = Message.Create(
+                data: "hello"u8.ToArray(),
+                queue: "receiver2",
+                destinationUri: $"lq.tcp://localhost:{receiver.Endpoint.Port}"
+            );
+            sender.Send(message1);
+            
+            var message2 = Message.Create(
+                data: "hello"u8.ToArray(),
+                queue: "receiver",
+                destinationUri: $"lq.tcp://localhost:{receiver.Endpoint.Port}"
+            );
+            sender.Send(message2);
+            var received = await receiver.Receive("receiver", cancellationToken: token)
                 .FirstAsync(token);
             received.ShouldNotBeNull();
-            received.Message.Queue.ShouldBe(message.Queue);
-            received.Message.Data.ShouldBe(message.Data);
+            received.Message.QueueString.ShouldBe(message2.QueueString);
+            received.Message.DataArray.ShouldBe(message2.DataArray);
             senderLogger.ErrorMessages.Any(x => x.Contains("Queue does not exist")).ShouldBeTrue();
         }, TimeSpan.FromSeconds(2), "receiver");
     }

@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,6 +15,7 @@ public class LmdbMessageStore : IMessageStore
     private readonly ReaderWriterLockSlim _lock;
     private readonly LightningEnvironment _environment;
     private readonly IMessageSerializer _serializer;
+    private readonly ConcurrentDictionary<string, LightningDatabase> _cachedDatabases;
     private bool _disposed;
 
     public LmdbMessageStore(LightningEnvironment environment, IMessageSerializer serializer)
@@ -21,8 +23,9 @@ public class LmdbMessageStore : IMessageStore
         _lock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
         _environment = environment;
         _serializer = serializer;
+        _cachedDatabases = new ConcurrentDictionary<string, LightningDatabase>();
         if(!_environment.IsOpened)
-            _environment.Open(EnvironmentOpenFlags.NoLock);
+            _environment.Open(EnvironmentOpenFlags.NoLock | EnvironmentOpenFlags.MapAsync);
         CreateQueue(OutgoingQueue);
     }
     
@@ -60,10 +63,10 @@ public class LmdbMessageStore : IMessageStore
 
     private void StoreIncoming(LightningTransaction tx, params IEnumerable<Message> messages)
     {
-        foreach (var messagesByQueue in messages.GroupBy(x => x.Queue))
+        foreach (var messagesByQueue in messages.GroupBy(x => x.QueueString))
         {
             var queueName = messagesByQueue.Key;
-            using var db = OpenQueueDatabase(tx, queueName);
+            var db = GetCachedDatabase(queueName);
             foreach (var message in messagesByQueue)
             {
                 StoreIncomingMessage(tx, db, message);
@@ -82,7 +85,7 @@ public class LmdbMessageStore : IMessageStore
         catch (StorageException ex)
         {
             if (ex.ResultCode == MDBResultCode.NotFound)
-                throw new QueueDoesNotExistException(message.Queue, ex);
+                throw new QueueDoesNotExistException(message.QueueString, ex);
             throw;
         }
     }
@@ -95,7 +98,7 @@ public class LmdbMessageStore : IMessageStore
         try
         {
             using var tx = _environment.BeginTransaction();
-            foreach (var grouping in messages.GroupBy(x => x.Queue))
+            foreach (var grouping in messages.GroupBy(x => x.QueueString))
             {
                 RemoveMessagesFromStorage(tx, grouping.Key, grouping);
             }
@@ -107,18 +110,12 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    private LightningDatabase OpenQueueDatabase(LightningTransaction tx, string queueName)
+    private LightningDatabase GetCachedDatabase(string queueName)
     {
-        try
-        {
-            return tx.OpenDatabase(queueName);
-        }
-        catch (LightningException ex)
-        {
-            if (ex.StatusCode == (int)MDBResultCode.NotFound)
-                throw new QueueDoesNotExistException(queueName, ex);
-            throw;
-        }
+        if (_cachedDatabases.TryGetValue(queueName, out var cachedDb))
+            return cachedDb;
+        
+        throw new QueueDoesNotExistException(queueName);
     }
 
     public LmdbTransaction BeginTransaction()
@@ -175,7 +172,7 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    public Message GetMessage(string queueName, MessageId messageId)
+    public Message? GetMessage(string queueName, MessageId messageId)
     {
         CheckDisposed();
         Span<byte> id = stackalloc byte[16];
@@ -185,7 +182,7 @@ public class LmdbMessageStore : IMessageStore
         try
         {
             using var tx = _environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
-            using var db = OpenQueueDatabase(tx, queueName);
+            var db = GetCachedDatabase(queueName);
             var result = tx.Get(db, id);
             ThrowIfReadError(result.resultCode);
             if (result.resultCode == MDBResultCode.NotFound)
@@ -219,7 +216,7 @@ public class LmdbMessageStore : IMessageStore
             using var tx = _environment.BeginTransaction();
             foreach (var queueName in queueNames)
             {
-                using var db = OpenQueueDatabase(tx, queueName);
+                var db = GetCachedDatabase(queueName);
                 ThrowIfError(tx.TruncateDatabase(db));
             }
 
@@ -263,7 +260,7 @@ public class LmdbMessageStore : IMessageStore
         RemoveMessagesFromStorage(tx, OutgoingQueue, messages);
     }
 
-    // Use a direct enumeration with reader locks, as they're more efficient for concurrent access
+    // Streaming enumeration that yields messages one at a time for better memory efficiency
     private class MessageEnumerable : IEnumerable<Message>
     {
         private readonly LmdbMessageStore _store;
@@ -277,34 +274,106 @@ public class LmdbMessageStore : IMessageStore
 
         public IEnumerator<Message> GetEnumerator()
         {
-            // Load all messages at once with a single reader lock
-            // This is more efficient than trying to yield inside a lock
-            var messages = new List<Message>();
-            
+            return new MessageEnumerator(_store, _queueName);
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    private class MessageEnumerator : IEnumerator<Message>
+    {
+        private readonly LmdbMessageStore _store;
+        private readonly string _queueName;
+        private LightningTransaction _transaction;
+        private LightningDatabase _database;
+        private LightningCursor _cursor;
+        private IEnumerator<(LightningDB.MDBValue key, LightningDB.MDBValue value)> _cursorEnumerator;
+        private bool _disposed;
+
+        public MessageEnumerator(LmdbMessageStore store, string queueName)
+        {
+            _store = store;
+            _queueName = queueName;
+            Initialize();
+        }
+
+        private void Initialize()
+        {
             _store._lock.EnterReadLock();
             try
             {
-                using var tx = _store._environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
-                using var db = _store.OpenQueueDatabase(tx, _queueName);
-                using var cursor = tx.CreateCursor(db);
-                
-                foreach (var (_, value) in cursor.AsEnumerable())
+                _transaction = _store._environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
+                _database = _store.GetCachedDatabase(_queueName);
+                _cursor = _transaction.CreateCursor(_database);
+                _cursorEnumerator = _cursor.AsEnumerable().GetEnumerator();
+            }
+            catch
+            {
+                Cleanup();
+                throw;
+            }
+        }
+
+        public Message Current { get; private set; }
+
+        object System.Collections.IEnumerator.Current => Current;
+
+        public bool MoveNext()
+        {
+            if (_disposed || _cursorEnumerator == null)
+                return false;
+
+            try
+            {
+                if (_cursorEnumerator.MoveNext())
                 {
+                    var (_, value) = _cursorEnumerator.Current;
                     var valueSpan = value.AsSpan();
-                    var msg = _store._serializer.ToMessage(valueSpan);
-                    messages.Add(msg);
+                    Current = _store._serializer.ToMessage(valueSpan);
+                    return true;
                 }
+            }
+            catch
+            {
+                // If there's an error, we should stop enumeration
+                return false;
+            }
+
+            return false;
+        }
+
+        public void Reset()
+        {
+            Cleanup();
+            Initialize();
+        }
+
+        private void Cleanup()
+        {
+            try
+            {
+                _cursorEnumerator?.Dispose();
+                _cursor?.Dispose();
+                _transaction?.Dispose();
             }
             finally
             {
                 _store._lock.ExitReadLock();
+                _cursorEnumerator = null;
+                _cursor = null;
+                _database = null;
+                _transaction = null;
             }
-            
-            // Return the enumeration of the loaded messages
-            return messages.GetEnumerator();
         }
 
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                Cleanup();
+                _disposed = true;
+            }
+        }
     }
 
     public IEnumerable<Message> PersistedIncoming(string queueName)
@@ -335,22 +404,20 @@ public class LmdbMessageStore : IMessageStore
 
     private void SuccessfullyReceived(LightningTransaction tx, Message message)
     {
-        using var db = OpenQueueDatabase(tx, message.Queue);
+        var db = GetCachedDatabase(message.QueueString);
         RemoveMessageFromStorage(tx, db, message);
     }
 
-    private void RemoveMessagesFromStorage<TMessage>(LightningTransaction tx, string queueName, params IEnumerable<TMessage> messages)
-        where TMessage : Message
+    private void RemoveMessagesFromStorage(LightningTransaction tx, string queueName, params IEnumerable<Message> messages)
     {
-        using var db = OpenQueueDatabase(tx, queueName);
+        var db = GetCachedDatabase(queueName);
         foreach (var message in messages)
         {
             RemoveMessageFromStorage(tx, db, message);
         }
     }
 
-    private static void RemoveMessageFromStorage<TMessage>(LightningTransaction tx, LightningDatabase db, TMessage message)
-        where TMessage : Message
+    private static void RemoveMessageFromStorage(LightningTransaction tx, LightningDatabase db, Message message)
     {
         Span<byte> id = stackalloc byte[16];
         message.Id.MessageIdentifier.TryWriteBytes(id);
@@ -361,7 +428,26 @@ public class LmdbMessageStore : IMessageStore
     {
         CheckDisposed();
         var tx = transaction.Transaction;
-        StoreOutgoing(tx, message);
+        var db = GetCachedDatabase(OutgoingQueue);
+        StoreOutgoing(tx, db, message);
+    }
+
+    public void StoreOutgoing(Message message)
+    {
+        CheckDisposed();
+        
+        _lock.EnterWriteLock();
+        try
+        {
+            using var tx = _environment.BeginTransaction();
+            var db = GetCachedDatabase(OutgoingQueue);
+            StoreOutgoing(tx, db, message);
+            tx.Commit();
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
     }
 
     public void StoreOutgoing(IEnumerable<Message> messages)
@@ -372,9 +458,10 @@ public class LmdbMessageStore : IMessageStore
         try
         {
             using var tx = _environment.BeginTransaction();
+            var db = GetCachedDatabase(OutgoingQueue);
             foreach (var message in messages)
             {
-                StoreOutgoing(tx, message);
+                StoreOutgoing(tx, db, message);
             }
             tx.Commit();
         }
@@ -384,11 +471,31 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
-    private void StoreOutgoing(LightningTransaction tx, Message message)
+    public void StoreOutgoing(ReadOnlySpan<Message> messages)
+    {
+        CheckDisposed();
+        
+        _lock.EnterWriteLock();
+        try
+        {
+            using var tx = _environment.BeginTransaction();
+            var db = GetCachedDatabase(OutgoingQueue);
+            foreach (var message in messages)
+            {
+                StoreOutgoing(tx, db, message);
+            }
+            tx.Commit();
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+    private void StoreOutgoing(LightningTransaction tx, LightningDatabase db, Message message)
     {
         Span<byte> id = stackalloc byte[16];
         message.Id.MessageIdentifier.TryWriteBytes(id);
-        using var db = OpenQueueDatabase(tx, OutgoingQueue);
         ThrowIfError(tx.Put(db, id, _serializer.AsSpan(message)));
     }
 
@@ -408,7 +515,7 @@ public class LmdbMessageStore : IMessageStore
     {
         Span<byte> id = stackalloc byte[16];
         message.Id.MessageIdentifier.TryWriteBytes(id);
-        using var db = OpenQueueDatabase(tx, OutgoingQueue);
+        var db = GetCachedDatabase(OutgoingQueue);
         var value = tx.Get(db, id);
         if (value.resultCode == MDBResultCode.NotFound)
             return;
@@ -439,10 +546,23 @@ public class LmdbMessageStore : IMessageStore
         {
             Span<byte> id = stackalloc byte[16];
             message.Id.MessageIdentifier.TryWriteBytes(id);
-            using var original = OpenQueueDatabase(tx, message.Queue);
-            using var newDb = OpenQueueDatabase(tx, queueName);
+            var original = GetCachedDatabase(message.QueueString);
+            var newDb = GetCachedDatabase(queueName);
             ThrowIfError(tx.Delete(original, id));
-            ThrowIfError(tx.Put(newDb, id, _serializer.AsSpan(message)));
+            
+            // Create updated message with new queue name for storage
+            var updatedMessage = new Message(
+                message.Id,
+                message.Data,
+                queueName.AsMemory(),
+                message.SentAt,
+                message.SubQueue,
+                message.DestinationUri,
+                message.DeliverBy,
+                message.MaxAttempts,
+                message.Headers
+            );
+            ThrowIfError(tx.Put(newDb, id, _serializer.AsSpan(updatedMessage)));
         }
         catch (LightningException ex)
         {
@@ -461,8 +581,11 @@ public class LmdbMessageStore : IMessageStore
         try
         {
             using var tx = _environment.BeginTransaction();
-            using var db = tx.OpenDatabase(queueName, new DatabaseConfiguration { Flags = DatabaseOpenFlags.Create });
+            var db = tx.OpenDatabase(queueName, new DatabaseConfiguration { Flags = DatabaseOpenFlags.Create });
             ThrowIfError(tx.Commit());
+            
+            // Cache the database handle
+            _cachedDatabases.TryAdd(queueName, db);
         }
         finally
         {
@@ -499,6 +622,10 @@ public class LmdbMessageStore : IMessageStore
             {
                 try
                 {
+                    _cachedDatabases.Clear();
+                    
+                    //Flush due to async setup for more optimal performance
+                    _environment.Flush(true);
                     // Dispose the environment in a controlled manner
                     _environment.Dispose();
                 }
