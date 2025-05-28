@@ -41,6 +41,10 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
         {
             throw new ProtocolViolationException("Unable to receive messages, malformed message received");
         }
+        catch (OutOfMemoryException)
+        {
+            throw new ProtocolViolationException("Unable to receive messages, insufficient data available");
+        }
         finally
         {
             await doneCancellation.CancelAsync().ConfigureAwait(false);
