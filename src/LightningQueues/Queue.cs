@@ -234,18 +234,22 @@ public class Queue : IDisposable
     public void ReceiveLater(Message message, TimeSpan timeSpan)
     {
         _logger.QueueReceiveLater(message.Id, timeSpan);
-        Task.Delay(timeSpan)
-            .ContinueWith(_ =>
+        _ = Task.Run(async () =>
+        {
+            try
             {
-                try
-                {
-                    Store.StoreIncoming(message);
-                }
-                catch (Exception ex)
-                {
-                    _logger.QueueErrorReceiveLater(message.Id, timeSpan, ex);
-                }
-            });
+                await Task.Delay(timeSpan, _cancelOnDispose.Token);
+                Store.StoreIncoming(message);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when queue is disposed
+            }
+            catch (Exception ex)
+            {
+                _logger.QueueErrorReceiveLater(message.Id, timeSpan, ex);
+            }
+        }, _cancelOnDispose.Token);
     }
 
     /// <summary>
