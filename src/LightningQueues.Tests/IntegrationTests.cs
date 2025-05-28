@@ -35,6 +35,8 @@ public class IntegrationTests : TestBase
             received.ShouldNotBeNull();
             received.Message.QueueString.ShouldBe(message2.QueueString);
             received.Message.DataArray.ShouldBe(message2.DataArray);
+            
+            await DeterministicDelay(100, token);
             senderLogger.ErrorMessages.Any(x => x.Contains("Queue does not exist")).ShouldBeTrue();
         }, TimeSpan.FromSeconds(2), "receiver");
     }
