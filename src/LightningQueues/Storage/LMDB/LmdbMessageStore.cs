@@ -421,7 +421,9 @@ public class LmdbMessageStore : IMessageStore
     {
         Span<byte> id = stackalloc byte[16];
         message.Id.MessageIdentifier.TryWriteBytes(id);
-        ThrowIfError(tx.Delete(db, id));
+        var result = tx.Delete(db, id);
+        if (result != MDBResultCode.Success && result != MDBResultCode.NotFound)
+            throw new StorageException("Error with LightningDB operation", result);
     }
 
     public void StoreOutgoing(LmdbTransaction transaction, Message message)
