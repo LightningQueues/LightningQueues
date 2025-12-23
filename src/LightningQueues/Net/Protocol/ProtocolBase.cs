@@ -8,14 +8,9 @@ using Microsoft.Extensions.Logging;
 
 namespace LightningQueues.Net.Protocol;
 
-public abstract class ProtocolBase
+public abstract class ProtocolBase(ILogger logger)
 {
-    protected readonly ILogger Logger;
-
-    protected ProtocolBase(ILogger logger)
-    {
-        Logger = logger;
-    }
+    protected readonly ILogger Logger = logger;
     protected async ValueTask ReceiveIntoBuffer(PipeWriter writer, Stream stream, CancellationToken cancellationToken)
     {
         const int minimumBufferSize = 512;

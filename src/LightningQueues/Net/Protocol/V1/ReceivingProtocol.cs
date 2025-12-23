@@ -13,21 +13,13 @@ using LightningQueues.Storage;
 
 namespace LightningQueues.Net.Protocol.V1;
 
-public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
+public class ReceivingProtocol(IMessageStore store, IStreamSecurity security, IMessageSerializer serializer, Uri receivingUri, ILogger logger)
+    : ProtocolBase(logger), IReceivingProtocol
 {
-    private readonly IMessageStore _store;
-    private readonly IStreamSecurity _security;
-    private readonly IMessageSerializer _serializer;
-    private readonly Uri _receivingUri;
-
-    public ReceivingProtocol(IMessageStore store, IStreamSecurity security, IMessageSerializer serializer, Uri receivingUri, ILogger logger) 
-        : base(logger)
-    {
-        _store = store;
-        _security = security;
-        _serializer = serializer;
-        _receivingUri = receivingUri;
-    }
+    private readonly IMessageStore _store = store;
+    private readonly IStreamSecurity _security = security;
+    private readonly IMessageSerializer _serializer = serializer;
+    private readonly Uri _receivingUri = receivingUri;
 
     public async Task<IList<Message>> ReceiveMessagesAsync(Stream stream, CancellationToken cancellationToken)
     {

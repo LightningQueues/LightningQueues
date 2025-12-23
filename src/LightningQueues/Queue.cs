@@ -123,9 +123,7 @@ public class Queue : IDisposable, IAsyncDisposable
         }, token);
         
         // Start the sending task using storage-based approach
-        var sendingTask = Task.Run(async () =>
-            await _sender.StartSendingAsync(Store, 50, TimeSpan.FromMilliseconds(200), token).ConfigureAwait(false), 
-            token);
+        var sendingTask = _sender.StartSendingAsync(Store, 50, TimeSpan.FromMilliseconds(200), token).AsTask();
 
         await Task.WhenAll(sendingTask, errorTask.AsTask(), retryTask).ConfigureAwait(false);
     }

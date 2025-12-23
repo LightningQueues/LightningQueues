@@ -1,4 +1,6 @@
 using System;
+using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipelines;
@@ -14,18 +16,12 @@ using Microsoft.Extensions.Logging;
 
 namespace LightningQueues.Net.Protocol.V1;
 
-public class SendingProtocol : ProtocolBase, ISendingProtocol
+public class SendingProtocol(IMessageStore store, IStreamSecurity security, IMessageSerializer serializer, ILogger logger)
+    : ProtocolBase(logger), ISendingProtocol
 {
-    private readonly IMessageStore _store;
-    private readonly IStreamSecurity _security;
-    private readonly IMessageSerializer _serializer;
-
-    public SendingProtocol(IMessageStore store, IStreamSecurity security, IMessageSerializer serializer, ILogger logger) : base(logger)
-    {
-        _store = store;
-        _security = security;
-        _serializer = serializer;
-    }
+    private readonly IMessageStore _store = store;
+    private readonly IStreamSecurity _security = security;
+    private readonly IMessageSerializer _serializer = serializer;
 
     public async ValueTask SendAsync(Uri destination, Stream stream, List<Message> batch, CancellationToken token)
     {
@@ -46,8 +42,17 @@ public class SendingProtocol : ProtocolBase, ISendingProtocol
         stream = await _security.Apply(destination, stream).ConfigureAwait(false);
         
         var memory = _serializer.ToMemory(messages);
-        
-        await stream.WriteAsync(BitConverter.GetBytes(memory.Length), 0, 4, token).ConfigureAwait(false);
+
+        var lengthBuffer = ArrayPool<byte>.Shared.Rent(sizeof(int));
+        try
+        {
+            BinaryPrimitives.WriteInt32LittleEndian(lengthBuffer, memory.Length);
+            await stream.WriteAsync(lengthBuffer.AsMemory(0, sizeof(int)), token).ConfigureAwait(false);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(lengthBuffer);
+        }
         Logger.SenderWritingMessageBatch();
         await stream.WriteAsync(memory, token).ConfigureAwait(false);
         Logger.SenderSuccessfullyWroteMessageBatch();
