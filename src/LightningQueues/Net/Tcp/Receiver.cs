@@ -46,6 +46,10 @@ public class Receiver : IDisposable
                             await receivedChannel.WriteAsync(msg, cancellationToken).ConfigureAwait(false);
                         }
                     }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        // Expected during shutdown - don't log
+                    }
                     catch (Exception ex)
                     {
                         _logger.ReceiverErrorReadingMessages(socket.RemoteEndPoint!, ex);

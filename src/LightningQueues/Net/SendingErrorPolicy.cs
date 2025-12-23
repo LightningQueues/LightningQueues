@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -29,7 +30,9 @@ public class SendingErrorPolicy
     {
         await foreach (var messageFailure in _failedToConnect.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
         {
-            var incrementedMessages = IncrementSentAttempt(messageFailure.Messages);
+            if (cancellationToken.IsCancellationRequested)
+                break;
+            var incrementedMessages = IncrementSentAttempt(messageFailure.Messages).ToList();
             IncrementAttemptAndStoreForRecovery(!messageFailure.ShouldRetry, incrementedMessages);
             await HandleMessageRetries(messageFailure.ShouldRetry, cancellationToken, incrementedMessages).ConfigureAwait(false);
         }

@@ -29,11 +29,16 @@ public class RecordingLogger : ILogger
     {
         var list = logLevel switch
         {
+            LogLevel.Trace => _debug,
             LogLevel.Debug => _debug,
             LogLevel.Information => _info,
+            LogLevel.Warning => _error,
             LogLevel.Error => _error,
-            _ => throw new ArgumentOutOfRangeException(nameof(logLevel))
+            LogLevel.Critical => _error,
+            _ => null // LogLevel.None - ignore
         };
+        if (list == null)
+            return;
         var message = formatter(state, exception);
         list.Add(message);
         _console?.WriteLine(message + exception);

@@ -298,9 +298,10 @@ public class Sender : IDisposable
 
                         await _protocol.SendAsync(uri, pooledClient.Stream, messagesForDestination, linked.Token)
                             .ConfigureAwait(false);
-                            
+
                         // Mark messages as successfully sent and remove from storage
-                        messageStore.SuccessfullySent(messagesForDestination);
+                        if (!cancellationToken.IsCancellationRequested)
+                            messageStore.SuccessfullySent(messagesForDestination);
                         
                         // Return connection to pool on success
                         ReturnConnection(pooledClient);
@@ -348,6 +349,10 @@ public class Sender : IDisposable
                         pooledClient?.Dispose();
                     }
                 }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Expected during shutdown - don't log
             }
             catch (Exception ex)
             {

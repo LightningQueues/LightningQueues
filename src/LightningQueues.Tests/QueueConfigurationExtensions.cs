@@ -8,6 +8,7 @@ using System.Security.Cryptography.X509Certificates;
 using LightningDB;
 using LightningQueues.Logging;
 using LightningQueues.Net.Security;
+using Microsoft.Extensions.Logging;
 using LightningQueues.Storage.LMDB;
 
 namespace LightningQueues.Tests;
@@ -22,7 +23,7 @@ public static class QueueConfigurationExtensions
             MapSize = 1024 * 1024 * 100,
             MaxDatabases = 5
         });
-        configuration.LogWith(new RecordingLogger(console));
+        configuration.LogWith(new RecordingLogger(console, LogLevel.Information));
         return configuration;
     }
 

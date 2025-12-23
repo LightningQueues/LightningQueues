@@ -43,11 +43,14 @@ public abstract class ProtocolBase
 
             await writer.CompleteAsync().ConfigureAwait(false);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Expected during shutdown - don't log or rethrow
+        }
         catch (Exception ex)
         {
             Logger.ProtocolStreamError(ex);
-            if (!cancellationToken.IsCancellationRequested)
-                throw;
+            throw;
         }
     }
 

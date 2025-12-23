@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Channels;
@@ -108,6 +109,8 @@ public class Queue : IDisposable, IAsyncDisposable
         {
             await foreach (var retryMessage in errorPolicy.Retries.ReadAllAsync(token).ConfigureAwait(false))
             {
+                if (token.IsCancellationRequested)
+                    break;
                 try
                 {
                     Store.StoreOutgoing(retryMessage);
@@ -239,6 +242,8 @@ public class Queue : IDisposable, IAsyncDisposable
             try
             {
                 await Task.Delay(timeSpan, _cancelOnDispose.Token);
+                if (_cancelOnDispose.IsCancellationRequested)
+                    return;
                 Store.StoreIncoming(message);
             }
             catch (OperationCanceledException)
@@ -341,7 +346,7 @@ public class Queue : IDisposable, IAsyncDisposable
             // Give tasks time to respond to cancellation
             try
             {
-                // Use a timeout to avoid hanging indefinitely 
+                // Use a timeout to avoid hanging indefinitely
                 if (_sendingTask != null && _receivingTask != null)
                 {
                     var completedTask = Task.WhenAll(_sendingTask, _receivingTask).Wait(TimeSpan.FromSeconds(5));
@@ -350,6 +355,10 @@ public class Queue : IDisposable, IAsyncDisposable
                         _logger.QueueTasksTimeout();
                     }
                 }
+            }
+            catch (AggregateException ex) when (ex.Flatten().InnerExceptions.All(e => e is OperationCanceledException))
+            {
+                // TaskCanceledException is expected during disposal - don't log
             }
             catch (AggregateException ex)
             {
@@ -407,9 +416,14 @@ public class Queue : IDisposable, IAsyncDisposable
                         .WaitAsync(timeoutCts.Token)
                         .ConfigureAwait(false);
                 }
+                catch (OperationCanceledException ex) when (ex.CancellationToken == timeoutCts.Token)
+                {
+                    // Timeout waiting for tasks to complete
+                    _logger.QueueTasksTimeout();
+                }
                 catch (OperationCanceledException)
                 {
-                    _logger.QueueTasksTimeout();
+                    // TaskCanceledException from inner tasks is expected during disposal - don't log
                 }
                 catch (Exception ex)
                 {
