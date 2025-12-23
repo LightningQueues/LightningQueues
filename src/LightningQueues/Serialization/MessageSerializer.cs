@@ -1,10 +1,10 @@
 using System;
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
-using DotNext.Buffers;
-using DotNext.IO;
 
 namespace LightningQueues.Serialization;
 
@@ -13,12 +13,12 @@ public class MessageSerializer : IMessageSerializer
     private static readonly MemStringEqualityComparer Comp = new();
     private readonly ConcurrentDictionary<ReadOnlyMemory<char>, string> _commonStrings = new(Comp);
     private const int MaxCacheSize = 1000; // Prevent cache from growing too large
-    
-    // Thread-local pooling for PoolingBufferWriter instances to avoid contention
+
+    // Thread-local pooling for PooledBufferWriter instances to avoid contention
     [ThreadStatic]
-    private static PoolingBufferWriter<byte> _tlsWriter;
-    
-    private static PoolingBufferWriter<byte> RentWriter()
+    private static PooledBufferWriter? _tlsWriter;
+
+    private static PooledBufferWriter RentWriter()
     {
         var writer = _tlsWriter;
         if (writer != null)
@@ -27,10 +27,10 @@ public class MessageSerializer : IMessageSerializer
             writer.Clear();
             return writer;
         }
-        return new PoolingBufferWriter<byte>(ArrayPool<byte>.Shared.ToAllocator());
+        return new PooledBufferWriter(256);
     }
 
-    private static void ReturnWriter(PoolingBufferWriter<byte> writer)
+    private static void ReturnWriter(PooledBufferWriter writer)
     {
         if (_tlsWriter == null)
         {
@@ -59,10 +59,12 @@ public class MessageSerializer : IMessageSerializer
 
     public IList<Message> ReadMessages(ReadOnlySequence<byte> buffer)
     {
-        var reader = new SequenceReader(buffer);
-        var numberOfMessages = reader.ReadLittleEndian<int>();
+        var reader = new SequenceReader<byte>(buffer);
+        if (!reader.TryReadLittleEndian(out int numberOfMessages))
+            throw new EndOfStreamException("Failed to read message count");
+
         var messages = new List<Message>(numberOfMessages);
-            
+
         for (var i = 0; i < numberOfMessages; ++i)
         {
             var msg = ReadMessage(ref reader);
@@ -70,10 +72,10 @@ public class MessageSerializer : IMessageSerializer
         }
         return messages;
     }
-    
+
     private void WriteMessages(IBufferWriter<byte> writer, List<Message> messages)
     {
-        writer.WriteLittleEndian(messages.Count);
+        WriteLittleEndian(writer, messages.Count);
         foreach (var message in messages)
         {
             WriteMessage(writer, message);
@@ -88,63 +90,52 @@ public class MessageSerializer : IMessageSerializer
         writer.Write(id);
         message.Id.MessageIdentifier.TryWriteBytes(id);
         writer.Write(id);
-        
-        // Write strings using compressed format to match reader expectations  
-        writer.Encode(message.Queue.Span, Encoding.UTF8, LengthFormat.Compressed);
-        writer.Encode(message.SubQueue.Span, Encoding.UTF8, LengthFormat.Compressed);
-        
-        writer.WriteLittleEndian(message.SentAt.ToBinary());
-        
+
+        // Write strings using compressed format to match reader expectations
+        WriteCompressedString(writer, message.Queue.Span);
+        WriteCompressedString(writer, message.SubQueue.Span);
+
+        WriteLittleEndian(writer, message.SentAt.ToBinary());
+
         // Write headers directly from FixedHeaders without Dictionary allocation
         WriteFixedHeaders(writer, message.Headers);
 
         // Write data directly from ReadOnlyMemory
-        writer.WriteLittleEndian(message.Data.Length);
+        WriteLittleEndian(writer, message.Data.Length);
         if (!message.Data.IsEmpty)
         {
             writer.Write(message.Data.Span);
         }
 
         // Write destination using compressed format
-        writer.Encode(message.DestinationUri.Span, Encoding.UTF8, LengthFormat.Compressed);
-        
+        WriteCompressedString(writer, message.DestinationUri.Span);
+
         // Write optional fields
-        writer.WriteLittleEndian(Convert.ToInt32(message.DeliverBy.HasValue));
+        WriteLittleEndian(writer, Convert.ToInt32(message.DeliverBy.HasValue));
         if (message.DeliverBy.HasValue)
         {
-            writer.WriteLittleEndian(message.DeliverBy.Value.ToBinary());
+            WriteLittleEndian(writer, message.DeliverBy.Value.ToBinary());
         }
 
-        writer.WriteLittleEndian(Convert.ToInt32(message.MaxAttempts.HasValue));
+        WriteLittleEndian(writer, Convert.ToInt32(message.MaxAttempts.HasValue));
         if (message.MaxAttempts.HasValue)
         {
-            writer.WriteLittleEndian(message.MaxAttempts.Value);
-        } 
+            WriteLittleEndian(writer, message.MaxAttempts.Value);
+        }
     }
-    
-    
+
+
     private static void WriteFixedHeaders(IBufferWriter<byte> writer, FixedHeaders headers)
     {
-        writer.WriteLittleEndian(headers.Count);
-        
+        WriteLittleEndian(writer, headers.Count);
+
         // Use FixedHeaders iterator to avoid Dictionary allocation
         for (int i = 0; i < headers.Count; i++)
         {
             var (key, value) = headers.GetHeaderAt(i);
-            writer.Encode(key.Span, Encoding.UTF8, LengthFormat.Compressed);
-            writer.Encode(value.Span, Encoding.UTF8, LengthFormat.Compressed);
+            WriteCompressedString(writer, key.Span);
+            WriteCompressedString(writer, value.Span);
         }
-    }
-
-    private static SequenceReader ReaderFor(IMemoryOwner<byte> owner, ReadOnlySpan<byte> buffer)
-    {
-        var memory = owner.Memory;
-        
-        buffer.CopyTo(memory.Span);
-        
-        var sequence = new ReadOnlySequence<byte>(memory);
-        var reader = new SequenceReader(sequence);
-        return reader;
     }
 
     public Message ToMessage(ReadOnlySpan<byte> buffer)
@@ -152,7 +143,11 @@ public class MessageSerializer : IMessageSerializer
         try
         {
             using var owner = MemoryPool<byte>.Shared.Rent(buffer.Length);
-            var reader = ReaderFor(owner, buffer);
+            var memory = owner.Memory;
+            buffer.CopyTo(memory.Span);
+
+            var sequence = new ReadOnlySequence<byte>(memory.Slice(0, buffer.Length));
+            var reader = new SequenceReader<byte>(sequence);
             return ReadMessage(ref reader);
         }
         catch (ArgumentOutOfRangeException)
@@ -162,24 +157,29 @@ public class MessageSerializer : IMessageSerializer
         }
     }
 
-    private Message ReadMessage(ref SequenceReader reader)
+    private Message ReadMessage(ref SequenceReader<byte> reader)
     {
         var id = new MessageId
         {
             SourceInstanceId = ReadGuid(ref reader),
             MessageIdentifier = ReadGuid(ref reader)
         };
-        
-        // Read strings using the original efficient method
+
+        // Read strings using the efficient method
         var queue = ReadCommonStringAsMemory(ref reader);
         var subQueue = ReadCommonStringAsMemory(ref reader);
-        var sentAt = DateTime.FromBinary(reader.ReadLittleEndian<long>());
-        
+
+        if (!reader.TryReadLittleEndian(out long sentAtBinary))
+            throw new EndOfStreamException("Failed to read SentAt");
+        var sentAt = DateTime.FromBinary(sentAtBinary);
+
         // Read headers efficiently
         var headers = ReadFixedHeadersEfficient(ref reader);
 
         // Read data efficiently - use ArrayPool for all data to reduce allocations
-        var dataLength = reader.ReadLittleEndian<int>();
+        if (!reader.TryReadLittleEndian(out int dataLength))
+            throw new EndOfStreamException("Failed to read data length");
+
         ReadOnlyMemory<byte> data = default;
         if (dataLength > 0)
         {
@@ -188,7 +188,9 @@ public class MessageSerializer : IMessageSerializer
             try
             {
                 var dataSpan = rentedArray.AsSpan(0, dataLength);
-                reader.Read(dataSpan);
+                if (!reader.TryCopyTo(dataSpan))
+                    throw new EndOfStreamException("Failed to read message data");
+                reader.Advance(dataLength);
                 // Copy to exact-size array since we can't return the rented array
                 var dataArray = dataSpan.ToArray();
                 data = dataArray.AsMemory();
@@ -198,21 +200,29 @@ public class MessageSerializer : IMessageSerializer
                 ArrayPool<byte>.Shared.Return(rentedArray);
             }
         }
-        
+
         var destinationUri = ReadCommonStringAsMemory(ref reader);
-        
-        var hasDeliverBy = Convert.ToBoolean(reader.ReadLittleEndian<int>());
+
+        if (!reader.TryReadLittleEndian(out int hasDeliverByInt))
+            throw new EndOfStreamException("Failed to read DeliverBy flag");
+        var hasDeliverBy = Convert.ToBoolean(hasDeliverByInt);
         DateTime? deliverBy = null;
         if (hasDeliverBy)
         {
-            deliverBy = DateTime.FromBinary(reader.ReadLittleEndian<long>()).ToLocalTime();
+            if (!reader.TryReadLittleEndian(out long deliverByBinary))
+                throw new EndOfStreamException("Failed to read DeliverBy");
+            deliverBy = DateTime.FromBinary(deliverByBinary).ToLocalTime();
         }
 
-        var hasMaxAttempts = Convert.ToBoolean(reader.ReadLittleEndian<int>());
+        if (!reader.TryReadLittleEndian(out int hasMaxAttemptsInt))
+            throw new EndOfStreamException("Failed to read MaxAttempts flag");
+        var hasMaxAttempts = Convert.ToBoolean(hasMaxAttemptsInt);
         int? maxAttempts = null;
         if (hasMaxAttempts)
         {
-            maxAttempts = reader.ReadLittleEndian<int>();
+            if (!reader.TryReadLittleEndian(out int maxAttemptsValue))
+                throw new EndOfStreamException("Failed to read MaxAttempts");
+            maxAttempts = maxAttemptsValue;
         }
 
         var msg = new Message(
@@ -226,25 +236,27 @@ public class MessageSerializer : IMessageSerializer
             maxAttempts: maxAttempts,
             headers: headers
         );
-        
+
         return msg;
     }
-    
-    
-    private FixedHeaders ReadFixedHeadersEfficient(ref SequenceReader reader)
+
+
+    private FixedHeaders ReadFixedHeadersEfficient(ref SequenceReader<byte> reader)
     {
-        var headerCount = reader.ReadLittleEndian<int>();
+        if (!reader.TryReadLittleEndian(out int headerCount))
+            throw new EndOfStreamException("Failed to read header count");
+
         if (headerCount == 0)
             return default;
-            
+
         var maxHeaders = Math.Min(headerCount, 4);
-        
+
         // Read headers directly without intermediate array allocation
         ReadOnlyMemory<char> key0 = default, value0 = default;
         ReadOnlyMemory<char> key1 = default, value1 = default;
         ReadOnlyMemory<char> key2 = default, value2 = default;
         ReadOnlyMemory<char> key3 = default, value3 = default;
-        
+
         if (maxHeaders > 0)
         {
             key0 = ReadCommonStringAsMemory(ref reader);   // Cache keys (likely to repeat)
@@ -265,21 +277,23 @@ public class MessageSerializer : IMessageSerializer
             key3 = ReadCommonStringAsMemory(ref reader);
             value3 = ReadStringAsMemory(ref reader);
         }
-        
+
         // Skip remaining headers if more than 4
         for (var i = 4; i < headerCount; i++)
         {
             ReadCommonStringAsMemory(ref reader); // key
             ReadStringAsMemory(ref reader);       // value - don't cache
         }
-        
+
         return FixedHeaders.CreateDirect(key0, value0, key1, value1, key2, value2, key3, value3);
     }
 
-    private static Guid ReadGuid(ref SequenceReader reader)
+    private static Guid ReadGuid(ref SequenceReader<byte> reader)
     {
         Span<byte> guidBuffer = stackalloc byte[16];
-        reader.Read(guidBuffer);
+        if (!reader.TryCopyTo(guidBuffer))
+            throw new EndOfStreamException("Failed to read GUID");
+        reader.Advance(16);
         return new Guid(guidBuffer);
     }
 
@@ -289,7 +303,7 @@ public class MessageSerializer : IMessageSerializer
         try
         {
             WriteMessage(writer, message);
-            return writer.WrittenMemory.Span;
+            return writer.WrittenSpan;
         }
         finally
         {
@@ -297,29 +311,123 @@ public class MessageSerializer : IMessageSerializer
         }
     }
 
-    private ReadOnlyMemory<char> ReadCommonStringAsMemory(ref SequenceReader reader)
+    private ReadOnlyMemory<char> ReadCommonStringAsMemory(ref SequenceReader<byte> reader)
     {
-        var stringBlock = reader.Decode(Encoding.UTF8, LengthFormat.Compressed);
-        
+        var str = ReadCompressedString(ref reader);
+
         // For common strings, return the cached version's memory
-        if (_commonStrings.TryGetValue(stringBlock.Memory, out var commonString))
+        var memory = str.AsMemory();
+        if (_commonStrings.TryGetValue(memory, out var commonString))
         {
             return commonString.AsMemory();
         }
-        
+
         // Cache new string and return its memory (only if cache isn't too large)
-        var newString = stringBlock.ToString();
         if (_commonStrings.Count < MaxCacheSize)
         {
-            _commonStrings[stringBlock.Memory] = newString;
+            _commonStrings[memory] = str;
         }
-        return newString.AsMemory();
+        return memory;
     }
-    
-    private ReadOnlyMemory<char> ReadStringAsMemory(ref SequenceReader reader)
+
+    private static ReadOnlyMemory<char> ReadStringAsMemory(ref SequenceReader<byte> reader)
     {
         // Read string without caching - for arbitrary values like header values
-        var stringBlock = reader.Decode(Encoding.UTF8, LengthFormat.Compressed);
-        return stringBlock.ToString().AsMemory();
+        var str = ReadCompressedString(ref reader);
+        return str.AsMemory();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 7-bit encoding helpers (same format as BinaryReader/BinaryWriter)
+    // This is compatible with DotNext's LengthFormat.Compressed
+    // ═══════════════════════════════════════════════════════════════════
+
+    private static void WriteLittleEndian(IBufferWriter<byte> writer, int value)
+    {
+        Span<byte> buffer = stackalloc byte[4];
+        BinaryPrimitives.WriteInt32LittleEndian(buffer, value);
+        writer.Write(buffer);
+    }
+
+    private static void WriteLittleEndian(IBufferWriter<byte> writer, long value)
+    {
+        Span<byte> buffer = stackalloc byte[8];
+        BinaryPrimitives.WriteInt64LittleEndian(buffer, value);
+        writer.Write(buffer);
+    }
+
+    private static void WriteCompressedString(IBufferWriter<byte> writer, ReadOnlySpan<char> value)
+    {
+        int byteCount = Encoding.UTF8.GetByteCount(value);
+        Write7BitEncodedInt(writer, byteCount);
+
+        if (byteCount > 0)
+        {
+            var span = writer.GetSpan(byteCount);
+            Encoding.UTF8.GetBytes(value, span);
+            writer.Advance(byteCount);
+        }
+    }
+
+    private static void Write7BitEncodedInt(IBufferWriter<byte> writer, int value)
+    {
+        Span<byte> buffer = stackalloc byte[5]; // Max 5 bytes for 32-bit int
+        int index = 0;
+        uint v = (uint)value;
+        while (v > 0x7F)
+        {
+            buffer[index++] = (byte)(v | 0x80);
+            v >>= 7;
+        }
+        buffer[index++] = (byte)v;
+        writer.Write(buffer[..index]);
+    }
+
+    private static string ReadCompressedString(ref SequenceReader<byte> reader)
+    {
+        int length = Read7BitEncodedInt(ref reader);
+        if (length == 0)
+            return string.Empty;
+
+        // Use stackalloc for small strings, array for larger ones
+        if (length <= 256)
+        {
+            Span<byte> utf8Bytes = stackalloc byte[length];
+            if (!reader.TryCopyTo(utf8Bytes))
+                throw new EndOfStreamException("Failed to read string bytes");
+            reader.Advance(length);
+            return Encoding.UTF8.GetString(utf8Bytes);
+        }
+        else
+        {
+            var rentedArray = ArrayPool<byte>.Shared.Rent(length);
+            try
+            {
+                var utf8Bytes = rentedArray.AsSpan(0, length);
+                if (!reader.TryCopyTo(utf8Bytes))
+                    throw new EndOfStreamException("Failed to read string bytes");
+                reader.Advance(length);
+                return Encoding.UTF8.GetString(utf8Bytes);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(rentedArray);
+            }
+        }
+    }
+
+    private static int Read7BitEncodedInt(ref SequenceReader<byte> reader)
+    {
+        int result = 0;
+        int shift = 0;
+        byte b;
+        do
+        {
+            if (!reader.TryRead(out b))
+                throw new EndOfStreamException("Failed to read 7-bit encoded int");
+            result |= (b & 0x7F) << shift;
+            shift += 7;
+        } while ((b & 0x80) != 0 && shift < 35);
+        return result;
     }
 }

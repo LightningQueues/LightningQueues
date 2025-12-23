@@ -16,15 +16,15 @@ namespace LightningQueues;
 /// Queue handles the core messaging operations including message sending, receiving,
 /// storage, and routing.
 /// </summary>
-public class Queue : IDisposable
+public class Queue : IDisposable, IAsyncDisposable
 {
     private readonly Sender _sender;
     private readonly Receiver _receiver;
     private readonly Channel<Message> _receivingChannel;
     private readonly CancellationTokenSource _cancelOnDispose;
     private readonly ILogger _logger;
-    private Task _sendingTask;
-    private Task _receivingTask;
+    private Task? _sendingTask;
+    private Task? _receivingTask;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Queue"/> class.
@@ -361,6 +361,67 @@ public class Queue : IDisposable
             _sender?.Dispose();
             _receiver?.Dispose();
             
+            // Finally dispose the store and cancellation token
+            Store?.Dispose();
+            _cancelOnDispose?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            _logger.QueueDisposeError(ex);
+        }
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Asynchronously releases all resources used by the queue.
+    /// </summary>
+    /// <remarks>
+    /// This method performs a clean shutdown of the queue by:
+    /// 1. Canceling all ongoing operations
+    /// 2. Completing message channels to prevent new messages
+    /// 3. Asynchronously waiting for tasks to complete with a timeout
+    /// 4. Disposing the sender, receiver, and message store components
+    ///
+    /// Unlike <see cref="Dispose"/>, this method does not block a thread while waiting
+    /// for tasks to complete, making it more efficient in async contexts.
+    /// </remarks>
+    public async ValueTask DisposeAsync()
+    {
+        _logger.QueueDispose();
+
+        try
+        {
+            // First signal cancellation to stop all tasks
+            await _cancelOnDispose.CancelAsync().ConfigureAwait(false);
+
+            // Complete the channels to prevent new messages
+            _receivingChannel.Writer.TryComplete();
+
+            // Give tasks time to respond to cancellation (async wait)
+            if (_sendingTask != null && _receivingTask != null)
+            {
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                try
+                {
+                    await Task.WhenAll(_sendingTask, _receivingTask)
+                        .WaitAsync(timeoutCts.Token)
+                        .ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.QueueTasksTimeout();
+                }
+                catch (Exception ex)
+                {
+                    _logger.QueueTasksDisposeException(ex);
+                }
+            }
+
+            // Now dispose components in correct order
+            // Dispose sender and receiver first as they might be using the store
+            _sender?.Dispose();
+            _receiver?.Dispose();
+
             // Finally dispose the store and cancellation token
             Store?.Dispose();
             _cancelOnDispose?.Dispose();

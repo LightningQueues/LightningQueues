@@ -143,7 +143,7 @@ public class QueueContextTests : TestBase
             
             var enqueuedMessage = await queue.Receive("test", cancellationToken: token).FirstAsync(token);
             enqueuedMessage.Message.Id.ShouldBe(newMessageId);
-            Encoding.UTF8.GetString(enqueuedMessage.Message.DataArray).ShouldBe("new payload");
+            Encoding.UTF8.GetString(enqueuedMessage.Message.DataArray!).ShouldBe("new payload");
         }, TimeSpan.FromSeconds(3));
     }
     

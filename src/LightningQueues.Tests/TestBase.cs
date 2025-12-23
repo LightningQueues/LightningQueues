@@ -12,7 +12,7 @@ namespace LightningQueues.Tests;
 public class TestBase
 {
    private static readonly string _tempPath = Path.Combine(Path.GetTempPath(), $"lightningqueuestests-{Environment.Version.ToString()}");
-   internal TextWriter Console { get; set; }
+   internal TextWriter? Console { get; set; }
 
    protected static Task DeterministicDelay(int delayMs, CancellationToken token)
    {
@@ -82,7 +82,7 @@ public class TestBase
       action(store);
    }
 
-   protected LightningEnvironment LightningEnvironment(string path = null)
+   protected LightningEnvironment LightningEnvironment(string? path = null)
    {
       return new LightningEnvironment(path ?? TempPath(), new EnvironmentConfiguration { MaxDatabases = 5, MapSize = 1024 * 1024 * 100 });
    }

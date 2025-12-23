@@ -19,10 +19,10 @@ public class IncomingMessageTests : TestBase
                 queue: "test",
                 headers: headers
             );
-            store.CreateQueue(message.QueueString);
+            store.CreateQueue(message.QueueString!);
             store.StoreIncoming(message);
-            var msg = store.GetMessage(message.QueueString, message.Id);
-            System.Text.Encoding.UTF8.GetString(msg.Value.DataArray).ShouldBe("hello");
+            var msg = store.GetMessage(message.QueueString!, message.Id);
+            System.Text.Encoding.UTF8.GetString(msg!.Value.DataArray!).ShouldBe("hello");
             msg.Value.GetHeadersDictionary().First().Value.ShouldBe("my_value");
         });
     }
@@ -41,7 +41,7 @@ public class IncomingMessageTests : TestBase
         StorageScenario(store =>
         {
             var message = NewMessage();
-            store.CreateQueue(message.QueueString);
+            store.CreateQueue(message.QueueString!);
             using (var transaction = store.BeginTransaction())
             {
                 store.StoreIncoming(transaction, message);
@@ -51,8 +51,8 @@ public class IncomingMessageTests : TestBase
             store.Dispose();
             using var env = LightningEnvironment();
             using var store2 = new LmdbMessageStore(env, new MessageSerializer());
-            store2.CreateQueue(message.QueueString);
-            var msg = store2.GetMessage(message.QueueString, message.Id);
+            store2.CreateQueue(message.QueueString!);
+            var msg = store2.GetMessage(message.QueueString!, message.Id);
             msg.ShouldBeNull();
         });
 
@@ -63,13 +63,13 @@ public class IncomingMessageTests : TestBase
         StorageScenario(store =>
         {
             var message = NewMessage();
-            store.CreateQueue(message.QueueString);
+            store.CreateQueue(message.QueueString!);
             using (var transaction = store.BeginTransaction())
             {
                 store.StoreIncoming(transaction, message);
             }
 
-            var msg = store.GetMessage(message.QueueString, message.Id);
+            var msg = store.GetMessage(message.QueueString!, message.Id);
             msg.ShouldBeNull();
         });
     }

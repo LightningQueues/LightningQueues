@@ -34,7 +34,7 @@ public class QueueConfiguration
         /// <summary>
         /// Ignores the log message and does nothing.
         /// </summary>
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
         }
 
@@ -49,27 +49,27 @@ public class QueueConfiguration
         /// <summary>
         /// Returns null as scopes are not supported.
         /// </summary>
-        public IDisposable BeginScope<TState>(TState state) where TState : notnull
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
         {
             return null;
         }
     }
     #endregion //NoLogging
-    
-    private IStreamSecurity _sendingSecurity;
-    private IStreamSecurity _receivingSecurity;
-    private Func<IMessageStore> _store;
-    private IPEndPoint _endpoint;
-    private IReceivingProtocol _receivingProtocol;
-    private ISendingProtocol _sendingProtocol;
-    private IMessageSerializer _serializer;
-    private ILogger _logger;
+
+    private IStreamSecurity? _sendingSecurity;
+    private IStreamSecurity? _receivingSecurity;
+    private Func<IMessageStore>? _store;
+    private IPEndPoint? _endpoint;
+    private IReceivingProtocol? _receivingProtocol;
+    private ISendingProtocol? _sendingProtocol;
+    private IMessageSerializer? _serializer;
+    private ILogger? _logger;
     private TimeSpan _timeoutBatchAfter;
     
     /// <summary>
     /// Gets the message serializer used for converting messages to and from binary format.
     /// </summary>
-    public IMessageSerializer Serializer => _serializer;
+    public IMessageSerializer? Serializer => _serializer;
 
     /// <summary>
     /// Configures the message storage mechanism for the queue.
@@ -206,7 +206,7 @@ public class QueueConfiguration
     /// - Automatic endpoint selection
     /// - LMDB storage if a path is provided
     /// </remarks>
-    public QueueConfiguration WithDefaults(string path = null)
+    public QueueConfiguration WithDefaults(string? path = null)
     {
         SerializeWith(new MessageSerializer());
         LogWith(new NoLoggingLogger());
@@ -237,17 +237,22 @@ public class QueueConfiguration
     /// </remarks>
     public Queue BuildQueue()
     {
-        if(_store == null)
+        if (_store == null)
             throw new ArgumentNullException(nameof(_store), "Storage has not been configured. Are you missing a call to StoreMessagesWith?");
 
-        if(_endpoint == null)
+        if (_endpoint == null)
             throw new ArgumentNullException(nameof(_endpoint), "Endpoint has not been configured. Are you missing a call to ReceiveMessageAt?");
+
+        if (_logger == null)
+            throw new ArgumentNullException(nameof(_logger), "Logger has not been configured. Are you missing a call to LogWith or WithDefaults?");
+
+        if (_sendingSecurity == null || _receivingSecurity == null)
+            throw new ArgumentNullException(nameof(_sendingSecurity), "Security has not been configured. Are you missing a call to SecureTransportWith or WithDefaults?");
 
         var serializer = new MessageSerializer();
         var store = _store();
         _sendingProtocol ??= new SendingProtocol(store, _sendingSecurity, serializer, _logger);
         _receivingProtocol ??= new ReceivingProtocol(store, _receivingSecurity, serializer, new Uri($"lq.tcp://{_endpoint}"), _logger);
-
 
         var receiver = new Receiver(_endpoint, _receivingProtocol, _logger);
         var sender = new Sender(_sendingProtocol, _logger, _timeoutBatchAfter);

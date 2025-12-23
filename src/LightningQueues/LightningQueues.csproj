@@ -4,8 +4,9 @@
     <Description>LightningQueues</Description>
     <VersionPrefix>0.5.0</VersionPrefix>
     <Authors>Corey Kaylor</Authors>
-    <TargetFramework>net9.0</TargetFramework>
-    <LangVersion>13</LangVersion>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14</LangVersion>
+    <Nullable>enable</Nullable>
     <AssemblyName>LightningQueues</AssemblyName>
     <PackageId>LightningQueues</PackageId>
     <PackageIconUrl>https://raw.githubusercontent.com/LightningQueues/LightningQueues/refs/heads/main/lighting-qqqs.png</PackageIconUrl>
@@ -20,9 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DotNext.IO" Version="5.21.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.5" />
-    <PackageReference Include="System.IO.Pipelines" Version="9.0.5" />
     <PackageReference Include="LightningDB" Version="0.18.1" />
   </ItemGroup>
 

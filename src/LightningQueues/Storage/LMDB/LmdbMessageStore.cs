@@ -65,7 +65,7 @@ public class LmdbMessageStore : IMessageStore
     {
         foreach (var messagesByQueue in messages.GroupBy(x => x.QueueString))
         {
-            var queueName = messagesByQueue.Key;
+            var queueName = messagesByQueue.Key!;
             var db = GetCachedDatabase(queueName);
             foreach (var message in messagesByQueue)
             {
@@ -85,7 +85,7 @@ public class LmdbMessageStore : IMessageStore
         catch (StorageException ex)
         {
             if (ex.ResultCode == MDBResultCode.NotFound)
-                throw new QueueDoesNotExistException(message.QueueString, ex);
+                throw new QueueDoesNotExistException(message.QueueString ?? "unknown", ex);
             throw;
         }
     }
@@ -100,7 +100,7 @@ public class LmdbMessageStore : IMessageStore
             using var tx = _environment.BeginTransaction();
             foreach (var grouping in messages.GroupBy(x => x.QueueString))
             {
-                RemoveMessagesFromStorage(tx, grouping.Key, grouping);
+                RemoveMessagesFromStorage(tx, grouping.Key!, grouping);
             }
             ThrowIfError(tx.Commit());
         }
@@ -284,10 +284,10 @@ public class LmdbMessageStore : IMessageStore
     {
         private readonly LmdbMessageStore _store;
         private readonly string _queueName;
-        private LightningTransaction _transaction;
-        private LightningDatabase _database;
-        private LightningCursor _cursor;
-        private IEnumerator<(LightningDB.MDBValue key, LightningDB.MDBValue value)> _cursorEnumerator;
+        private LightningTransaction? _transaction;
+        private LightningDatabase? _database;
+        private LightningCursor? _cursor;
+        private IEnumerator<(LightningDB.MDBValue key, LightningDB.MDBValue value)>? _cursorEnumerator;
         private bool _disposed;
 
         public MessageEnumerator(LmdbMessageStore store, string queueName)
@@ -304,7 +304,7 @@ public class LmdbMessageStore : IMessageStore
             {
                 _transaction = _store._environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
                 _database = _store.GetCachedDatabase(_queueName);
-                _cursor = _transaction.CreateCursor(_database);
+                _cursor = _transaction.CreateCursor(_database!);
                 _cursorEnumerator = _cursor.AsEnumerable().GetEnumerator();
             }
             catch
@@ -404,7 +404,7 @@ public class LmdbMessageStore : IMessageStore
 
     private void SuccessfullyReceived(LightningTransaction tx, Message message)
     {
-        var db = GetCachedDatabase(message.QueueString);
+        var db = GetCachedDatabase(message.QueueString!);
         RemoveMessageFromStorage(tx, db, message);
     }
 
@@ -548,7 +548,7 @@ public class LmdbMessageStore : IMessageStore
         {
             Span<byte> id = stackalloc byte[16];
             message.Id.MessageIdentifier.TryWriteBytes(id);
-            var original = GetCachedDatabase(message.QueueString);
+            var original = GetCachedDatabase(message.QueueString!);
             var newDb = GetCachedDatabase(queueName);
             ThrowIfError(tx.Delete(original, id));
             

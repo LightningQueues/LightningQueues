@@ -31,7 +31,7 @@ public class Sender : IDisposable
 
     private class CachedDnsEntry
     {
-        public IPAddress[] Addresses { get; set; }
+        public required IPAddress[] Addresses { get; set; }
         public DateTime CachedAt { get; set; }
         public bool IsExpired => DateTime.UtcNow - CachedAt > TimeSpan.FromMilliseconds(DnsCacheTimeoutMs);
     }
@@ -77,7 +77,7 @@ public class Sender : IDisposable
         }
     }
 
-    private void CleanupIdleConnections(object state)
+    private void CleanupIdleConnections(object? state)
     {
         // Clean up connection pools - avoid List allocation by processing immediately
         foreach (var kvp in _connectionPools)
@@ -114,7 +114,7 @@ public class Sender : IDisposable
         }
     }
 
-    private async Task<IPAddress> ResolveDnsAsync(string hostName, CancellationToken cancellationToken)
+    private async Task<IPAddress?> ResolveDnsAsync(string hostName, CancellationToken cancellationToken)
     {
         // Check cache first
         if (_dnsCache.TryGetValue(hostName, out var cachedEntry) && !cachedEntry.IsExpired)
@@ -140,7 +140,7 @@ public class Sender : IDisposable
         {
             // Fall back to default resolution if caching fails
         }
-        
+
         // Fallback to synchronous resolution
         var fallbackAddresses = Dns.GetHostAddresses(hostName);
         return fallbackAddresses.Length > 0 ? fallbackAddresses[0] : null;
@@ -288,9 +288,9 @@ public class Sender : IDisposable
                 // Process each destination+queue group separately
                 foreach (var group in destinationQueueGroups)
                 {
-                    var uri = group.Key.Destination;
+                    var uri = group.Key.Destination!;
                     var messagesForDestination = group.ToList();
-                    PooledTcpClient pooledClient = null;
+                    PooledTcpClient? pooledClient = null;
                     
                     try
                     {

@@ -115,13 +115,13 @@ public readonly struct Message
     /// Creates a new message with string parameters for convenience.
     /// </summary>
     public static Message Create(
-        byte[] data = null,
-        string queue = null,
-        string subQueue = null,
-        string destinationUri = null,
+        byte[]? data = null,
+        string? queue = null,
+        string? subQueue = null,
+        string? destinationUri = null,
         DateTime? deliverBy = null,
         int? maxAttempts = null,
-        Dictionary<string, string> headers = null)
+        Dictionary<string, string>? headers = null)
     {
         return new Message(
             id: MessageId.GenerateRandom(),
@@ -138,7 +138,7 @@ public readonly struct Message
     /// <summary>
     /// Gets the URI destination for this message
     /// </summary>
-    public Uri Destination => DestinationUri.IsEmpty ? null : new Uri(DestinationUri.ToString());
+    public Uri? Destination => DestinationUri.IsEmpty ? null : new Uri(DestinationUri.ToString());
 
     /// <summary>
     /// Gets the number of times this message has been sent
@@ -178,17 +178,17 @@ public readonly struct Message
     /// <summary>
     /// Gets the queue name as a string (allocates)
     /// </summary>
-    public string QueueString => Queue.IsEmpty ? null : Queue.ToString();
+    public string? QueueString => Queue.IsEmpty ? null : Queue.ToString();
 
     /// <summary>
     /// Gets the sub-queue name as a string (allocates)
     /// </summary>
-    public string SubQueueString => SubQueue.IsEmpty ? null : SubQueue.ToString();
+    public string? SubQueueString => SubQueue.IsEmpty ? null : SubQueue.ToString();
 
     /// <summary>
     /// Gets the data as a byte array (allocates)
     /// </summary>
-    public byte[] DataArray => Data.IsEmpty ? null : Data.ToArray();
+    public byte[]? DataArray => Data.IsEmpty ? null : Data.ToArray();
 
     /// <summary>
     /// Copies headers to a dictionary (allocates)

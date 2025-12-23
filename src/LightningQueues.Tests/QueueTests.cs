@@ -112,6 +112,7 @@ public class QueueTests : TestBase
         using var env = LightningEnvironment();
         using var store = new LmdbMessageStore(env, serializer);
         var queueConfiguration = new QueueConfiguration();
+        queueConfiguration.WithDefaults();
         queueConfiguration.LogWith(new RecordingLogger(Console));
         queueConfiguration.AutomaticEndpoint();
         queueConfiguration.SerializeWith(serializer);
@@ -159,7 +160,7 @@ public class QueueTests : TestBase
             
             // Verify we received each message
             var payloads = receivedMessages
-                .Select(ctx => System.Text.Encoding.UTF8.GetString(ctx.Message.DataArray))
+                .Select(ctx => System.Text.Encoding.UTF8.GetString(ctx.Message.DataArray!))
                 .ToList();
                 
             payloads.ShouldContain("payload1");
@@ -201,9 +202,9 @@ public class QueueTests : TestBase
             var received2 = await receiveQueue2Task;
             var received3 = await receiveQueue3Task;
             
-            System.Text.Encoding.UTF8.GetString(received1.Message.DataArray).ShouldBe("payload1");
-            System.Text.Encoding.UTF8.GetString(received2.Message.DataArray).ShouldBe("payload2");
-            System.Text.Encoding.UTF8.GetString(received3.Message.DataArray).ShouldBe("payload3");
+            System.Text.Encoding.UTF8.GetString(received1.Message.DataArray!).ShouldBe("payload1");
+            System.Text.Encoding.UTF8.GetString(received2.Message.DataArray!).ShouldBe("payload2");
+            System.Text.Encoding.UTF8.GetString(received3.Message.DataArray!).ShouldBe("payload3");
             
             received1.Message.QueueString.ShouldBe("queue1");
             received2.Message.QueueString.ShouldBe("queue2");

@@ -93,7 +93,7 @@ public class LmdbMessageStoreTests : TestBase
                 tx.Commit();
             }
 
-            var message2 = store.GetMessage(message.QueueString, message.Id);
+            var message2 = store.GetMessage(message.QueueString!, message.Id);
             var outgoing2 = store.GetMessage("outgoing", outgoingMessage.Id);
             message2.ShouldNotBeNull();
             outgoing2.ShouldNotBeNull();

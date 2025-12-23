@@ -14,7 +14,7 @@ namespace LightningQueues.Tests;
 
 public static class QueueConfigurationExtensions
 {
-    public static QueueConfiguration WithDefaultsForTest(this QueueConfiguration configuration, TextWriter console = null)
+    public static QueueConfiguration WithDefaultsForTest(this QueueConfiguration configuration, TextWriter? console = null)
     {
         configuration.WithDefaults();
         configuration.StoreWithLmdb(TestBase.TempPath(), new EnvironmentConfiguration

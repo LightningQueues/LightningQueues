@@ -13,6 +13,7 @@ public static class LmdbStorageExtensions
 
     public static QueueConfiguration StoreWithLmdb(this QueueConfiguration configuration, Func<LightningEnvironment> environment)
     {
-        return configuration.StoreMessagesWith(() => new LmdbMessageStore(environment(), configuration.Serializer));
+        return configuration.StoreMessagesWith(() => new LmdbMessageStore(environment(),
+            configuration.Serializer ?? throw new InvalidOperationException("Serializer must be configured before storage. Call SerializeWith() first.")));
     }
 }

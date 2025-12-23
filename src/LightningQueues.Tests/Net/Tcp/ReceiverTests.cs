@@ -82,13 +82,13 @@ public class ReceiverTests : TestBase
             var messages = new List<Message>([expected]);
             using var client = new TcpClient();
             await client.ConnectAsync(endpoint.Address, endpoint.Port, cancellation.Token);
-            await sender.SendAsync(expected.Destination, client.GetStream(), messages, cancellation.Token);
+            await sender.SendAsync(expected.Destination!, client.GetStream(), messages, cancellation.Token);
 
             var actual = await channel.Reader.ReadAsync(cancellation.Token);
             await cancellation.CancelAsync();
             actual.Id.ShouldBe(expected.Id);
             actual.QueueString.ShouldBe(expected.QueueString);
-            Encoding.UTF8.GetString(actual.DataArray).ShouldBe("hello");
+            Encoding.UTF8.GetString(actual.DataArray!).ShouldBe("hello");
         }, expected);
 
     }

@@ -8,12 +8,12 @@ namespace LightningQueues.Logging;
 public class RecordingLogger : ILogger
 {
     private readonly LogLevel _level;
-    private readonly TextWriter _console;
+    private readonly TextWriter? _console;
     private readonly IList<string> _debug = new List<string>();
     private readonly IList<string> _error = new List<string>();
     private readonly IList<string> _info = new List<string>();
 
-    public RecordingLogger(TextWriter console, LogLevel logLevel = LogLevel.Debug)
+    public RecordingLogger(TextWriter? console = null, LogLevel logLevel = LogLevel.Debug)
     {
         _console = console;
         _level = logLevel;
@@ -24,8 +24,8 @@ public class RecordingLogger : ILogger
 
     public IEnumerable<string> ErrorMessages => _error;
 
-    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception,
-        Func<TState, Exception, string> formatter)
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+        Func<TState, Exception?, string> formatter)
     {
         var list = logLevel switch
         {
@@ -36,7 +36,7 @@ public class RecordingLogger : ILogger
         };
         var message = formatter(state, exception);
         list.Add(message);
-        _console.WriteLine(message + exception);
+        _console?.WriteLine(message + exception);
     }
 
     public bool IsEnabled(LogLevel logLevel) => logLevel switch
@@ -49,7 +49,7 @@ public class RecordingLogger : ILogger
         _ => false
     };
 
-    public IDisposable BeginScope<TState>(TState state) where TState : notnull
+    public IDisposable? BeginScope<TState>(TState state) where TState : notnull
     {
         return null;
     }

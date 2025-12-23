@@ -1,7 +1,7 @@
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
-using DotNext.IO.Pipelines;
 using System.IO.Pipelines;
 using System.Net;
 using System.Threading;
@@ -57,16 +57,21 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
         stream = await _security.Apply(_receivingUri, stream).ConfigureAwait(false);
         var receivingTask = ReceiveIntoBuffer(pipe.Writer, stream, cancellationToken);
         if (cancellationToken.IsCancellationRequested)
-            return null;
-        var length = await pipe.Reader.ReadLittleEndianAsync<int>(cancellationToken).ConfigureAwait(false);
+            return [];
+
+        // Read the message length (4 bytes, little-endian) using BCL primitives
+        var lengthResult = await pipe.Reader.ReadAtLeastAsync(sizeof(int), cancellationToken).ConfigureAwait(false);
+        var length = BinaryPrimitives.ReadInt32LittleEndian(lengthResult.Buffer.FirstSpan);
+        pipe.Reader.AdvanceTo(lengthResult.Buffer.GetPosition(sizeof(int)));
+
         Logger.ReceiverReceivedLength(length);
         if (length <= 0 || cancellationToken.IsCancellationRequested)
-            return null;
+            return [];
         var result = await pipe.Reader.ReadAtLeastAsync(length, cancellationToken).ConfigureAwait(false);
         if (result.Buffer.Length != length)
             throw new ProtocolViolationException($"Protocol violation: received length of {length} bytes, but {result.Buffer.Length} bytes were available");
         if (cancellationToken.IsCancellationRequested)
-            return null;
+            return [];
         IList<Message> messages;
         try
         {
@@ -104,7 +109,7 @@ public class ReceivingProtocol : ProtocolBase, IReceivingProtocol
         if (!cancellationToken.IsCancellationRequested)
             await SendReceived(stream, cancellationToken);
         if (cancellationToken.IsCancellationRequested)
-            return null;
+            return [];
         var acknowledgeTask = ReadAcknowledged(pipe, cancellationToken);
         await Task.WhenAny(acknowledgeTask.AsTask(), receivingTask.AsTask()).ConfigureAwait(false);
         return messages;
