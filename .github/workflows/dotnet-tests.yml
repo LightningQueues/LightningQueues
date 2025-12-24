@@ -10,22 +10,25 @@ jobs:
   build:
     strategy:
       matrix:
-        os: ['ubuntu-latest', 'windows-latest', 'macos-latest']
+        os: [ubuntu-latest, windows-latest, macOS-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
-    - name: Checkout LightningQueues
-      uses: actions/checkout@v4
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 10.0.x
-    - name: Install dependencies
-      working-directory: ${{ runner.workspace }}/LightningQueues
-      run: dotnet restore
-    - name: Build
-      working-directory: ${{ runner.workspace }}/LightningQueues
-      run: dotnet build --no-restore
-    - name: Test
-      working-directory: ${{ runner.workspace }}/LightningQueues
-      run: dotnet test --no-restore --no-build --verbosity normal
+      - name: Checkout LightningQueues
+        uses: actions/checkout@v5
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            10.0.x
+            9.0.x
+            8.0.x
+      - name: Install dependencies
+        working-directory: ${{ runner.workspace }}/LightningQueues
+        run: dotnet restore
+      - name: Build
+        working-directory: ${{ runner.workspace }}/LightningQueues
+        run: dotnet build --no-restore
+      - name: Test
+        working-directory: ${{ runner.workspace }}/LightningQueues
+        run: dotnet test --no-build --no-restore --verbosity normal
