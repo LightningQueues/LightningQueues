@@ -16,13 +16,21 @@ public class LmdbMessageStore : IMessageStore
     private readonly LightningEnvironment _environment;
     private readonly IMessageSerializer _serializer;
     private readonly ConcurrentDictionary<string, LightningDatabase> _cachedDatabases;
+    private readonly IComparer<MDBValue>? _keyComparer;
     private bool _disposed;
 
     public LmdbMessageStore(LightningEnvironment environment, IMessageSerializer serializer)
+        : this(environment, serializer, null)
+    {
+    }
+
+    public LmdbMessageStore(LightningEnvironment environment, IMessageSerializer serializer,
+        LmdbStorageOptions? options)
     {
         _lock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
         _environment = environment;
         _serializer = serializer;
+        _keyComparer = options?.KeyComparer;
         _cachedDatabases = new ConcurrentDictionary<string, LightningDatabase>();
         if(!_environment.IsOpened)
             _environment.Open(EnvironmentOpenFlags.NoLock | EnvironmentOpenFlags.MapAsync);
@@ -578,14 +586,17 @@ public class LmdbMessageStore : IMessageStore
     public void CreateQueue(string queueName)
     {
         CheckDisposed();
-        
+
         _lock.EnterWriteLock();
         try
         {
             using var tx = _environment.BeginTransaction();
-            var db = tx.OpenDatabase(queueName, new DatabaseConfiguration { Flags = DatabaseOpenFlags.Create });
+            var config = new DatabaseConfiguration { Flags = DatabaseOpenFlags.Create };
+            if (_keyComparer != null)
+                config.CompareWith(_keyComparer);
+            var db = tx.OpenDatabase(queueName, config);
             ThrowIfError(tx.Commit());
-            
+
             // Cache the database handle
             _cachedDatabases.TryAdd(queueName, db);
         }
