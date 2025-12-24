@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <Description>LightningQueues</Description>
-    <VersionPrefix>0.5.0</VersionPrefix>
+    <VersionPrefix>0.6.0</VersionPrefix>
     <Authors>Corey Kaylor</Authors>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>14</LangVersion>
