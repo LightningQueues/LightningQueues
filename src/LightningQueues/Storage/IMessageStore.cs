@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using LightningQueues.Serialization;
 using LightningQueues.Storage.LMDB;
 
 namespace LightningQueues.Storage;
@@ -55,7 +56,30 @@ public interface IMessageStore : IDisposable
     /// within a single transaction for atomic behavior.
     /// </remarks>
     void StoreIncoming(LmdbTransaction transaction, params IEnumerable<Message> messages);
-    
+
+    /// <summary>
+    /// Stores incoming messages using raw wire-format bytes (zero-copy path).
+    /// </summary>
+    /// <param name="messages">Pre-parsed message info from WireFormatSplitter.</param>
+    /// <param name="count">Number of messages in the array to store.</param>
+    /// <param name="serializer">Serializer for fallback deserialization if needed.</param>
+    /// <remarks>
+    /// This method enables zero-copy storage by accepting pre-parsed wire format data.
+    /// Implementations can store raw bytes directly without re-serialization.
+    /// The default implementation falls back to deserializing and using StoreIncoming.
+    /// </remarks>
+    void StoreRawIncoming(RawMessageInfo[] messages, int count, IMessageSerializer serializer)
+    {
+        // Default implementation: deserialize and use regular storage path
+        var deserializedMessages = new List<Message>(count);
+        for (var i = 0; i < count; i++)
+        {
+            var msg = serializer.ToMessage(messages[i].FullMessage.Span);
+            deserializedMessages.Add(msg);
+        }
+        StoreIncoming(deserializedMessages);
+    }
+
     /// <summary>
     /// Deletes incoming messages from the message store.
     /// </summary>
@@ -86,7 +110,23 @@ public interface IMessageStore : IDisposable
     /// the application was previously shut down.
     /// </remarks>
     IEnumerable<Message> PersistedOutgoing();
-    
+
+    /// <summary>
+    /// Retrieves all persisted outgoing messages as raw wire-format bytes.
+    /// </summary>
+    /// <returns>An enumerable collection of raw outgoing messages with routing info extracted.</returns>
+    /// <remarks>
+    /// This method enables zero-copy sending by returning raw bytes with only routing
+    /// information (destination, queue) extracted via WireFormatReader.
+    /// The default implementation falls back to PersistedOutgoing() with serialization.
+    /// </remarks>
+    IEnumerable<RawOutgoingMessage> PersistedOutgoingRaw()
+    {
+        // Default implementation: fall back to regular enumeration with serialization
+        // This is overridden in LmdbMessageStore with an optimized implementation
+        throw new NotSupportedException("Raw outgoing enumeration requires LmdbMessageStore");
+    }
+
     /// <summary>
     /// Moves a message to a different queue.
     /// </summary>
@@ -170,6 +210,21 @@ public interface IMessageStore : IDisposable
     /// they have been successfully transmitted to their destinations.
     /// </remarks>
     void SuccessfullySent(params IEnumerable<Message> messages);
+
+    /// <summary>
+    /// Marks messages as successfully sent using raw MessageIds (zero-copy path).
+    /// </summary>
+    /// <param name="messageIds">The raw 16-byte MessageIds to remove from outgoing storage.</param>
+    /// <remarks>
+    /// This method removes messages from the outgoing store by their raw MessageId bytes.
+    /// It's more efficient than SuccessfullySent when used with PersistedOutgoingRaw()
+    /// as it avoids creating Message objects.
+    /// </remarks>
+    void SuccessfullySentByIds(IEnumerable<ReadOnlyMemory<byte>> messageIds)
+    {
+        // Default implementation: not supported
+        throw new NotSupportedException("Raw MessageId deletion requires LmdbMessageStore");
+    }
     
     /// <summary>
     /// Retrieves a specific message by its ID from a specified queue.

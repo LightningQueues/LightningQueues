@@ -255,7 +255,7 @@ public class QueueConfiguration
         _receivingProtocol ??= new ReceivingProtocol(store, _receivingSecurity, serializer, new Uri($"lq.tcp://{_endpoint}"), _logger);
 
         var receiver = new Receiver(_endpoint, _receivingProtocol, _logger);
-        var sender = new Sender(_sendingProtocol, _logger, _timeoutBatchAfter);
+        var sender = new Sender(_sendingProtocol, serializer, _logger, _timeoutBatchAfter);
         var queue = new Queue(receiver, sender, store, _logger);
         return queue;
     }

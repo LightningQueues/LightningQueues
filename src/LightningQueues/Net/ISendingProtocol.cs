@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using LightningQueues.Serialization;
 
 namespace LightningQueues.Net;
 
@@ -31,9 +32,24 @@ public interface ISendingProtocol
     /// This method serializes the messages according to the protocol's format
     /// and writes them to the stream. The destination URI is used to determine
     /// the target endpoint and may influence protocol-specific behavior.
-    /// 
+    ///
     /// The operation can be canceled using the cancellation token, which allows
     /// for graceful shutdown or timeout handling.
     /// </remarks>
     ValueTask SendAsync(Uri destination, Stream stream, List<Message> batch, CancellationToken token);
+
+    /// <summary>
+    /// Asynchronously sends pre-serialized raw messages to a destination (zero-copy path).
+    /// </summary>
+    /// <param name="destination">The URI of the destination queue.</param>
+    /// <param name="stream">The network stream to write messages to.</param>
+    /// <param name="rawMessages">Pre-serialized messages with routing info extracted.</param>
+    /// <param name="token">A token to cancel the operation.</param>
+    /// <returns>A task that completes when the messages have been sent.</returns>
+    /// <remarks>
+    /// This method sends pre-serialized wire-format bytes directly without re-serialization.
+    /// It provides better performance by avoiding the serialize→deserialize→re-serialize cycle.
+    /// The rawMessages contain the complete wire-format bytes and MessageIds for deletion after send.
+    /// </remarks>
+    ValueTask SendRawAsync(Uri destination, Stream stream, List<RawOutgoingMessage> rawMessages, CancellationToken token);
 }

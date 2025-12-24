@@ -17,6 +17,7 @@ public class LmdbMessageStore : IMessageStore
     private readonly IMessageSerializer _serializer;
     private readonly ConcurrentDictionary<string, LightningDatabase> _cachedDatabases;
     private readonly IComparer<MDBValue>? _keyComparer;
+    private readonly bool _useAppendData;
     private bool _disposed;
 
     public LmdbMessageStore(LightningEnvironment environment, IMessageSerializer serializer)
@@ -31,13 +32,23 @@ public class LmdbMessageStore : IMessageStore
         _environment = environment;
         _serializer = serializer;
         _keyComparer = options?.KeyComparer;
+        _useAppendData = options?.UseAppendData ?? false;
         _cachedDatabases = new ConcurrentDictionary<string, LightningDatabase>();
         if(!_environment.IsOpened)
-            _environment.Open(EnvironmentOpenFlags.NoLock | EnvironmentOpenFlags.MapAsync);
+        {
+            var flags = options?.EnvironmentFlags ??
+                (EnvironmentOpenFlags.NoLock | EnvironmentOpenFlags.MapAsync);
+            _environment.Open(flags);
+        }
         CreateQueue(OutgoingQueue);
     }
     
     public string Path => _environment.Path;
+
+    /// <summary>
+    /// Gets whether AppendData optimization is enabled for incoming message storage.
+    /// </summary>
+    public bool UseAppendData => _useAppendData;
 
     public void StoreIncoming(params IEnumerable<Message> messages)
     {
@@ -96,6 +107,187 @@ public class LmdbMessageStore : IMessageStore
                 throw new QueueDoesNotExistException(message.QueueString ?? "unknown", ex);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Zero-copy storage: stores raw wire-format bytes directly without re-serialization.
+    /// This is significantly faster than StoreIncoming when bytes are already in wire format.
+    /// </summary>
+    /// <param name="messages">Pre-parsed message info from WireFormatSplitter</param>
+    public void StoreRawIncoming(ReadOnlySpan<RawMessageInfo> messages)
+    {
+        CheckDisposed();
+
+        _lock.EnterWriteLock();
+        try
+        {
+            using var tx = _environment.BeginTransaction();
+            StoreRawIncoming(tx, messages);
+            ThrowIfError(tx.Commit());
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+    private void StoreRawIncoming(LightningTransaction tx, ReadOnlySpan<RawMessageInfo> messages)
+    {
+        // Group by queue - use a simple approach since we can't use LINQ on Span
+        // For typical small batches this is efficient
+        foreach (var msg in messages)
+        {
+            var queueName = WireFormatSplitter.GetQueueName(in msg);
+            var db = GetCachedDatabase(queueName);
+            ThrowIfError(tx.Put(db, msg.MessageId.Span, msg.FullMessage.Span));
+        }
+    }
+
+    /// <summary>
+    /// Zero-copy storage implementing IMessageStore interface.
+    /// Delegates to the optimized implementation, ignoring the serializer since
+    /// we store raw bytes directly without deserialization.
+    /// </summary>
+    public void StoreRawIncoming(RawMessageInfo[] messages, int count, IMessageSerializer serializer)
+    {
+        // Delegate to optimized implementation - serializer not needed for zero-copy
+        StoreRawIncoming(messages, count);
+    }
+
+    /// <summary>
+    /// Zero-copy storage from array with offset and length.
+    /// Optimized to avoid string allocation when all messages go to same queue.
+    /// Uses AppendData optimization when configured in LmdbStorageOptions.
+    /// </summary>
+    public void StoreRawIncoming(RawMessageInfo[] messages, int count)
+    {
+        CheckDisposed();
+        if (count == 0) return;
+
+        _lock.EnterWriteLock();
+        try
+        {
+            using var tx = _environment.BeginTransaction();
+            var putOptions = _useAppendData ? PutOptions.AppendData : PutOptions.None;
+
+            // Optimization: Check if all messages go to same queue (common case)
+            // by comparing queue name bytes directly without string allocation
+            var firstQueueBytes = messages[0].QueueNameBytes.Span;
+            var allSameQueue = true;
+            for (var i = 1; i < count && allSameQueue; i++)
+            {
+                allSameQueue = messages[i].QueueNameBytes.Span.SequenceEqual(firstQueueBytes);
+            }
+
+            if (allSameQueue)
+            {
+                // All messages go to same queue - single database lookup
+                var queueName = Encoding.UTF8.GetString(firstQueueBytes);
+                var db = GetCachedDatabase(queueName);
+                for (var i = 0; i < count; i++)
+                {
+                    ThrowIfError(tx.Put(db, messages[i].MessageId.Span, messages[i].FullMessage.Span, putOptions));
+                }
+            }
+            else
+            {
+                // Mixed queues - fall back to per-message lookup
+                // Note: AppendData requires per-queue ascending order, which may not hold across queues
+                for (var i = 0; i < count; i++)
+                {
+                    var msg = messages[i];
+                    var queueName = Encoding.UTF8.GetString(msg.QueueNameBytes.Span);
+                    var db = GetCachedDatabase(queueName);
+                    ThrowIfError(tx.Put(db, msg.MessageId.Span, msg.FullMessage.Span, putOptions));
+                }
+            }
+            ThrowIfError(tx.Commit());
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+    /// <summary>
+    /// Ultra-fast zero-copy storage when queue name is known ahead of time.
+    /// Eliminates string allocation, dictionary lookup, and queue name parsing.
+    /// Uses AppendData optimization when configured in LmdbStorageOptions.
+    /// </summary>
+    public void StoreRawIncomingToQueue(string queueName, RawMessageInfo[] messages, int count)
+    {
+        CheckDisposed();
+        if (count == 0) return;
+
+        _lock.EnterWriteLock();
+        try
+        {
+            var db = GetCachedDatabase(queueName);
+            using var tx = _environment.BeginTransaction();
+            var putOptions = _useAppendData ? PutOptions.AppendData : PutOptions.None;
+            for (var i = 0; i < count; i++)
+            {
+                tx.Put(db, messages[i].MessageId.Span, messages[i].FullMessage.Span, putOptions);
+            }
+            tx.Commit();
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+    /// <summary>
+    /// Maximum performance zero-copy storage with NO lock acquisition.
+    /// ONLY use this when you guarantee single-threaded access (e.g., dedicated receiver thread).
+    /// Provides the lowest possible latency by eliminating lock overhead.
+    /// </summary>
+    /// <remarks>
+    /// WARNING: This method is NOT thread-safe. Using it from multiple threads concurrently
+    /// will result in data corruption. Only use when you have exclusive access to the store.
+    /// </remarks>
+    public void StoreRawIncomingToQueueUnsafe(LightningDatabase db, RawMessageInfo[] messages, int count)
+    {
+        if (count == 0) return;
+
+        using var tx = _environment.BeginTransaction();
+        for (var i = 0; i < count; i++)
+        {
+            tx.Put(db, messages[i].MessageId.Span, messages[i].FullMessage.Span);
+        }
+        tx.Commit();
+    }
+
+    /// <summary>
+    /// Maximum performance zero-copy storage with AppendData optimization.
+    /// Requires keys to be inserted in strictly ascending order (COMB GUIDs with timestamp-first).
+    /// Provides ~2x faster inserts by avoiding B+ tree rebalancing.
+    /// </summary>
+    /// <remarks>
+    /// WARNING: This method is NOT thread-safe and requires strictly ascending keys.
+    /// If keys are not in ascending order, LMDB will return an error.
+    /// Use with fresh MessageId.GenerateRandom() keys which are timestamp-first COMBs.
+    /// </remarks>
+    public void StoreRawIncomingToQueueUnsafeAppend(LightningDatabase db, RawMessageInfo[] messages, int count)
+    {
+        if (count == 0) return;
+
+        using var tx = _environment.BeginTransaction();
+        for (var i = 0; i < count; i++)
+        {
+            tx.Put(db, messages[i].MessageId.Span, messages[i].FullMessage.Span, PutOptions.AppendData);
+        }
+        tx.Commit();
+    }
+
+    /// <summary>
+    /// Gets a cached database handle for use with unsafe storage methods.
+    /// The returned handle can be reused across multiple StoreRawIncomingToQueueUnsafe calls.
+    /// </summary>
+    public LightningDatabase GetDatabaseHandle(string queueName)
+    {
+        CheckDisposed();
+        return GetCachedDatabase(queueName);
     }
 
     public void DeleteIncoming(IEnumerable<Message> messages)
@@ -166,12 +358,35 @@ public class LmdbMessageStore : IMessageStore
     public void SuccessfullySent(params IEnumerable<Message> messages)
     {
         CheckDisposed();
-        
+
         _lock.EnterWriteLock();
         try
         {
             using var tx = _environment.BeginTransaction();
             SuccessfullySent(tx, messages);
+            ThrowIfError(tx.Commit());
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+    public void SuccessfullySentByIds(IEnumerable<ReadOnlyMemory<byte>> messageIds)
+    {
+        CheckDisposed();
+
+        _lock.EnterWriteLock();
+        try
+        {
+            var db = GetCachedDatabase(OutgoingQueue);
+            using var tx = _environment.BeginTransaction();
+            foreach (var messageId in messageIds)
+            {
+                var result = tx.Delete(db, messageId.Span);
+                if (result != MDBResultCode.Success && result != MDBResultCode.NotFound)
+                    throw new StorageException("Error with LightningDB delete operation", result);
+            }
             ThrowIfError(tx.Commit());
         }
         finally
@@ -384,6 +599,118 @@ public class LmdbMessageStore : IMessageStore
         }
     }
 
+    private class RawOutgoingMessageEnumerable : IEnumerable<RawOutgoingMessage>
+    {
+        private readonly LmdbMessageStore _store;
+        private readonly string _queueName;
+
+        public RawOutgoingMessageEnumerable(LmdbMessageStore store, string queueName)
+        {
+            _store = store;
+            _queueName = queueName;
+        }
+
+        public IEnumerator<RawOutgoingMessage> GetEnumerator() => new RawOutgoingMessageEnumerator(_store, _queueName);
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    private class RawOutgoingMessageEnumerator : IEnumerator<RawOutgoingMessage>
+    {
+        private readonly LmdbMessageStore _store;
+        private readonly string _queueName;
+        private LightningTransaction? _transaction;
+        private LightningDatabase? _database;
+        private LightningCursor? _cursor;
+        private IEnumerator<(LightningDB.MDBValue key, LightningDB.MDBValue value)>? _cursorEnumerator;
+        private bool _disposed;
+
+        public RawOutgoingMessageEnumerator(LmdbMessageStore store, string queueName)
+        {
+            _store = store;
+            _queueName = queueName;
+            Initialize();
+        }
+
+        private void Initialize()
+        {
+            _store._lock.EnterReadLock();
+            try
+            {
+                _transaction = _store._environment.BeginTransaction(TransactionBeginFlags.ReadOnly);
+                _database = _store.GetCachedDatabase(_queueName);
+                _cursor = _transaction.CreateCursor(_database!);
+                _cursorEnumerator = _cursor.AsEnumerable().GetEnumerator();
+            }
+            catch
+            {
+                Cleanup();
+                throw;
+            }
+        }
+
+        public RawOutgoingMessage Current { get; private set; }
+
+        object System.Collections.IEnumerator.Current => Current;
+
+        public bool MoveNext()
+        {
+            if (_disposed || _cursorEnumerator == null)
+                return false;
+
+            try
+            {
+                if (_cursorEnumerator.MoveNext())
+                {
+                    var (_, value) = _cursorEnumerator.Current;
+                    // Copy bytes to array since MDBValue is only valid during enumeration step
+                    var valueArray = value.AsSpan().ToArray();
+                    Current = WireFormatReader.ReadOutgoingMessage(valueArray, 0, valueArray.Length);
+                    return true;
+                }
+            }
+            catch
+            {
+                // If there's an error, we should stop enumeration
+                return false;
+            }
+
+            return false;
+        }
+
+        public void Reset()
+        {
+            Cleanup();
+            Initialize();
+        }
+
+        private void Cleanup()
+        {
+            try
+            {
+                _cursorEnumerator?.Dispose();
+                _cursor?.Dispose();
+                _transaction?.Dispose();
+            }
+            finally
+            {
+                _store._lock.ExitReadLock();
+                _cursorEnumerator = null;
+                _cursor = null;
+                _database = null;
+                _transaction = null;
+            }
+        }
+
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                Cleanup();
+                _disposed = true;
+            }
+        }
+    }
+
     public IEnumerable<Message> PersistedIncoming(string queueName)
     {
         CheckDisposed();
@@ -394,6 +721,12 @@ public class LmdbMessageStore : IMessageStore
     {
         CheckDisposed();
         return new MessageEnumerable(this, OutgoingQueue);
+    }
+
+    public IEnumerable<RawOutgoingMessage> PersistedOutgoingRaw()
+    {
+        CheckDisposed();
+        return new RawOutgoingMessageEnumerable(this, OutgoingQueue);
     }
 
     public void MoveToQueue(LmdbTransaction transaction, string queueName, Message message)

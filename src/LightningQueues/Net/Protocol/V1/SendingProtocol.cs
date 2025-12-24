@@ -91,4 +91,78 @@ public class SendingProtocol(IMessageStore store, IStreamSecurity security, IMes
     {
         await stream.WriteAsync(Constants.AcknowledgedMemory, token).ConfigureAwait(false);
     }
+
+    public async ValueTask SendRawAsync(Uri destination, Stream stream, List<RawOutgoingMessage> rawMessages, CancellationToken token)
+    {
+        using var doneCancellation = new CancellationTokenSource();
+        using var linkedCancel = CancellationTokenSource.CreateLinkedTokenSource(doneCancellation.Token, token);
+        try
+        {
+            await SendRawAsyncImpl(destination, stream, rawMessages, linkedCancel.Token).ConfigureAwait(false);
+        }
+        finally
+        {
+            await doneCancellation.CancelAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async ValueTask SendRawAsyncImpl(Uri destination, Stream stream, List<RawOutgoingMessage> rawMessages, CancellationToken token)
+    {
+        stream = await _security.Apply(destination, stream).ConfigureAwait(false);
+
+        // Calculate total payload size: 4-byte count + sum of all message sizes
+        var totalSize = 4; // Message count prefix
+        foreach (var msg in rawMessages)
+        {
+            totalSize += msg.FullMessage.Length;
+        }
+
+        // Write length prefix
+        var lengthBuffer = ArrayPool<byte>.Shared.Rent(sizeof(int));
+        try
+        {
+            BinaryPrimitives.WriteInt32LittleEndian(lengthBuffer, totalSize);
+            await stream.WriteAsync(lengthBuffer.AsMemory(0, sizeof(int)), token).ConfigureAwait(false);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(lengthBuffer);
+        }
+
+        Logger.SenderWritingMessageBatch();
+
+        // Write message count
+        var countBuffer = ArrayPool<byte>.Shared.Rent(sizeof(int));
+        try
+        {
+            BinaryPrimitives.WriteInt32LittleEndian(countBuffer, rawMessages.Count);
+            await stream.WriteAsync(countBuffer.AsMemory(0, sizeof(int)), token).ConfigureAwait(false);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(countBuffer);
+        }
+
+        // Write each message's raw bytes directly (no re-serialization)
+        foreach (var msg in rawMessages)
+        {
+            await stream.WriteAsync(msg.FullMessage, token).ConfigureAwait(false);
+        }
+
+        Logger.SenderSuccessfullyWroteMessageBatch();
+
+        // Wait for acknowledgment
+        var pipe = new Pipe();
+        var receiveTask = ReceiveIntoBuffer(pipe.Writer, stream, token);
+        await ReadReceived(pipe.Reader, token).ConfigureAwait(false);
+        Logger.SenderSuccessfullyReadReceived();
+
+        var acknowledgeTask = WriteAcknowledgement(stream, token);
+        await Task.WhenAny(acknowledgeTask.AsTask(), receiveTask.AsTask()).ConfigureAwait(false);
+        Logger.SenderSuccessfullyWroteAcknowledgement();
+
+        // Delete from storage using raw MessageIds
+        _store.SuccessfullySentByIds(rawMessages.Select(m => m.MessageId));
+        Logger.SenderStorageSuccessfullySent();
+    }
 }

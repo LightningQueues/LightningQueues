@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
@@ -16,11 +17,6 @@ namespace LightningQueues.Net.Protocol.V1;
 public class ReceivingProtocol(IMessageStore store, IStreamSecurity security, IMessageSerializer serializer, Uri receivingUri, ILogger logger)
     : ProtocolBase(logger), IReceivingProtocol
 {
-    private readonly IMessageStore _store = store;
-    private readonly IStreamSecurity _security = security;
-    private readonly IMessageSerializer _serializer = serializer;
-    private readonly Uri _receivingUri = receivingUri;
-
     public async Task<IList<Message>> ReceiveMessagesAsync(Stream stream, CancellationToken cancellationToken)
     {
         using var doneCancellation = new CancellationTokenSource();
@@ -46,7 +42,7 @@ public class ReceivingProtocol(IMessageStore store, IStreamSecurity security, IM
     private async Task<IList<Message>> ReceiveMessagesAsyncImpl(Stream stream, CancellationToken cancellationToken)
     {
         var pipe = new Pipe();
-        stream = await _security.Apply(_receivingUri, stream).ConfigureAwait(false);
+        stream = await security.Apply(receivingUri, stream).ConfigureAwait(false);
         var receivingTask = ReceiveIntoBuffer(pipe.Writer, stream, cancellationToken);
         if (cancellationToken.IsCancellationRequested)
             return [];
@@ -64,38 +60,62 @@ public class ReceivingProtocol(IMessageStore store, IStreamSecurity security, IM
             throw new ProtocolViolationException($"Protocol violation: received length of {length} bytes, but {result.Buffer.Length} bytes were available");
         if (cancellationToken.IsCancellationRequested)
             return [];
+
+        // Zero-copy storage path: parse wire format and store directly
+        // For LMDB stores, this avoids deserialize-then-reserialize
+        // For other stores, the interface provides a default implementation
+        var bufferArray = result.Buffer.IsSingleSegment
+            ? result.Buffer.First.ToArray()
+            : result.Buffer.ToArray();
+
+        // Allocate buffer for raw message info (reuse pool for large batches)
+        var rawInfoBuffer = ArrayPool<RawMessageInfo>.Shared.Rent(256);
         IList<Message> messages;
         try
         {
-            messages = _serializer.ReadMessages(result.Buffer);
-        }
-        catch (EndOfStreamException)
-        {
-            Logger.ProtocolReadError();
-            throw new ProtocolViolationException("Failed to read messages, possible disconnected client or malformed request");
-        }
-        catch (Exception ex)
-        {
-            Logger.ProtocolReadMessagesError(ex);
-            throw;
-        }
-        
-        if(messages.Count == 0)
-            throw new ProtocolViolationException("No messages received");
+            int messageCount;
+            try
+            {
+                messageCount = WireFormatSplitter.SplitBatch(bufferArray, 0, bufferArray.Length, rawInfoBuffer);
+            }
+            catch (Exception ex)
+            {
+                Logger.ProtocolReadMessagesError(ex);
+                throw new ProtocolViolationException("Failed to parse wire format: " + ex.Message);
+            }
 
-        try
-        {
-            _store.StoreIncoming(messages);
+            if (messageCount == 0)
+                throw new ProtocolViolationException("No messages received");
+
+            try
+            {
+                store.StoreRawIncoming(rawInfoBuffer, messageCount, serializer);
+            }
+            catch (QueueDoesNotExistException)
+            {
+                await SendQueueNotFound(stream, cancellationToken);
+                throw;
+            }
+            catch (Exception)
+            {
+                await SendProcessingError(stream, cancellationToken);
+                throw;
+            }
+
+            // Deserialize for the return value (needed for downstream channel)
+            try
+            {
+                messages = serializer.ReadMessages(result.Buffer);
+            }
+            catch (EndOfStreamException)
+            {
+                Logger.ProtocolReadError();
+                throw new ProtocolViolationException("Failed to read messages, possible disconnected client or malformed request");
+            }
         }
-        catch (QueueDoesNotExistException)
+        finally
         {
-            await SendQueueNotFound(stream, cancellationToken);
-            throw;
-        }
-        catch (Exception)
-        {
-            await SendProcessingError(stream, cancellationToken);
-            throw;
+            ArrayPool<RawMessageInfo>.Shared.Return(rawInfoBuffer);
         }
 
         if (!cancellationToken.IsCancellationRequested)

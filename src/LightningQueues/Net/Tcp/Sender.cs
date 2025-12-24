@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using LightningQueues.Serialization;
 using LightningQueues.Storage;
 
 namespace LightningQueues.Net.Tcp;
@@ -15,6 +16,7 @@ namespace LightningQueues.Net.Tcp;
 public class Sender : IDisposable
 {
     private readonly ISendingProtocol _protocol;
+    private readonly IMessageSerializer _serializer;
     private readonly Channel<OutgoingMessageFailure> _failedToSend;
     private readonly ILogger _logger;
     private readonly TimeSpan _sendTimeout;
@@ -36,16 +38,17 @@ public class Sender : IDisposable
         public bool IsExpired => DateTime.UtcNow - CachedAt > TimeSpan.FromMilliseconds(DnsCacheTimeoutMs);
     }
 
-    public Sender(ISendingProtocol protocol, ILogger logger, TimeSpan sendTimeout)
+    public Sender(ISendingProtocol protocol, IMessageSerializer serializer, ILogger logger, TimeSpan sendTimeout)
     {
         _protocol = protocol;
+        _serializer = serializer;
         _logger = logger;
         _sendTimeout = sendTimeout;
         _failedToSend = Channel.CreateUnbounded<OutgoingMessageFailure>();
-        
+
         // Start cleanup timer to periodically clean up idle connections
-        _poolCleanupTimer = new Timer(CleanupIdleConnections, null, 
-            TimeSpan.FromMilliseconds(ConnectionIdleTimeoutMs), 
+        _poolCleanupTimer = new Timer(CleanupIdleConnections, null,
+            TimeSpan.FromMilliseconds(ConnectionIdleTimeoutMs),
             TimeSpan.FromMilliseconds(ConnectionIdleTimeoutMs));
     }
 
@@ -252,27 +255,27 @@ public class Sender : IDisposable
     public async ValueTask StartSendingAsync(IMessageStore messageStore, int batchSize = 50, TimeSpan pollInterval = default, CancellationToken cancellationToken = default)
     {
         pollInterval = pollInterval == default ? TimeSpan.FromMilliseconds(200) : pollInterval;
-        
+
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                var batch = new List<Message>(batchSize);
+                var batch = new List<RawOutgoingMessage>(batchSize);
                 var batchCount = 0;
-                
-                // Read messages from storage up to batch size
-                foreach (var message in messageStore.PersistedOutgoing())
+
+                // Read raw messages from storage (zero-copy path - no deserialization)
+                foreach (var rawMessage in messageStore.PersistedOutgoingRaw())
                 {
                     if (cancellationToken.IsCancellationRequested)
                         break;
-                    
-                    batch.Add(message);
+
+                    batch.Add(rawMessage);
                     batchCount++;
-                    
+
                     if (batchCount >= batchSize)
                         break;
                 }
-                
+
                 // If no messages, wait before polling again
                 if (batchCount == 0)
                 {
@@ -281,28 +284,33 @@ public class Sender : IDisposable
                 }
                 using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 linked.CancelAfter(_sendTimeout);
+
                 // Group messages by destination AND queue to prevent batching messages to different queues together
                 // This ensures that a QueueDoesNotExistException for one queue doesn't affect messages to other queues
-                var destinationQueueGroups = batch.GroupBy(m => new { m.Destination, Queue = m.QueueString }).ToList();
+                var destinationQueueGroups = batch
+                    .GroupBy(m => new
+                    {
+                        Destination = WireFormatReader.GetDestinationUri(in m),
+                        Queue = WireFormatReader.GetQueueName(in m)
+                    })
+                    .ToList();
 
                 // Process each destination+queue group separately
                 foreach (var group in destinationQueueGroups)
                 {
-                    var uri = group.Key.Destination!;
-                    var messagesForDestination = group.ToList();
+                    var uriString = group.Key.Destination;
+                    var uri = new Uri(uriString);
+                    var rawMessagesForDestination = group.ToList();
                     PooledTcpClient? pooledClient = null;
-                    
+
                     try
                     {
                         pooledClient = await GetConnectionAsync(uri, linked.Token).ConfigureAwait(false);
 
-                        await _protocol.SendAsync(uri, pooledClient.Stream, messagesForDestination, linked.Token)
+                        // Send using zero-copy path (SendRawAsync handles deletion on success)
+                        await _protocol.SendRawAsync(uri, pooledClient.Stream, rawMessagesForDestination, linked.Token)
                             .ConfigureAwait(false);
 
-                        // Mark messages as successfully sent and remove from storage
-                        if (!cancellationToken.IsCancellationRequested)
-                            messageStore.SuccessfullySent(messagesForDestination);
-                        
                         // Return connection to pool on success
                         ReturnConnection(pooledClient);
                         pooledClient = null; // Prevent disposal in finally
@@ -310,9 +318,11 @@ public class Sender : IDisposable
                     catch (SocketException ex) when (ex.SocketErrorCode == SocketError.HostNotFound)
                     {
                         _logger.SenderSendingError(uri, ex);
+                        // Deserialize for failure handling (rare path, performance not critical)
+                        var messages = DeserializeRawMessages(rawMessagesForDestination);
                         var failed = new OutgoingMessageFailure
                         {
-                            Messages = messagesForDestination,
+                            Messages = messages,
                             ShouldRetry = false
                         };
                         await _failedToSend.Writer.WriteAsync(failed, cancellationToken).ConfigureAwait(false);
@@ -320,9 +330,10 @@ public class Sender : IDisposable
                     catch (QueueDoesNotExistException ex)
                     {
                         _logger.SenderQueueDoesNotExistError(uri, ex);
+                        // Deserialize for failure handling (rare path, performance not critical)
+                        var messages = DeserializeRawMessages(rawMessagesForDestination);
                         // When queue doesn't exist, separate messages by queue and handle each queue's retry logic independently
-                        // This allows messages to valid queues to be retried while avoiding infinite retries for non-existent queues
-                        var messagesByQueue = messagesForDestination.GroupBy(m => m.QueueString);
+                        var messagesByQueue = messages.GroupBy(m => m.QueueString);
                         foreach (var queueGroup in messagesByQueue)
                         {
                             var failed = new OutgoingMessageFailure
@@ -336,9 +347,11 @@ public class Sender : IDisposable
                     catch (Exception ex)
                     {
                         _logger.SenderSendingError(uri, ex);
+                        // Deserialize for failure handling (rare path, performance not critical)
+                        var messages = DeserializeRawMessages(rawMessagesForDestination);
                         var failed = new OutgoingMessageFailure
                         {
-                            Messages = messagesForDestination,
+                            Messages = messages,
                             ShouldRetry = true
                         };
                         await _failedToSend.Writer.WriteAsync(failed, cancellationToken).ConfigureAwait(false);
@@ -359,6 +372,21 @@ public class Sender : IDisposable
                 _logger.SenderSendingLoopError(ex);
             }
         }
+    }
+
+    /// <summary>
+    /// Deserializes raw messages back to Message objects for failure handling.
+    /// This is only called in error paths, so performance is not critical.
+    /// </summary>
+    private List<Message> DeserializeRawMessages(List<RawOutgoingMessage> rawMessages)
+    {
+        var messages = new List<Message>(rawMessages.Count);
+        foreach (var raw in rawMessages)
+        {
+            var message = _serializer.ToMessage(raw.FullMessage.Span);
+            messages.Add(message);
+        }
+        return messages;
     }
 
     public void Dispose()
